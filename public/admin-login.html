@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portal Login Admin - RSUD Aeramo</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-6px); }
+      40%, 80% { transform: translateX(6px); }
+    }
+    .animate-shake {
+      animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+    }
+    .bg-grid-pattern {
+      background-size: 32px 32px;
+      background-image: 
+        linear-gradient(to right, rgba(226, 232, 240, 0.4) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(226, 232, 240, 0.4) 1px, transparent 1px);
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-blue-600 selection:text-white relative overflow-x-hidden">
+
+  <!-- BACKGROUND DECORATIONS -->
+  <div class="fixed inset-0 bg-grid-pattern opacity-10 pointer-events-none"></div>
+  <div class="fixed -top-40 -left-40 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl pointer-events-none"></div>
+  <div class="fixed -bottom-40 -right-40 w-96 h-96 bg-emerald-600/15 rounded-full blur-3xl pointer-events-none"></div>
+
+  <!-- HEADER -->
+  <header class="w-full max-w-6xl mx-auto px-6 py-6 flex items-center justify-between z-10">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center font-black text-white shadow-lg shadow-blue-500/25 text-lg">
+        🏥
+      </div>
+      <div>
+        <h1 class="text-sm sm:text-base font-extrabold tracking-tight text-white leading-tight">RSUD AERAMO</h1>
+        <p class="text-[11px] text-slate-400 font-medium">Kabupaten Nagekeo, NTT</p>
+      </div>
+    </div>
+
+    <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800/80 border border-slate-700/80 text-[11px] text-slate-300">
+      <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+      <span>Portal Terproteksi Enkripsi</span>
+    </div>
+  </header>
+
+  <!-- MAIN LOGIN CARD -->
+  <main class="flex-1 flex items-center justify-center px-4 py-8 z-10 w-full">
+    <div class="w-full max-w-md">
+
+      <!-- Login Card Container -->
+      <div id="login-card" class="bg-slate-800/90 backdrop-blur-xl border border-slate-700/70 rounded-3xl p-7 sm:p-9 shadow-2xl shadow-black/50 transition-all duration-200">
+        
+        <!-- Header Card -->
+        <div class="text-center mb-7 space-y-2">
+          <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 text-2xl mb-1 shadow-inner">
+            🔐
+          </div>
+          <h2 class="text-xl sm:text-2xl font-black tracking-tight text-white">Login Manajemen</h2>
+          <p class="text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
+            Akses resmi Dashboard Eksekutif Kuesioner Survei Kepuasan Pasien RSUD Aeramo
+          </p>
+        </div>
+
+        <!-- Alert Error Box (Hidden by Default) -->
+        <div id="error-alert" class="hidden mb-5 p-3.5 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs font-medium flex items-center gap-2.5">
+          <svg class="w-4 h-4 shrink-0 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+          </svg>
+          <span id="error-message">Nama pengguna atau kata sandi tidak valid.</span>
+        </div>
+
+        <!-- Form Login -->
+        <form id="login-form" onsubmit="handleLogin(event)" class="space-y-4">
+          
+          <!-- Field: Username -->
+          <div class="space-y-1.5">
+            <label for="username" class="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+              Nama Pengguna
+            </label>
+            <div class="relative">
+              <input 
+                type="text" 
+                id="username" 
+                name="username"
+                required
+                autocomplete="username"
+                placeholder="Masukkan username admin..."
+                class="w-full px-4 py-3 rounded-2xl bg-slate-900/80 border border-slate-700 text-slate-100 placeholder:text-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition shadow-inner font-medium"
+              />
+              <span class="absolute right-3.5 top-3.5 text-slate-500 text-sm">👤</span>
+            </div>
+          </div>
+
+          <!-- Field: Password -->
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between">
+              <label for="password" class="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                Kata Sandi / PIN
+              </label>
+              <button 
+                type="button" 
+                onclick="togglePasswordVisibility()" 
+                class="text-[11px] text-blue-400 hover:text-blue-300 font-semibold transition"
+              >
+                <span id="toggle-pwd-text">Lihat Sandi</span>
+              </button>
+            </div>
+            <div class="relative">
+              <input 
+                type="password" 
+                id="password" 
+                name="password"
+                required
+                autocomplete="current-password"
+                placeholder="••••••••"
+                class="w-full px-4 py-3 rounded-2xl bg-slate-900/80 border border-slate-700 text-slate-100 placeholder:text-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition shadow-inner font-medium tracking-wider"
+              />
+              <span class="absolute right-3.5 top-3.5 text-slate-500 text-sm">🔑</span>
+            </div>
+          </div>
+
+          <!-- Remember Me Checkbox -->
+          <div class="flex items-center justify-between pt-1">
+            <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-300 font-medium">
+              <input 
+                type="checkbox" 
+                id="remember-me" 
+                checked 
+                class="w-4 h-4 rounded-md bg-slate-900 border-slate-700 text-blue-600 focus:ring-blue-500 cursor-pointer"
+              />
+              <span>Ingat sesi di perangkat ini</span>
+            </label>
+          </div>
+
+          <!-- Submit Button -->
+          <button 
+            type="submit" 
+            id="btn-submit"
+            class="w-full mt-2 py-3.5 px-4 rounded-2xl bg-blue-600 hover:bg-blue-500 active:scale-[0.99] text-white font-bold text-sm tracking-wide shadow-lg shadow-blue-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <span id="btn-text">Masuk ke Dashboard</span>
+            <svg id="btn-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+            </svg>
+            <!-- Loading Spinner (Hidden by default) -->
+            <svg id="btn-spinner" class="hidden w-4 h-4 animate-spin text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          </button>
+
+        </form>
+
+      </div>
+
+      <!-- Quick Hint / Footer Notice -->
+      <div class="mt-6 text-center text-slate-500 text-xs space-y-1">
+        <p>Akses ini hanya diperuntukkan bagi Pimpinan & Manajemen RSUD Aeramo.</p>
+        <p class="text-[11px] text-slate-600">Terhubung secara aman dengan Google Apps Script & Cloudflare</p>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="w-full max-w-6xl mx-auto px-6 py-4 text-center text-xs text-slate-500 border-t border-slate-800/80 z-10">
+    <p>© 2025 RSUD Aeramo - Pemerintah Kabupaten Nagekeo</p>
+  </footer>
+
+  <!-- SCRIPT LOGIC (Ubah konfigurasi Anda di sini) -->
+  <script>
+    // =========================================================================
+    // KONFIGURASI ADMIN RSUD AERAMO (Silakan ubah sesuai kebutuhan Anda)
+    // =========================================================================
+    const ADMIN_CONFIG = {
+      // 1. Masukkan URL Web App Google Apps Script Anda di sini (yang berakhiran /exec):
+      dashboardUrl: "https://script.google.com/macros/s/AKfycbwYOUR_APP_SCRIPT_ID/exec",
+
+      // 2. Kredensial Login yang Diinginkan:
+      validUsername: "admin",
+      validPassword: "rsudaeramo2025", // Ganti dengan kata sandi/PIN pilihan Anda
+
+      // 3. Cara Buka Dashboard:
+      // 'redirect' = Mengalihkan tab saat ini ke dashboard
+      // 'newtab'   = Membuka tab baru
+      openMode: "redirect"
+    };
+    // =========================================================================
+
+    // Cek apakah sudah pernah login dan mengingat sesi
+    window.addEventListener('DOMContentLoaded', () => {
+      const savedSession = localStorage.getItem('rsud_admin_auth');
+      if (savedSession === 'authenticated') {
+        autoLoginNotify();
+      }
+    });
+
+    function togglePasswordVisibility() {
+      const pwdInput = document.getElementById('password');
+      const toggleText = document.getElementById('toggle-pwd-text');
+      if (pwdInput.type === 'password') {
+        pwdInput.type = 'text';
+        toggleText.innerText = 'Sembunyikan';
+      } else {
+        pwdInput.type = 'password';
+        toggleText.innerText = 'Lihat Sandi';
+      }
+    }
+
+    function handleLogin(event) {
+      event.preventDefault();
+      
+      const usernameInput = document.getElementById('username').value.trim();
+      const passwordInput = document.getElementById('password').value;
+      const rememberMe = document.getElementById('remember-me').checked;
+
+      const errorAlert = document.getElementById('error-alert');
+      const errorMessage = document.getElementById('error-message');
+      const loginCard = document.getElementById('login-card');
+
+      const btnSubmit = document.getElementById('btn-submit');
+      const btnText = document.getElementById('btn-text');
+      const btnIcon = document.getElementById('btn-icon');
+      const btnSpinner = document.getElementById('btn-spinner');
+
+      // Validasi Username & Password
+      if (usernameInput === ADMIN_CONFIG.validUsername && passwordInput === ADMIN_CONFIG.validPassword) {
+        // Sukses Login!
+        errorAlert.classList.add('hidden');
+
+        // Indikator Loading
+        btnSubmit.disabled = true;
+        btnText.innerText = 'Mengalihkan ke Dashboard...';
+        btnIcon.classList.add('hidden');
+        btnSpinner.classList.remove('hidden');
+        btnSubmit.classList.remove('bg-blue-600', 'hover:bg-blue-500');
+        btnSubmit.classList.add('bg-emerald-600');
+
+        if (rememberMe) {
+          localStorage.setItem('rsud_admin_auth', 'authenticated');
+        }
+
+        setTimeout(() => {
+          if (ADMIN_CONFIG.openMode === 'newtab') {
+            window.open(ADMIN_CONFIG.dashboardUrl, '_blank');
+            btnText.innerText = 'Berhasil Masuk';
+          } else {
+            window.location.href = ADMIN_CONFIG.dashboardUrl;
+          }
+        }, 600);
+
+      } else {
+        // Gagal Login!
+        errorMessage.innerText = 'Nama pengguna atau kata sandi tidak sesuai. Silakan coba kembali.';
+        errorAlert.classList.remove('hidden');
+        
+        // Efek Shake pada Kartu Login
+        loginCard.classList.remove('animate-shake');
+        void loginCard.offsetWidth; // Trigger reflow
+        loginCard.classList.add('animate-shake');
+
+        document.getElementById('password').value = '';
+        document.getElementById('password').focus();
+      }
+    }
+
+    function autoLoginNotify() {
+      // Tombol auto-redirect jika sesi tersimpan
+      const card = document.getElementById('login-card');
+      const banner = document.createElement('div');
+      banner.className = "mb-4 p-3 rounded-2xl bg-blue-500/10 border border-blue-500/30 text-blue-300 text-xs flex items-center justify-between";
+      banner.innerHTML = `
+        <span>Sesi login Anda sebelumnya masih aktif.</span>
+        <button onclick="window.location.href=ADMIN_CONFIG.dashboardUrl" class="px-2.5 py-1 bg-blue-600 text-white rounded-lg font-bold text-[11px] hover:bg-blue-500">
+          Buka Langsung
+        </button>
+      `;
+      card.insertBefore(banner, card.firstChild);
+    }
+  </script>
+</body>
+</html>

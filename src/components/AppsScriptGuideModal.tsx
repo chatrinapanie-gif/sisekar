@@ -13,16 +13,24 @@ import {
   Sparkles,
   Sliders
 } from 'lucide-react';
-import { GOOGLE_APPS_SCRIPT_CODE } from '../services/appsScriptCode';
+import { GOOGLE_APPS_SCRIPT_CODE, GOOGLE_APPS_SCRIPT_INDEX_HTML } from '../services/appsScriptCode';
 
 export const AppsScriptGuideModal: React.FC = () => {
-  const [copied, setCopied] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedHtml, setCopiedHtml] = useState(false);
+  const [codeView, setCodeView] = useState<'code_gs' | 'index_html'>('code_gs');
   const [activeSubTab, setActiveSubTab] = useState<'appscript' | 'sheet_dashboard' | 'custom_develop' | 'flutter'>('appscript');
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(GOOGLE_APPS_SCRIPT_CODE);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2500);
+  };
+
+  const handleCopyHtml = () => {
+    navigator.clipboard.writeText(GOOGLE_APPS_SCRIPT_INDEX_HTML);
+    setCopiedHtml(true);
+    setTimeout(() => setCopiedHtml(false), 2500);
   };
 
   return (
@@ -100,33 +108,78 @@ export const AppsScriptGuideModal: React.FC = () => {
         <div className="space-y-5 animate-in fade-in duration-200">
           
           <div className="bg-white rounded-3xl p-6 sm:p-7 shadow-sm border border-slate-200 space-y-4">
+            {/* Selector File Code.gs vs index.html */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
-              <div>
-                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                  <Code2 className="w-5 h-5 text-blue-700" />
-                  <span>Script Google Apps Script (Code.gs) RSUD Aeramo</span>
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Script ini memetakan seluruh field profil (Tanggal, Jam, Jenis Kelamin, Pendidikan, Usia, Pekerjaan, Layanan) dan nilai aspek 1-4 ke Google Sheet
-                </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCodeView('code_gs')}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                    codeView === 'code_gs'
+                      ? 'bg-blue-700 text-white shadow-sm'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  <Code2 className="w-3.5 h-3.5" />
+                  <span>1. File: Code.gs (Backend & doGet)</span>
+                </button>
+
+                <button
+                  onClick={() => setCodeView('index_html')}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                    codeView === 'index_html'
+                      ? 'bg-emerald-700 text-white shadow-sm'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>2. File: index.html (Dashboard Eksekutif)</span>
+                </button>
               </div>
 
-              <button
-                onClick={handleCopyCode}
-                id="btn-copy-apps-script"
-                className="px-4 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 active:scale-95 text-white font-bold text-xs shadow-md shadow-blue-800/20 flex items-center gap-2 transition"
-              >
-                {copied ? <Check className="w-4 h-4 text-emerald-300" /> : <Copy className="w-4 h-4" />}
-                <span>{copied ? 'Tersalin ke Clipboard!' : 'Salin Seluruh Kode'}</span>
-              </button>
+              {codeView === 'code_gs' ? (
+                <button
+                  onClick={handleCopyCode}
+                  id="btn-copy-apps-script"
+                  className="px-4 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 active:scale-95 text-white font-bold text-xs shadow-md shadow-blue-800/20 flex items-center gap-2 transition"
+                >
+                  {copiedCode ? <Check className="w-4 h-4 text-emerald-300" /> : <Copy className="w-4 h-4" />}
+                  <span>{copiedCode ? 'Tersalin ke Clipboard!' : 'Salin Code.gs'}</span>
+                </button>
+              ) : (
+                <button
+                  onClick={handleCopyHtml}
+                  id="btn-copy-index-html"
+                  className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white font-bold text-xs shadow-md shadow-emerald-800/20 flex items-center gap-2 transition"
+                >
+                  {copiedHtml ? <Check className="w-4 h-4 text-emerald-300" /> : <Copy className="w-4 h-4" />}
+                  <span>{copiedHtml ? 'Tersalin ke Clipboard!' : 'Salin index.html'}</span>
+                </button>
+              )}
             </div>
 
-            {/* Code Block Container */}
-            <div className="relative">
-              <pre className="p-4 rounded-2xl bg-slate-900 text-slate-100 text-xs font-mono overflow-x-auto max-h-[500px] leading-relaxed border border-slate-800 selection:bg-blue-700">
-                {GOOGLE_APPS_SCRIPT_CODE}
-              </pre>
-            </div>
+            {codeView === 'code_gs' ? (
+              <div className="space-y-3">
+                <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-950 flex items-center justify-between">
+                  <span><strong>File: Code.gs</strong> — Menangani penerimaan data survei (<code>doPost</code>), fungsi <code>doGet</code> untuk menampilkan dashboard, dan kalkulasi ringkasan statistik (<code>getDashboardData</code>).</span>
+                </div>
+                <div className="relative">
+                  <pre className="p-4 rounded-2xl bg-slate-900 text-slate-100 text-xs font-mono overflow-x-auto max-h-[480px] leading-relaxed border border-slate-800 selection:bg-blue-700">
+                    {GOOGLE_APPS_SCRIPT_CODE}
+                  </pre>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-950 flex items-center justify-between">
+                  <span><strong>File: index.html</strong> — Tampilan dashboard profesional responsif dengan KPI IKM, Grafik Aspek Layanan, Donut Chart Mutu, Filter & Pencarian, serta Ekspor CSV dan Cetak Laporan.</span>
+                </div>
+                <div className="relative">
+                  <pre className="p-4 rounded-2xl bg-slate-900 text-slate-100 text-xs font-mono overflow-x-auto max-h-[480px] leading-relaxed border border-slate-800 selection:bg-emerald-700">
+                    {GOOGLE_APPS_SCRIPT_INDEX_HTML}
+                  </pre>
+                </div>
+              </div>
+            )}
 
             <div className="p-4 rounded-2xl bg-blue-50 border border-blue-200 text-xs text-blue-950 space-y-1">
               <p className="font-bold flex items-center gap-1.5 text-blue-900">
@@ -177,34 +230,49 @@ export const AppsScriptGuideModal: React.FC = () => {
               <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex gap-3">
                 <span className="w-6 h-6 rounded-full bg-blue-700 text-white flex items-center justify-center text-xs font-bold shrink-0">3</span>
                 <div>
-                  <p className="font-bold text-slate-900">Paste Kode Script & Simpan</p>
+                  <p className="font-bold text-slate-900">Tempelkan Kode Code.gs</p>
                   <p className="text-slate-500 text-xs mt-0.5">
-                    Hapus isi file <code className="bg-white px-1.5 py-0.5 rounded border">Code.gs</code>, paste kode dari tab <em>"Kode Google Apps Script"</em> di atas, lalu klik tombol Save (ikon disket).
+                    Hapus isi file <code className="bg-white px-1.5 py-0.5 rounded border">Code.gs</code>, paste kode dari tab <em>"1. File: Code.gs"</em> di atas.
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 flex gap-3">
+                <span className="w-6 h-6 rounded-full bg-emerald-700 text-white flex items-center justify-center text-xs font-bold shrink-0">4</span>
+                <div>
+                  <p className="font-bold text-emerald-950">Buat File Baru: index.html (Dashboard Eksekutif)</p>
+                  <p className="text-emerald-900 text-xs mt-0.5">
+                    Di samping tulisan <strong>Files</strong> di Google Apps Script, klik tombol <strong>+ (Tambah)</strong> &gt; pilih <strong>HTML</strong> &gt; beri nama: <strong className="font-mono bg-white px-1.5 py-0.5 rounded border border-emerald-300">index</strong> (otomatis jadi index.html). Hapus isinya, lalu paste kode dari tab <em>"2. File: index.html"</em>. Klik tombol Save (ikon disket).
                   </p>
                 </div>
               </div>
 
               <div className="p-3.5 rounded-2xl bg-blue-50 border border-blue-200 flex gap-3">
-                <span className="w-6 h-6 rounded-full bg-blue-700 text-white flex items-center justify-center text-xs font-bold shrink-0">4</span>
+                <span className="w-6 h-6 rounded-full bg-blue-700 text-white flex items-center justify-center text-xs font-bold shrink-0">5</span>
                 <div>
                   <p className="font-bold text-blue-950">Deploy Web App (PENTING!)</p>
                   <p className="text-blue-900 text-xs mt-0.5">
-                    Klik tombol biru <strong>Deploy (Terapkan)</strong> di kanan atas &gt; pilih <strong>New deployment (Penerapan baru)</strong> &gt; klik ikon gear &gt; pilih <strong>Web app</strong>.
+                    Klik tombol biru <strong>Deploy (Terapkan)</strong> di kanan atas &gt; pilih <strong>New deployment (Penerapan baru)</strong> &gt; pilih <strong>Web app</strong>.
                   </p>
                   <div className="mt-2 p-2.5 rounded-xl bg-white border border-blue-200 text-xs space-y-1">
-                    <p>• Execute as: <strong>Me (email Anda)</strong></p>
-                    <p className="text-amber-800 font-bold">• Who has access: <strong>Anyone (Siapa saja)</strong> &larr; Wajib dipilih agar data dari HP pasien terkirim!</p>
+                    <p>• Description: <strong>Dashboard & Survei RSUD Aeramo</strong></p>
+                    <p>• Execute as: <strong>Me (email Google Anda)</strong></p>
+                    <p className="text-amber-800 font-bold">• Who has access: <strong>Anyone (Siapa saja)</strong> &larr; Wajib dipilih!</p>
                   </div>
                 </div>
               </div>
 
               <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex gap-3">
-                <span className="w-6 h-6 rounded-full bg-blue-700 text-white flex items-center justify-center text-xs font-bold shrink-0">5</span>
+                <span className="w-6 h-6 rounded-full bg-blue-700 text-white flex items-center justify-center text-xs font-bold shrink-0">6</span>
                 <div>
-                  <p className="font-bold text-slate-900">Salin Web App URL ke Aplikasi</p>
+                  <p className="font-bold text-slate-900">Salin Web App URL (Bisa untuk Dashboard & Webhook!)</p>
                   <p className="text-slate-500 text-xs mt-0.5">
-                    Salin URL yang berakhiran <code className="text-blue-700 font-semibold">/exec</code>, buka tab <strong>Google Sheet URL</strong> di aplikasi ini, tempelkan URL, lalu klik Simpan. Selesai!
+                    Salin URL yang berakhiran <code className="text-blue-700 font-semibold">/exec</code>.
                   </p>
+                  <div className="mt-2 p-2.5 rounded-xl bg-slate-100 text-xs text-slate-700 space-y-1">
+                    <p>✨ <strong>Buka di Browser:</strong> URL tersebut langsung menjadi <strong>Halaman Dashboard Interaktif</strong> untuk direktur/admin RSUD Aeramo!</p>
+                    <p>📲 <strong>Tempel ke Form:</strong> Masukkan URL yang sama ke tab <strong>Google Sheet URL</strong> di aplikasi survei ini agar jawaban pasien otomatis masuk.</p>
+                  </div>
                 </div>
               </div>
 

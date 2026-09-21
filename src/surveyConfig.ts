@@ -21,7 +21,7 @@ export const ADMIN_CONFIG = {
    * 2. Atau file gambar di folder public/ : '/logo.png'
    * 3. Jika dibiarkan kosong '', aplikasi akan otomatis menampilkan logo vektor bawaan.
    */
-  logoUrl: 'https://drive.google.com/file/d/1F80Pt9LNDKZqMAVZW6b96563aaG121FW/view?usp=sharing', 
+  logoUrl: '/LOGOPEMDA (1).png', 
 
   hospitalName: 'RSUD Aeramo',
   hospitalSubTitle: 'Pemerintah Kabupaten Nagekeo - Dinas Kesehatan',

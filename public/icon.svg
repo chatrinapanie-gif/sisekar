@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="sisekar-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0d9488" />
+      <stop offset="100%" stop-color="#047857" />
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#064e3b" flood-opacity="0.25" />
+    </filter>
+  </defs>
+  <!-- Background with rounded corners -->
+  <rect width="512" height="512" rx="112" fill="url(#sisekar-grad)" />
+  
+  <!-- Subtle inner circle -->
+  <circle cx="256" cy="256" r="190" fill="#ffffff" fill-opacity="0.08" />
+
+  <!-- Medical Cross + Smiling Heart Centerpiece -->
+  <g filter="url(#shadow)">
+    <!-- Heart outline -->
+    <path d="M256 390 C256 390 130 310 130 216 C130 162 174 122 226 122 C242 122 250 130 256 138 C262 130 270 122 286 122 C338 122 382 162 382 216 C382 310 256 390 256 390 Z" fill="#ffffff" />
+    
+    <!-- Medical Cross inside heart -->
+    <rect x="238" y="180" width="36" height="110" rx="8" fill="#0d9488" />
+    <rect x="201" y="217" width="110" height="36" rx="8" fill="#0d9488" />
+    
+    <!-- Little Smile Arc in the lower heart -->
+    <path d="M226 310 Q256 335 286 310" stroke="#047857" stroke-width="8" stroke-linecap="round" fill="none" />
+  </g>
+
+  <!-- Star accents representing evaluation/ratings -->
+  <path d="M120 130 L125 142 L138 144 L128 153 L131 166 L120 159 L109 166 L112 153 L102 144 L115 142 Z" fill="#fef08a" />
+  <path d="M392 130 L397 142 L410 144 L400 153 L403 166 L392 159 L381 166 L384 153 L374 144 L387 142 Z" fill="#fef08a" />
+</svg>

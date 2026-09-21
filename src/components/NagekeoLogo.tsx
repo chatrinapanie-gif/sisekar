@@ -1,6 +1,65 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { ADMIN_CONFIG } from '../surveyConfig';
 
-export const NagekeoLogo: React.FC<{ className?: string }> = ({ className = 'w-16 h-16' }) => {
+/**
+ * Mengubah URL Google Drive standar (share link) menjadi Direct Image Embed URL
+ * Format Google Drive standar: https://drive.google.com/file/d/{FILE_ID}/view?usp=sharing
+ * Format Direct Embed: https://lh3.googleusercontent.com/d/{FILE_ID}
+ */
+export function getDirectImageUrl(url: string): string {
+  if (!url) return '';
+  const trimmed = url.trim();
+
+  // Cek apakah link dari Google Drive
+  if (trimmed.includes('drive.google.com')) {
+    // Pola 1: /file/d/FILE_ID/
+    const fileDMatch = trimmed.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (fileDMatch && fileDMatch[1]) {
+      return `https://lh3.googleusercontent.com/d/${fileDMatch[1]}`;
+    }
+    // Pola 2: ?id=FILE_ID atau &id=FILE_ID
+    const idMatch = trimmed.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (idMatch && idMatch[1]) {
+      return `https://lh3.googleusercontent.com/d/${idMatch[1]}`;
+    }
+  }
+
+  return trimmed;
+}
+
+export interface NagekeoLogoProps {
+  className?: string;
+  customSrc?: string;
+}
+
+export const NagekeoLogo: React.FC<NagekeoLogoProps> = ({ 
+  className = 'w-16 h-16',
+  customSrc
+}) => {
+  const [imageError, setImageError] = useState(false);
+
+  // Sumber gambar dari props atau dari ADMIN_CONFIG.logoUrl
+  const rawUrl = customSrc || ADMIN_CONFIG.logoUrl;
+  const directImageUrl = getDirectImageUrl(rawUrl);
+
+  // Jika URL gambar ada dan belum error, tampilkan gambar asli dari Google Drive / folder lokal
+  if (directImageUrl && !imageError) {
+    return (
+      <img
+        src={directImageUrl}
+        alt="Logo RSUD Aeramo - Kabupaten Nagekeo"
+        className={`${className} object-contain`}
+        onError={() => {
+          console.warn('Gagal memuat gambar logo kustom, otomatis beralih ke logo vektor SVG bawaan.');
+          setImageError(true);
+        }}
+        loading="eager"
+        referrerPolicy="no-referrer"
+      />
+    );
+  }
+
+  // Fallback: Logo Vektor SVG Bawaan Lambang Kabupaten Nagekeo
   return (
     <svg 
       viewBox="0 0 200 240" 

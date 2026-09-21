@@ -13,6 +13,16 @@ export const ADMIN_CONFIG = {
   // Masukkan URL Google Apps Script Web App Anda di sini (atau biarkan kosong untuk diisi via Portal Petugas Terproteksi):
   appsScriptUrl: '', // Contoh: 'https://script.google.com/macros/s/AKfycbw.../exec'
   
+  /**
+   * PENGATURAN LOGO RESMI:
+   * Anda bisa memasukkan:
+   * 1. Link Google Drive (Pastikan izin file disetel: "Siapa saja yang memiliki link"):
+   *    Contoh: 'https://drive.google.com/file/d/1a2b3c4d5e.../view?usp=sharing'
+   * 2. Atau file gambar di folder public/ : '/logo.png'
+   * 3. Jika dibiarkan kosong '', aplikasi akan otomatis menampilkan logo vektor bawaan.
+   */
+  logoUrl: '', 
+
   hospitalName: 'RSUD Aeramo',
   hospitalSubTitle: 'Pemerintah Kabupaten Nagekeo - Dinas Kesehatan',
 };

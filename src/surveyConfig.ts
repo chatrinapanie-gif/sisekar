@@ -231,6 +231,11 @@ export const SERVICE_QUESTIONS: Record<ServiceKey, QuestionSection[]> = {
           aspek: 'Kejelasan Penjelasan Dokter mengenai Kondisi Anda',
           uraian: 'Seberapa jelas dokter menjelaskan kondisi kesehatan Anda dan rencana perawatan yang akan dijalani?',
         },
+        {
+          id: 'ri_q7_ketersediaan_responsive',
+          aspek: 'Ketersediaan dan Responsivitas Perawat',
+          uraian: 'Bagaimana Anda menilai ketersediaan dan responsivitas perawat dalam memenuhi kebutuhan Anda selama masa rawat inap?',
+        },
       ],
     },
   ],

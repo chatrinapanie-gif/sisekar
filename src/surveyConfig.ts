@@ -89,6 +89,103 @@ export const SKALA_OPTIONS: SkalaOption[] = [
 
 /**
  * ============================================================================
+ * PRESET PILIHAN JAWABAN SPESIFIK (SESUAI PERMENPAN-RB / STANDAR IKM NASIONAL)
+ * ============================================================================
+ * Anda dapat memasangkan preset ini ke setiap pertanyaan yang Anda inginkan
+ * dengan menambahkan `options: OPSI_KESESUAIAN`, dll. pada SERVICE_QUESTIONS.
+ * ============================================================================
+ */
+
+// 1. Unsur Kesesuaian Persyaratan Pelayanan (Gambar 1 No. 1)
+export const OPSI_KESESUAIAN: SkalaOption[] = [
+  { value: 1, label: 'Tidak sesuai', shortLabel: 'TS', emoji: '❌', description: 'Persyaratan pelayanan tidak sesuai atau sangat berbelit.' },
+  { value: 2, label: 'Kurang sesuai', shortLabel: 'KS', emoji: '⚠️', description: 'Persyaratan pelayanan kurang sesuai dengan informasi.' },
+  { value: 3, label: 'Sesuai', shortLabel: 'S', emoji: '✔️', description: 'Persyaratan pelayanan sesuai dengan ketentuan.' },
+  { value: 4, label: 'Sangat sesuai', shortLabel: 'SS', emoji: '🌟', description: 'Persyaratan pelayanan sangat sesuai, transparan, dan jelas.' },
+];
+
+// 2. Unsur Kemudahan Sistem, Mekanisme, dan Prosedur (Gambar 1 No. 2)
+export const OPSI_KEMUDAHAN: SkalaOption[] = [
+  { value: 1, label: 'Tidak mudah', shortLabel: 'TM', emoji: '😣', description: 'Alur atau prosedur sangat rumit dan membingungkan.' },
+  { value: 2, label: 'Kurang mudah', shortLabel: 'KM', emoji: '😕', description: 'Alur atau prosedur kurang mudah dipahami.' },
+  { value: 3, label: 'Mudah', shortLabel: 'M', emoji: '🙂', description: 'Alur atau prosedur mudah dan runtut bagi pasien.' },
+  { value: 4, label: 'Sangat mudah', shortLabel: 'SM', emoji: '😀', description: 'Alur atau prosedur sangat mudah, ringkas, dan praktis.' },
+];
+
+// 3. Unsur Kecepatan Waktu Pelayanan (Gambar 1 No. 3)
+export const OPSI_KECEPATAN: SkalaOption[] = [
+  { value: 1, label: 'Tidak cepat', shortLabel: 'TC', emoji: '⌛', description: 'Waktu pelayanan sangat lambat dan lama menunggu.' },
+  { value: 2, label: 'Kurang cepat', shortLabel: 'KC', emoji: '⏳', description: 'Waktu pelayanan kurang cepat dan perlu antre.' },
+  { value: 3, label: 'Cepat', shortLabel: 'C', emoji: '⚡', description: 'Waktu pelayanan cepat dan sesuai standar.' },
+  { value: 4, label: 'Sangat cepat', shortLabel: 'SC', emoji: '🚀', description: 'Waktu pelayanan sangat cepat dan tanggap.' },
+];
+
+// 4. Unsur Biaya / Tarif Pelayanan (Gambar 1 No. 4)
+export const OPSI_BIAYA_TARIF: SkalaOption[] = [
+  { value: 1, label: 'Sangat mahal', shortLabel: 'SM', emoji: '💸', description: 'Biaya/tarif pelayanan dirasakan sangat mahal.' },
+  { value: 2, label: 'Cukup mahal', shortLabel: 'CM', emoji: '💵', description: 'Biaya/tarif pelayanan dirasakan cukup mahal.' },
+  { value: 3, label: 'Murah', shortLabel: 'M', emoji: '🏷️', description: 'Biaya/tarif pelayanan murah dan wajar.' },
+  { value: 4, label: 'Gratis', shortLabel: 'G', emoji: '🛡️', description: 'Gratis (terjamin BPJS/JKN) atau tanpa biaya tambahan.' },
+];
+
+// 5. Unsur Kualitas Pelayanan / Spesifikasi (Gambar 1 No. 5 & Gambar 2 No. 6)
+export const OPSI_KUALITAS_BAIK: SkalaOption[] = [
+  { value: 1, label: 'Tidak baik', shortLabel: 'TB', emoji: '👎', description: 'Pelayanan atau penanganan dirasakan tidak baik.' },
+  { value: 2, label: 'Kurang baik', shortLabel: 'KB', emoji: '⚠️', description: 'Pelayanan atau penanganan dirasakan kurang baik.' },
+  { value: 3, label: 'Baik', shortLabel: 'B', emoji: '👍', description: 'Pelayanan atau penanganan baik dan memadai.' },
+  { value: 4, label: 'Sangat baik', shortLabel: 'SB', emoji: '🏆', description: 'Pelayanan atau penanganan sangat baik dan memuaskan.' },
+];
+
+// 6. Unsur Perilaku Petugas / Kesopanan & Keramahan (Gambar 2 No. 7)
+export const OPSI_KESOPANAN_KERAMAHAN: SkalaOption[] = [
+  { value: 1, label: 'Tidak sopan, tidak ramah dan tidak rapi', shortLabel: 'TS', emoji: '😠', description: 'Petugas tidak bersikap sopan, tidak ramah, atau tidak rapi.' },
+  { value: 2, label: 'Kurang sopan, kurang ramah dan kurang rapi', shortLabel: 'KS', emoji: '😐', description: 'Petugas kurang menunjukkan keramahan atau kesopanan.' },
+  { value: 3, label: 'Sopan, ramah dan rapi', shortLabel: 'SR', emoji: '😊', description: 'Petugas bersikap sopan, ramah, santun, dan berpakaian rapi.' },
+  { value: 4, label: 'Sangat sopan, sangat ramah dan sangat rapi', shortLabel: 'SSR', emoji: '🙏', description: 'Petugas sangat sopan, sangat ramah, hangat, dan sangat rapi.' },
+];
+
+// 7. Unsur Kualitas Sarana dan Prasarana (Gambar 2 No. 8)
+export const OPSI_SARANA_PRASARANA: SkalaOption[] = [
+  { value: 1, label: 'Tidak tersedia/tidak baik', shortLabel: 'TT', emoji: '🚫', description: 'Sarana/fasilitas tidak tersedia atau rusak dan tidak baik.' },
+  { value: 2, label: 'Kurang tersedia/kurang baik', shortLabel: 'KT', emoji: '⚠️', description: 'Sarana/fasilitas terbatas atau kurang terawat.' },
+  { value: 3, label: 'Tersedia dan baik', shortLabel: 'TB', emoji: '🏢', description: 'Sarana/fasilitas tersedia, berfungsi, dan dalam kondisi baik.' },
+  { value: 4, label: 'Tersedia dan sangat baik', shortLabel: 'TSB', emoji: '✨', description: 'Sarana/fasilitas lengkap, modern, sangat bersih, dan sangat baik.' },
+];
+
+// 8. Unsur Penanganan Pengaduan, Saran dan Masukan (Gambar 2 No. 9)
+export const OPSI_PENANGANAN_PENGADUAN: SkalaOption[] = [
+  { value: 1, label: 'Tidak ada', shortLabel: 'TA', emoji: '❌', description: 'Tidak ada sarana pengaduan atau tindak lanjut sama sekali.' },
+  { value: 2, label: 'Ada tetapi tidak berfungsi', shortLabel: 'TF', emoji: '⚠️', description: 'Ada saluran aduan namun tidak berfungsi.' },
+  { value: 3, label: 'Ada tetapi kurang ditanggapi', shortLabel: 'KD', emoji: '💬', description: 'Aduan diterima tetapi kurang ditindaklanjuti secara cepat.' },
+  { value: 4, label: 'Ada dan ditangani dengan baik', shortLabel: 'DB', emoji: '✅', description: 'Pengaduan ditangani secara cepat, tanggap, dan dengan solusi baik.' },
+];
+
+// 9. Opsi Kenyamanan Khusus Kamar Rawat Inap
+export const OPSI_KENYAMANAN: SkalaOption[] = [
+  { value: 1, label: 'Sangat tidak nyaman', shortLabel: 'STN', emoji: '😣', description: 'Kamar sangat panas, bising, atau tempat tidur tidak nyaman.' },
+  { value: 2, label: 'Kurang nyaman', shortLabel: 'KN', emoji: '😐', description: 'Kamar kurang nyaman untuk istirahat pemulihan.' },
+  { value: 3, label: 'Nyaman', shortLabel: 'N', emoji: '🙂', description: 'Kamar nyaman, bersih, sejuk, dan memadai.' },
+  { value: 4, label: 'Sangat nyaman', shortLabel: 'SN', emoji: '🥰', description: 'Kamar sangat tenang, bersih, sejuk, dan sangat nyaman.' },
+];
+
+// 10. Opsi Kebersihan Khusus Kamar & Kamar Mandi
+export const OPSI_KEBERSIHAN: SkalaOption[] = [
+  { value: 1, label: 'Sangat tidak bersih', shortLabel: 'STB', emoji: '🤢', description: 'Kamar atau kamar mandi kotor, licin, berbau, atau tidak terawat.' },
+  { value: 2, label: 'Kurang bersih', shortLabel: 'KB', emoji: '🧹', description: 'Ada bagian kamar mandi atau kamar yang kurang dibersihkan.' },
+  { value: 3, label: 'Bersih', shortLabel: 'B', emoji: '✨', description: 'Kamar dan kamar mandi bersih, harum, dan dibersihkan berkala.' },
+  { value: 4, label: 'Sangat bersih & higienis', shortLabel: 'SB', emoji: '💎', description: 'Kamar dan kamar mandi sangat bersih, kering, higienis, dan wangi.' },
+];
+
+// 11. Opsi Kejelasan Informasi Dokter / Nakes
+export const OPSI_KEJELASAN: SkalaOption[] = [
+  { value: 1, label: 'Tidak jelas', shortLabel: 'TJ', emoji: '❓', description: 'Penjelasan dokter tidak jelas, terburu-buru, atau membingungkan.' },
+  { value: 2, label: 'Kurang jelas', shortLabel: 'KJ', emoji: '🤔', description: 'Masih banyak hal mengenai kondisi atau rencana rawat yang belum dipahami.' },
+  { value: 3, label: 'Jelas', shortLabel: 'J', emoji: '💡', description: 'Dokter menjelaskan kondisi kesehatan dan perawatan secara jelas.' },
+  { value: 4, label: 'Sangat jelas & komunikatif', shortLabel: 'SJ', emoji: '🌟', description: 'Dokter sangat jelas, sabar, detail, komunikatif, dan mudah dipahami.' },
+];
+
+/**
+ * ============================================================================
  * DAFTAR PILIHAN DROP DOWN: JENIS LAYANAN YANG DITERIMA PASIEN
  * ============================================================================
  * Anda dapat menambah jenis layanan baru di daftar ini kapan saja.
@@ -198,21 +295,25 @@ export const SERVICE_QUESTIONS: Record<ServiceKey, QuestionSection[]> = {
           id: 'ri_q1_kenyamanan_kamar',
           aspek: 'Kenyamanan Kamar dan Tempat Tidur',
           uraian: 'Bagaimana penilaian Anda terhadap kenyamanan kamar dan tempat tidur selama masa rawat inap?',
+          options: OPSI_KENYAMANAN,
         },
         {
           id: 'ri_q2_kebersihan_kamar',
           aspek: 'Kebersihan Kamar dan Kamar Mandi',
           uraian: 'Bagaimana penilaian Anda terhadap kebersihan kamar dan kamar mandi yang Anda gunakan selama masa rawat inap?',
+          options: OPSI_KEBERSIHAN,
         },
         {
           id: 'ri_q3_kualitas_fasilitas',
           aspek: 'Ketersediaan dan Kualitas Fasilitas di Kamar',
           uraian: 'Seberapa puas Anda dengan ketersediaan dan kualitas fasilitas di kamar (misalnya, AC, ventilasi, perlengkapan tidur)?',
+          options: OPSI_SARANA_PRASARANA,
         },
         {
           id: 'ri_q4_ketenangan_keamanan',
           aspek: 'Ketenangan dan Keamanan Lingkungan',
           uraian: 'Bagaimana Anda menilai ketenangan dan keamanan lingkungan rawat inap selama Anda dirawat?',
+          options: OPSI_KENYAMANAN,
         },
       ],
     },
@@ -223,13 +324,15 @@ export const SERVICE_QUESTIONS: Record<ServiceKey, QuestionSection[]> = {
       questions: [
         {
           id: 'ri_q5_kunjungan_nakes',
-          aspek: 'Frekuensi Kunjungan Dokte',
+          aspek: 'Frekuensi Kunjungan Dokter',
           uraian: 'Seberapa puas Anda dengan frekuensi kunjungan dokter selama masa rawat inap Anda?',
+          options: OPSI_KUALITAS_BAIK,
         },
         {
           id: 'ri_q6_kejelasan_informasi',
           aspek: 'Kejelasan Penjelasan Dokter mengenai Kondisi Anda',
           uraian: 'Seberapa jelas dokter menjelaskan kondisi kesehatan Anda dan rencana perawatan yang akan dijalani?',
+          options: OPSI_KEJELASAN,
         },
         {
           id: 'ri_q7_ketersediaan_responsive',

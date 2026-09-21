@@ -14,10 +14,19 @@ export type Pekerjaan = 'PNS' | 'TNI' | 'POLRI' | 'SWASTA' | 'WIRAUSAHA' | 'LAIN
 
 export type SkalaKepuasan = 1 | 2 | 3 | 4;
 
+export interface SkalaOptionItem {
+  value: 1 | 2 | 3 | 4;
+  label: string;
+  shortLabel?: string;
+  emoji?: string;
+  description?: string;
+}
+
 export interface QuestionItem {
   id: string;
   aspek: string;
   uraian: string;
+  options?: SkalaOptionItem[];
 }
 
 export interface QuestionSection {

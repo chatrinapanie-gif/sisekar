@@ -785,25 +785,23 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
                         <th className="p-3 border-r border-slate-200/80">
                           Aspek &amp; Uraian Penilaian
                         </th>
-                        {SKALA_OPTIONS.map(opt => {
-                          const colTheme = opt.value === 1 
-                            ? 'bg-rose-50 text-rose-900 border-rose-200'
-                            : opt.value === 2
-                              ? 'bg-amber-50 text-amber-900 border-amber-200'
-                              : opt.value === 3
-                                ? 'bg-blue-50 text-blue-900 border-blue-200'
-                                : 'bg-emerald-50 text-emerald-900 border-emerald-200';
+                        {[
+                          { value: 1, label: 'Skala 1 (Kurang)', emoji: '😡', theme: 'bg-rose-50 text-rose-900 border-rose-200' },
+                          { value: 2, label: 'Skala 2 (Cukup)', emoji: '😮', theme: 'bg-amber-50 text-amber-900 border-amber-200' },
+                          { value: 3, label: 'Skala 3 (Baik)', emoji: '😊', theme: 'bg-blue-50 text-blue-900 border-blue-200' },
+                          { value: 4, label: 'Skala 4 (Sangat Baik)', emoji: '🤩', theme: 'bg-emerald-50 text-emerald-900 border-emerald-200' },
+                        ].map(col => {
                           return (
                             <th 
-                              key={opt.value} 
-                              className={`p-2.5 w-32 text-center border-r border-slate-200/80 last:border-r-0 ${colTheme}`}
+                              key={col.value} 
+                              className={`p-2.5 w-32 text-center border-r border-slate-200/80 last:border-r-0 ${col.theme}`}
                             >
                               <div className="flex flex-col items-center justify-center gap-0.5">
-                                <span className="text-xl select-none" role="img" aria-label={opt.label}>
-                                  {opt.emoji}
+                                <span className="text-xl select-none" role="img" aria-label={col.label}>
+                                  {col.emoji}
                                 </span>
                                 <span className="font-bold text-xs leading-tight">
-                                  {opt.value}. {opt.label}
+                                  {col.label}
                                 </span>
                               </div>
                             </th>
@@ -815,6 +813,7 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
                       {section.questions.map((q, idx) => {
                         const currentVal = answers[q.id];
                         const isAnswered = currentVal !== undefined;
+                        const qOptions = q.options && q.options.length === 4 ? q.options : SKALA_OPTIONS;
 
                         return (
                           <tr 
@@ -852,8 +851,8 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
                               </p>
                             </td>
 
-                            {/* Kolom 3-6: Pilihan Skala Nilai 1, 2, 3, 4 (Dengan Text Lengkap & Emoji) */}
-                            {SKALA_OPTIONS.map(opt => {
+                            {/* Kolom 3-6: Pilihan Skala Nilai 1, 2, 3, 4 (Dengan Text Spesifik Tiap Pertanyaan) */}
+                            {qOptions.map(opt => {
                               const isSelected = currentVal === opt.value;
                               return (
                                 <td 
@@ -863,7 +862,7 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
                                   <button
                                     type="button"
                                     onClick={() => handleSelectAnswer(q.id, opt.value)}
-                                    title={`${opt.label}: ${opt.description}`}
+                                    title={`${opt.label}: ${opt.description || ''}`}
                                     className={`w-full py-2.5 px-1 rounded-xl border transition-all active:scale-95 flex flex-col items-center justify-center gap-0.5 select-none cursor-pointer ${
                                       isSelected
                                         ? opt.value === 1
@@ -877,13 +876,13 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
                                     }`}
                                   >
                                     <span className="text-lg select-none" role="img" aria-label={opt.label}>
-                                      {opt.emoji}
+                                      {opt.emoji || (opt.value === 1 ? '😡' : opt.value === 2 ? '😮' : opt.value === 3 ? '😊' : '🤩')}
                                     </span>
                                     <span className="text-xs font-bold flex items-center gap-0.5">
                                       <span>{opt.value}</span>
                                       {isSelected && <Check className="w-3 h-3 text-white" />}
                                     </span>
-                                    <span className={`text-[10px] font-bold leading-tight line-clamp-1 ${
+                                    <span className={`text-[10px] font-bold leading-tight line-clamp-2 px-0.5 ${
                                       isSelected ? 'text-white' : 'text-slate-700'
                                     }`}>
                                       {opt.label}
@@ -904,6 +903,7 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
                   {section.questions.map((q, idx) => {
                     const currentVal = answers[q.id];
                     const isAnswered = currentVal !== undefined;
+                    const qOptions = q.options && q.options.length === 4 ? q.options : SKALA_OPTIONS;
 
                     return (
                       <div 
@@ -941,7 +941,7 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
 
                         {/* 4 Opsi Jawaban dalam Grid 4 Kolom (Pas 100% Layar HP, Disertai Emoji + Angka + Text Lengkap) */}
                         <div className="grid grid-cols-4 gap-1 sm:gap-1.5 w-full pt-1">
-                          {SKALA_OPTIONS.map(opt => {
+                          {qOptions.map(opt => {
                             const isSelected = currentVal === opt.value;
                             return (
                               <button
@@ -961,7 +961,7 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
                                 }`}
                               >
                                 <span className="text-lg select-none" role="img" aria-label={opt.label}>
-                                  {opt.emoji}
+                                  {opt.emoji || (opt.value === 1 ? '😡' : opt.value === 2 ? '😮' : opt.value === 3 ? '😊' : '🤩')}
                                 </span>
                                 <span className="text-xs font-bold flex items-center justify-center gap-0.5">
                                   <span>{opt.value}</span>
@@ -986,73 +986,77 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
             {/* 2. TAMPILAN ALTERNATIF KARTU VERTIKAL (JUGA 100% PAS LAYAR HP, BEBAS GESER) */}
             {viewMode === 'cards' && (
               <div className="space-y-4 print:hidden">
-                {section.questions.map((q, idx) => (
-                  <div 
-                    key={q.id}
-                    className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3 transition-all"
-                  >
-                    {/* Header Soal & Aspek */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2">
-                      <div className="flex items-center gap-2.5">
-                        <span className="w-6 h-6 rounded-full bg-blue-800 text-white text-xs font-bold flex items-center justify-center shrink-0">
-                          {idx + 1}
-                        </span>
-                        <h4 className="font-bold text-slate-900 text-xs sm:text-sm">
-                          {q.aspek}
-                        </h4>
+                {section.questions.map((q, idx) => {
+                  const qOptions = q.options && q.options.length === 4 ? q.options : SKALA_OPTIONS;
+
+                  return (
+                    <div 
+                      key={q.id}
+                      className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3 transition-all"
+                    >
+                      {/* Header Soal & Aspek */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2">
+                        <div className="flex items-center gap-2.5">
+                          <span className="w-6 h-6 rounded-full bg-blue-800 text-white text-xs font-bold flex items-center justify-center shrink-0">
+                            {idx + 1}
+                          </span>
+                          <h4 className="font-bold text-slate-900 text-xs sm:text-sm">
+                            {q.aspek}
+                          </h4>
+                        </div>
+                        {answers[q.id] ? (
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 w-fit self-start sm:self-auto border border-emerald-200">
+                            <Check className="w-3 h-3 text-emerald-700" />
+                            <span>Nilai {answers[q.id]} Terpilih</span>
+                          </span>
+                        ) : (
+                          <span className="text-[11px] font-semibold text-rose-600 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-200 w-fit self-start sm:self-auto">
+                            Wajib dipilih
+                          </span>
+                        )}
                       </div>
-                      {answers[q.id] ? (
-                        <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 w-fit self-start sm:self-auto border border-emerald-200">
-                          <Check className="w-3 h-3 text-emerald-700" />
-                          <span>Nilai {answers[q.id]} Terpilih</span>
-                        </span>
-                      ) : (
-                        <span className="text-[11px] font-semibold text-rose-600 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-200 w-fit self-start sm:self-auto">
-                          Wajib dipilih
-                        </span>
-                      )}
-                    </div>
 
-                    {/* Uraian Pertanyaan */}
-                    <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
-                      {q.uraian}
-                    </p>
+                      {/* Uraian Pertanyaan */}
+                      <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
+                        {q.uraian}
+                      </p>
 
-                    {/* 4 Pilihan Jawaban dalam Grid Responsif (Pas Layar HP, Disertai Text Lengkap) */}
-                    <div className="grid grid-cols-4 gap-1 sm:gap-2 pt-1">
-                      {SKALA_OPTIONS.map(opt => {
-                        const isSelected = answers[q.id] === opt.value;
-                        const colors = getOptionColors(opt.value, isSelected);
+                      {/* 4 Pilihan Jawaban dalam Grid Responsif (Pas Layar HP, Disertai Text Lengkap) */}
+                      <div className="grid grid-cols-4 gap-1 sm:gap-2 pt-1">
+                        {qOptions.map(opt => {
+                          const isSelected = answers[q.id] === opt.value;
+                          const colors = getOptionColors(opt.value, isSelected);
 
-                        return (
-                          <button
-                            key={opt.value}
-                            type="button"
-                            onClick={() => handleSelectAnswer(q.id, opt.value)}
-                            className={`text-center rounded-xl p-2 sm:p-3 border transition-all active:scale-95 flex flex-col items-center justify-between gap-1 cursor-pointer select-none min-h-[70px] sm:min-h-[85px] ${colors.card}`}
-                          >
-                            <span className="text-xl sm:text-2xl select-none" role="img" aria-label={opt.label}>
-                              {opt.emoji}
-                            </span>
-                            <div className="w-full">
-                              <span className="font-bold text-xs block text-slate-900 flex items-center justify-center gap-0.5">
-                                <span>{opt.value}.</span>
-                                {isSelected && (
-                                  <span className="w-3.5 h-3.5 rounded-full bg-slate-900 text-white inline-flex items-center justify-center">
-                                    <Check className="w-2 h-2 text-white" />
-                                  </span>
-                                )}
+                          return (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => handleSelectAnswer(q.id, opt.value)}
+                              className={`text-center rounded-xl p-2 sm:p-3 border transition-all active:scale-95 flex flex-col items-center justify-between gap-1 cursor-pointer select-none min-h-[70px] sm:min-h-[85px] ${colors.card}`}
+                            >
+                              <span className="text-xl sm:text-2xl select-none" role="img" aria-label={opt.label}>
+                                {opt.emoji || (opt.value === 1 ? '😡' : opt.value === 2 ? '😮' : opt.value === 3 ? '😊' : '🤩')}
                               </span>
-                              <span className="font-bold text-[9px] sm:text-xs block text-slate-800 leading-tight line-clamp-2">
-                                {opt.label}
-                              </span>
-                            </div>
-                          </button>
-                        );
-                      })}
+                              <div className="w-full">
+                                <span className="font-bold text-xs block text-slate-900 flex items-center justify-center gap-0.5">
+                                  <span>{opt.value}.</span>
+                                  {isSelected && (
+                                    <span className="w-3.5 h-3.5 rounded-full bg-slate-900 text-white inline-flex items-center justify-center">
+                                      <Check className="w-2 h-2 text-white" />
+                                    </span>
+                                  )}
+                                </span>
+                                <span className="font-bold text-[9px] sm:text-xs block text-slate-800 leading-tight line-clamp-2">
+                                  {opt.label}
+                                </span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
@@ -1073,33 +1077,37 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y border-slate-900">
-                  {section.questions.map((q, idx) => (
-                    <tr key={q.id}>
-                      {/* Kolom 1: Aspek */}
-                      <td className="p-3 border-r border-slate-900 font-bold text-slate-900 align-top">
-                        {idx + 1}. {q.aspek}
-                      </td>
+                  {section.questions.map((q, idx) => {
+                    const qOptions = q.options && q.options.length === 4 ? q.options : SKALA_OPTIONS;
 
-                      {/* Kolom 2: Uraian */}
-                      <td className="p-3 border-r border-slate-900 text-slate-800 leading-relaxed align-top">
-                        {q.uraian}
-                      </td>
+                    return (
+                      <tr key={q.id}>
+                        {/* Kolom 1: Aspek */}
+                        <td className="p-3 border-r border-slate-900 font-bold text-slate-900 align-top">
+                          {idx + 1}. {q.aspek}
+                        </td>
 
-                      {/* Kolom 3: Skala Kepuasan */}
-                      <td className="p-3 align-top">
-                        <div className="space-y-1.5">
-                          {SKALA_OPTIONS.map(opt => (
-                            <div key={opt.value} className="flex items-center gap-2 text-xs">
-                              <span className={`w-3.5 h-3.5 border border-slate-700 inline-block text-center text-[10px] leading-3 ${answers[q.id] === opt.value ? 'bg-slate-900 text-white font-bold' : ''}`}>
-                                {answers[q.id] === opt.value ? '✓' : ''}
-                              </span>
-                              <span>{opt.label} ({opt.shortLabel})</span>
-                            </div>
-                          ))}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        {/* Kolom 2: Uraian */}
+                        <td className="p-3 border-r border-slate-900 text-slate-800 leading-relaxed align-top">
+                          {q.uraian}
+                        </td>
+
+                        {/* Kolom 3: Skala Kepuasan */}
+                        <td className="p-3 align-top">
+                          <div className="space-y-1.5">
+                            {qOptions.map(opt => (
+                              <div key={opt.value} className="flex items-center gap-2 text-xs">
+                                <span className={`w-3.5 h-3.5 border border-slate-700 inline-block text-center text-[10px] leading-3 ${answers[q.id] === opt.value ? 'bg-slate-900 text-white font-bold' : ''}`}>
+                                  {answers[q.id] === opt.value ? '✓' : ''}
+                                </span>
+                                <span>{opt.label} {opt.shortLabel ? `(${opt.shortLabel})` : ''}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

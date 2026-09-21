@@ -218,18 +218,18 @@ export const SERVICE_QUESTIONS: Record<ServiceKey, QuestionSection[]> = {
     },
     {
       id: 'ri_bagian_2',
-      title: 'Bagian 2 : Pelayanan Dokter dan Perawat Rawat Inap',
+      title: 'Bagian 2 :  Kualitas Perawatan oleh Dokter Dan Perawat',
       description: 'Penilaian terhadap komunikasi, keramahan, dan ketanggapan tenaga kesehatan',
       questions: [
         {
-          id: 'ri_q5_keramahan_nakes',
-          aspek: 'Keramahan dan Kesopanan Petugas',
-          uraian: 'Bagaimana sikap keramahan, kesopanan, dan kepedulian dokter dan perawat dalam melayani Anda?',
+          id: 'ri_q5_kunjungan_nakes',
+          aspek: 'Frekuensi Kunjungan Dokte',
+          uraian: 'Seberapa puas Anda dengan frekuensi kunjungan dokter selama masa rawat inap Anda?',
         },
         {
           id: 'ri_q6_kejelasan_informasi',
-          aspek: 'Kejelasan Informasi Pengobatan',
-          uraian: 'Apakah dokter memberikan penjelasan yang jelas dan mudah dipahami mengenai perkembangan kesehatan Anda?',
+          aspek: 'Kejelasan Penjelasan Dokter mengenai Kondisi Anda',
+          uraian: 'Seberapa jelas dokter menjelaskan kondisi kesehatan Anda dan rencana perawatan yang akan dijalani?',
         },
       ],
     },

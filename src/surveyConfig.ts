@@ -289,7 +289,7 @@ export const SERVICE_QUESTIONS: Record<ServiceKey, QuestionSection[]> = {
     {
       id: 'ri_bagian_1',
       title: 'Bagian 1 : Kenyamanan, Kualitas, Keramahan, Kerapihan NAKES dan Fasilitas Kamar Rawat Inap',
-      description: 'Penilaian terhadap fasilitas, kebersihan, dan kenyamanan kamar rawat inap',
+      description: 'Penilaian terhadap fasilitas, kebersihan, dan kenyamanan kamar rawat inap (Untuk Saat Ini hanya di sediakan Survey Kepuasan RAWAT JALAN',
       questions: [
         {
           id: 'ri_q1_keterpenuhan_kamar',

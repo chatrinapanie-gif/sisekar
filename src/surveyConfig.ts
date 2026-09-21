@@ -347,30 +347,7 @@ export const SERVICE_QUESTIONS: Record<ServiceKey, QuestionSection[]> = {
         },
       ],
     },
-    {
-      id: 'ri_bagian_2',
-      title: 'Bagian 2 :  Kualitas Perawatan oleh Dokter Dan Perawat',
-      description: 'Penilaian terhadap komunikasi, keramahan, dan ketanggapan tenaga kesehatan',
-      questions: [
-        {
-          id: 'ri_q5_kunjungan_nakes',
-          aspek: 'Frekuensi Kunjungan Dokter',
-          uraian: 'Seberapa puas Anda dengan frekuensi kunjungan dokter selama masa rawat inap Anda?',
-          options: OPSI_KUALITAS_BAIK,
-        },
-        {
-          id: 'ri_q6_kejelasan_informasi',
-          aspek: 'Kejelasan Penjelasan Dokter mengenai Kondisi Anda',
-          uraian: 'Seberapa jelas dokter menjelaskan kondisi kesehatan Anda dan rencana perawatan yang akan dijalani?',
-          options: OPSI_KEJELASAN,
-        },
-        {
-          id: 'ri_q7_ketersediaan_responsive',
-          aspek: 'Ketersediaan dan Responsivitas Perawat',
-          uraian: 'Bagaimana Anda menilai ketersediaan dan responsivitas perawat dalam memenuhi kebutuhan Anda selama masa rawat inap?',
-        },
-      ],
-    },
+    
   ],
 
   // 2. POLIKLINIK RAWAT JALAN

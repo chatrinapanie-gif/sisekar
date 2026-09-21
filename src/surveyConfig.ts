@@ -42,7 +42,7 @@ export const HOSPITAL_HEADER_INFO = {
   dinas: 'DINAS KESEHATAN',
   namaRS: 'RUMAH SAKIT UMUM DAERAH AERAMO',
   alamat: 'Jln. Prof. W. Z. Yohanes Kode Pos 86472',
-  email: 'rsdaeramo2017@gmail.com',
+  email: '-------/CP:-------',
   judulSurvei: 'SURVEI EVALUASI PENGALAMAN PASIEN di UNIT RAWAT INAP',
   instruksi:
     'Kami di RSUD Aeramo ingin memastikan bahwa Anda menerima pelayanan terbaik selama masa rawat inap Anda. Umpan balik Anda sangat penting bagi kami untuk meningkatkan kualitas layanan kami. Mohon luangkan waktu untuk mengisi survei ini dengan jujur. Semua jawaban Anda akan dirahasiakan.',

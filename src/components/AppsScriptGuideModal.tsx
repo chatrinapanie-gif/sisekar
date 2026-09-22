@@ -184,10 +184,20 @@ export const AppsScriptGuideModal: React.FC = () => {
             <div className="p-4 rounded-2xl bg-blue-50 border border-blue-200 text-xs text-blue-950 space-y-1">
               <p className="font-bold flex items-center gap-1.5 text-blue-900">
                 <Check className="w-4 h-4 text-blue-700" />
-                Daftar Kolom yang Otomatis Dibuat di Google Sheet:
+                Daftar 23 Kolom yang Otomatis Dibuat di Google Sheet:
               </p>
               <p className="text-slate-700 text-[11px] leading-relaxed">
-                1. Timestamp • 2. ID Survei • 3. Tanggal Survei • 4. Jam Survei (08.00-14.00 / 14.00-20.00 WITA) • 5. Nama Pasien • 6. Jenis Kelamin (L/P) • 7. Pendidikan (SD/SMP/SMA/S1/S2) • 8. Usia (Tahun) • 9. Pekerjaan • 10. Jenis Layanan • 11. Q1 Kenyamanan Kamar • 12. Q2 Kebersihan Kamar & Mandi • 13. Q3 Fasilitas Kamar • 14. Q4 Ketenangan & Keamanan • 15. Rata-rata Skor • 16. IKM 100 • 17. Mutu Layanan • 18. Saran • 19. Perangkat
+                1. Timestamp • 2. ID Survei • 3. Tanggal Survei • 4. Jam Survei (08.00-14.00 / 14.00-20.00 WITA) • 5. Nama Pasien • 6. Jenis Kelamin (L/P) • 7. Pendidikan (SD/SMP/SMA/S1/S2) • 8. Usia (Tahun) • 9. Pekerjaan • 10. Jenis Layanan • 11. Q1 Kenyamanan Kamar • 12. Q2 Kebersihan Kamar & Mandi • 13. Q3 Fasilitas Kamar • 14. Q4 Ketenangan & Keamanan • 15. Q5 Kunjungan Dokter • 16. Q6 Kejelasan Penjelasan Dokter • 17. Q7 Responsivitas Perawat • 18. Rata-rata Skor • 19. IKM 100 • 20. Mutu Layanan • 21. Saran • 22. Rincian Aspek Lengkap • 23. Perangkat
+              </p>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-950 space-y-1">
+              <p className="font-bold flex items-center gap-1.5 text-amber-900">
+                <Sparkles className="w-4 h-4 text-amber-700" />
+                Cara Memperbarui Jika Sudah Pernah Deploy Versi Lama:
+              </p>
+              <p className="text-slate-700 text-[11px] leading-relaxed">
+                Buka editor Apps Script di Google Sheets Anda &gt; tempelkan kode <strong>Code.gs</strong> dan <strong>index.html</strong> terbaru ini &gt; klik <strong>Deploy (Terapkan)</strong> &gt; <strong>Manage deployments (Kelola penerapan)</strong> &gt; klik ikon Pensil (Edit) &gt; pada Version pilih <strong>New version (Versi baru)</strong> &gt; klik <strong>Deploy</strong>. Semua 7 kolom Q1-Q7 dan dashboard akan langsung aktif tanpa mengubah URL!
               </p>
             </div>
           </div>

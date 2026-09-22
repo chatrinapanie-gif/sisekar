@@ -11,22 +11,22 @@ export const GOOGLE_APPS_SCRIPT_CODE = `/**
  * FILE: Code.gs (Google Apps Script Backend)
  * ==============================================================================
  * Petunjuk Pemasangan di Google Apps Script:
- * 1. Buat Google Sheet baru di Google Drive Anda.
+ * 1. Buat Google Sheet baru di Google Drive Anda (atau buka sheet yang sudah ada).
  * 2. Klik menu "Ekstensi" (Extensions) > "Apps Script".
  * 3. Di file default "Code.gs", hapus isinya dan tempel seluruh kode ini.
  * 4. Buat file HTML baru:
- *    - Klik ikon tanda tambah (+) di samping Files > pilih "HTML".
- *    - Beri nama file: index (otomatis menjadi index.html).
+ *    - Klik tanda tambah (+) di samping Files > pilih "HTML".
+ *    - Beri nama: index (otomatis menjadi index.html).
  *    - Tempelkan kode dari tab "index.html (Dashboard)" ke file tersebut.
  * 5. Klik ikon Save (Disket).
- * 6. Klik tombol "Terapkan" (Deploy) > "Penerapan baru" (New deployment).
+ * 6. Klik tombol "Terapkan" (Deploy) > "Penerapan baru" (New deployment):
  *    - Jenis: "Aplikasi web" (Web app).
  *    - Jalankan sebagai: "Saya" (Me / email Anda).
  *    - Siapa yang memiliki akses: "Siapa saja" (Anyone)  <--- WAJIB!
  * 7. Klik "Deploy", izinkan otorisasi akun Google.
- * 8. Selesai!
- *    - URL Web App yang dihasilkan adalah Link Dashboard Admin yang bisa dibuka di browser!
- *    - URL yang sama juga ditempelkan ke aplikasi kuesioner pasien sebagai endpoint penerima data.
+ * 8. Jika memperbarui script yang sudah berjalan:
+ *    - Klik "Terapkan" (Deploy) > "Kelola penerapan" (Manage deployments).
+ *    - Klik ikon Pensil (Edit) > pilih "Versi baru" (New version) > klik "Terapkan" (Deploy).
  * ==============================================================================
  */
 
@@ -48,14 +48,12 @@ function doGet(e) {
     const template = HtmlService.createTemplateFromFile("index");
     return template.evaluate()
       .setTitle("Dashboard Survei Kepuasan Pasien - RSUD Aeramo")
-      .addMetaTag("viewport", "width=device-width, initial-scale=1, maximum-scale=1")
+      .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   } catch (err) {
-    return HtmlService.createHtmlOutput(
-      "<div style='font-family:sans-serif;padding:30px;max-width:600px;margin:auto;text-align:center;'>" +
-      "<h2 style='color:#b91c1c;'>File 'index.html' Belum Dibuat</h2>" +
-      "<p>Pastikan Anda sudah membuat file HTML baru di Google Apps Script dengan nama <b>index</b> (menjadi index.html) dan menempelkan kodenya.</p>" +
-      "<p style='color:#666;font-size:12px;'>Error: " + err.toString() + "</p></div>"
+    return ContentService.createTextOutput(
+      "Error memuat template index.html: " + err.message +
+      ". Pastikan Anda telah membuat file HTML bernama 'index' di Google Apps Script."
     );
   }
 }
@@ -74,6 +72,8 @@ function doPost(e) {
     if (!sheet) {
       sheet = ss.insertSheet(SHEET_NAME_RESPONSES);
       setupHeaders(sheet);
+    } else {
+      checkAndUpgradeHeaders(sheet);
     }
 
     let data;
@@ -86,47 +86,100 @@ function doPost(e) {
     }
 
     const answers = data.answers || {};
+    const answeredDetails = data.answeredDetails || [];
 
-    // Ambil jawaban pertanyaan aspek pelayanan (Skala 1 - 4)
-    const q1 = Number(answers.q1_kenyamanan_kamar || answers["1"] || 0);
-    const q2 = Number(answers.q2_kebersihan_kamar || answers["2"] || 0);
-    const q3 = Number(answers.q3_kualitas_fasilitas || answers["3"] || 0);
-    const q4 = Number(answers.q4_ketenangan_keamanan || answers["4"] || 0);
+    // Ekstraksi nilai Q1 s/d Q7 secara cerdas (mendukung ri_q1..ri_q7, q1..q7, atau array answeredDetails)
+    let q1 = 0, q2 = 0, q3 = 0, q4 = 0, q5 = 0, q6 = 0, q7 = 0;
+
+    if (Array.isArray(answeredDetails) && answeredDetails.length > 0) {
+      q1 = Number(answeredDetails[0] && answeredDetails[0].score) || 0;
+      q2 = Number(answeredDetails[1] && answeredDetails[1].score) || 0;
+      q3 = Number(answeredDetails[2] && answeredDetails[2].score) || 0;
+      q4 = Number(answeredDetails[3] && answeredDetails[3].score) || 0;
+      q5 = Number(answeredDetails[4] && answeredDetails[4].score) || 0;
+      q6 = Number(answeredDetails[5] && answeredDetails[5].score) || 0;
+      q7 = Number(answeredDetails[6] && answeredDetails[6].score) || 0;
+    } else {
+      q1 = Number(answers.ri_q1_kenyamanan_kamar || answers.q1_kenyamanan_kamar || answers.q1 || answers["1"] || 0);
+      q2 = Number(answers.ri_q2_kebersihan_kamar || answers.q2_kebersihan_kamar || answers.q2 || answers["2"] || 0);
+      q3 = Number(answers.ri_q3_kualitas_fasilitas || answers.q3_kualitas_fasilitas || answers.q3 || answers["3"] || 0);
+      q4 = Number(answers.ri_q4_ketenangan_keamanan || answers.q4_ketenangan_keamanan || answers.q4 || answers["4"] || 0);
+      q5 = Number(answers.ri_q5_kunjungan_nakes || answers.q5_kunjungan_nakes || answers.q5 || answers["5"] || 0);
+      q6 = Number(answers.ri_q6_kejelasan_informasi || answers.q6_kejelasan_informasi || answers.q6 || answers["6"] || 0);
+      q7 = Number(answers.ri_q7_ketersediaan_responsive || answers.q7_ketersediaan_responsive || answers.q7 || answers["7"] || 0);
+
+      // Fallback untuk layanan lain (Radiologi, Rawat Jalan, IGD, dsb.)
+      var answerKeys = Object.keys(answers);
+      if (!q1 && answerKeys.length > 0) q1 = Number(answers[answerKeys[0]]) || 0;
+      if (!q2 && answerKeys.length > 1) q2 = Number(answers[answerKeys[1]]) || 0;
+      if (!q3 && answerKeys.length > 2) q3 = Number(answers[answerKeys[2]]) || 0;
+      if (!q4 && answerKeys.length > 3) q4 = Number(answers[answerKeys[3]]) || 0;
+      if (!q5 && answerKeys.length > 4) q5 = Number(answers[answerKeys[4]]) || 0;
+      if (!q6 && answerKeys.length > 5) q6 = Number(answers[answerKeys[5]]) || 0;
+      if (!q7 && answerKeys.length > 6) q7 = Number(answers[answerKeys[6]]) || 0;
+    }
 
     // Hitung rata-rata semua pertanyaan yang dijawab
-    const answerValues = Object.values(answers).map(Number).filter(function(v) { return !isNaN(v) && v > 0; });
+    var answerValues = [];
+    if (Array.isArray(answeredDetails) && answeredDetails.length > 0) {
+      answerValues = answeredDetails.map(function(d) { return Number(d.score); }).filter(function(v) { return !isNaN(v) && v > 0; });
+    } else {
+      answerValues = Object.values(answers).map(Number).filter(function(v) { return !isNaN(v) && v > 0; });
+    }
     const totalScore = answerValues.reduce(function(a, b) { return a + b; }, 0);
-    const avgScore = answerValues.length > 0 ? totalScore / answerValues.length : 0;
+    const avgScore = answerValues.length > 0 ? totalScore / answerValues.length : (Number(data.averageScore) || 0);
     
     // Konversi ke IKM Skala 100 (Nilai / 4 * 100)
-    const ikm100 = (avgScore / 4) * 100;
+    const ikm100 = data.ikmScore ? Number(data.ikmScore) : ((avgScore / 4) * 100);
 
-    let mutuLayanan = "Sangat Baik (A)";
-    if (ikm100 < 65) mutuLayanan = "Kurang Baik (D)";
-    else if (ikm100 < 76.6) mutuLayanan = "Cukup (C)";
-    else if (ikm100 < 88.3) mutuLayanan = "Baik (B)";
+    let mutuLayanan = data.mutuLayanan;
+    if (!mutuLayanan) {
+      mutuLayanan = "Sangat Baik (A)";
+      if (ikm100 < 65) mutuLayanan = "Kurang Baik (D)";
+      else if (ikm100 < 76.6) mutuLayanan = "Cukup (C)";
+      else if (ikm100 < 88.3) mutuLayanan = "Baik (B)";
+    }
 
-    // Baris data lengkap sesuai instrumen RSUD Aeramo
+    // Rincian lengkap pertanyaan & jawaban
+    let rincianAspekText = "-";
+    if (Array.isArray(answeredDetails) && answeredDetails.length > 0) {
+      rincianAspekText = answeredDetails.map(function(d, i) {
+        return (i + 1) + ". " + d.aspek + ": " + d.score + " (" + d.label + ")";
+      }).join(" | ");
+    } else {
+      var entries = Object.entries(answers);
+      if (entries.length > 0) {
+        rincianAspekText = entries.map(function(pair, i) {
+          return (i + 1) + ". " + pair[0] + ": " + pair[1];
+        }).join(" | ");
+      }
+    }
+
+    // Baris data lengkap 23 kolom
     const row = [
-      new Date(), // Timestamp Google
-      data.id || Utilities.getUuid(),
-      data.tanggalSurvei || Utilities.formatDate(new Date(), "Asia/Makassar", "yyyy-MM-dd"),
-      data.jamSurvei || "08.00 – 14.00 WITA",
-      data.namaPasien || "(Anonim / Tidak Diisi)",
-      data.jenisKelamin || "-",
-      data.pendidikan || "-",
-      data.usia ? Number(data.usia) : "-",
-      data.pekerjaan === "LAINNYA" && data.pekerjaanLainnya ? "LAINNYA: " + data.pekerjaanLainnya : (data.pekerjaan || "-"),
-      data.jenisLayanan || "Rawat Inap",
-      q1 || "-",
-      q2 || "-",
-      q3 || "-",
-      q4 || "-",
-      Number(avgScore.toFixed(2)),
-      Number(ikm100.toFixed(2)),
-      mutuLayanan,
-      data.saran || "-",
-      data.devicePlatform || "Android / Web"
+      new Date(), // 0: Timestamp Google
+      data.id || Utilities.getUuid(), // 1: ID Survei
+      data.tanggalSurvei || Utilities.formatDate(new Date(), "Asia/Makassar", "yyyy-MM-dd"), // 2: Tgl
+      data.jamSurvei || "08.00 – 14.00 WITA", // 3: Jam
+      data.namaPasien || "(Anonim / Tidak Diisi)", // 4: Nama
+      data.jenisKelamin || "-", // 5: JK
+      data.pendidikan || "-", // 6: Pendidikan
+      data.usia ? Number(data.usia) : "-", // 7: Usia
+      data.pekerjaan === "LAINNYA" && data.pekerjaanLainnya ? "LAINNYA: " + data.pekerjaanLainnya : (data.pekerjaan || "-"), // 8: Pekerjaan
+      data.jenisLayanan || "Rawat Inap", // 9: Layanan
+      q1 || "-", // 10: Q1 Kamar
+      q2 || "-", // 11: Q2 Bersih
+      q3 || "-", // 12: Q3 Fasilitas
+      q4 || "-", // 13: Q4 Tenang
+      q5 || "-", // 14: Q5 Kunjungan Dokter
+      q6 || "-", // 15: Q6 Info Dokter
+      q7 || "-", // 16: Q7 Perawat
+      Number(avgScore.toFixed(2)), // 17: AvgScore
+      Number(ikm100.toFixed(2)), // 18: IKM 100
+      mutuLayanan, // 19: Mutu
+      data.saran || "-", // 20: Saran
+      rincianAspekText, // 21: Rincian Lengkap
+      data.devicePlatform || "Android / Web" // 22: Perangkat
     ];
 
     sheet.appendRow(row);
@@ -162,7 +215,7 @@ function getDashboardData() {
     avgScore: 0,
     mutuPelayanan: "Belum Ada Data",
     kepuasanRate: 0,
-    unsurScores: { q1: 0, q2: 0, q3: 0, q4: 0 },
+    unsurScores: { q1: 0, q2: 0, q3: 0, q4: 0, q5: 0, q6: 0, q7: 0 },
     mutuDist: { a: 0, b: 0, c: 0, d: 0 },
     layananDist: {},
     genderDist: { L: 0, P: 0 },
@@ -176,12 +229,17 @@ function getDashboardData() {
   }
 
   const lastRow = sheet.getLastRow();
-  const values = sheet.getRange(2, 1, lastRow - 1, 19).getValues();
+  const lastCol = sheet.getLastColumn();
+  const numCols = Math.max(lastCol, 23);
+  const values = sheet.getRange(2, 1, lastRow - 1, numCols).getValues();
 
   let sumQ1 = 0, countQ1 = 0;
   let sumQ2 = 0, countQ2 = 0;
   let sumQ3 = 0, countQ3 = 0;
   let sumQ4 = 0, countQ4 = 0;
+  let sumQ5 = 0, countQ5 = 0;
+  let sumQ6 = 0, countQ6 = 0;
+  let sumQ7 = 0, countQ7 = 0;
   let sumScore = 0, countScore = 0;
   let sumIkm = 0;
   let puasCount = 0;
@@ -194,28 +252,66 @@ function getDashboardData() {
   for (let i = 0; i < values.length; i++) {
     const r = values[i];
     
-    // Indeks Kolom:
-    // 0: Timestamp | 1: ID | 2: Tgl | 3: Jam | 4: Nama | 5: JK | 6: Pend | 7: Usia
-    // 8: Pekerjaan | 9: Layanan | 10: Q1 | 11: Q2 | 12: Q3 | 13: Q4 | 14: AvgScore | 15: IKM100 | 16: Mutu | 17: Saran | 18: Device
-    const tgl = r[2] instanceof Date ? Utilities.formatDate(r[2], "Asia/Makassar", "yyyy-MM-dd") : String(r[2]);
+    // Periksa apakah baris ini mengikuti format 23 kolom baru atau 19 kolom lama
+    const isNewFormat = (r.length >= 20 && (
+      String(r[19] || '').indexOf('Baik') !== -1 || 
+      String(r[19] || '').indexOf('Cukup') !== -1 || 
+      (typeof r[14] === 'number' && r[14] <= 4 && typeof r[17] === 'number')
+    ));
+
+    const tgl = r[2] instanceof Date ? Utilities.formatDate(r[2], "Asia/Makassar", "yyyy-MM-dd") : String(r[2] || '');
     const nama = String(r[4] || "(Anonim)");
     const jk = String(r[5] || "").toUpperCase();
-    const usia = r[7] !== "-" ? Number(r[7]) : null;
+    const usia = (r[7] !== "-" && r[7] !== "" && !isNaN(Number(r[7]))) ? Number(r[7]) : null;
     const layanan = String(r[9] || "Rawat Inap");
 
-    const vQ1 = Number(r[10]);
-    const vQ2 = Number(r[11]);
-    const vQ3 = Number(r[12]);
-    const vQ4 = Number(r[13]);
-    const vScore = Number(r[14]);
-    const vIkm = Number(r[15]);
-    const mutu = String(r[16] || "");
-    const saran = String(r[17] || "");
+    let vQ1 = 0, vQ2 = 0, vQ3 = 0, vQ4 = 0, vQ5 = 0, vQ6 = 0, vQ7 = 0;
+    let vScore = 0, vIkm = 0, mutu = '', saran = '', rincian = '', device = 'Web';
 
-    if (!isNaN(vQ1) && vQ1 > 0) { sumQ1 += vQ1; countQ1++; }
-    if (!isNaN(vQ2) && vQ2 > 0) { sumQ2 += vQ2; countQ2++; }
-    if (!isNaN(vQ3) && vQ3 > 0) { sumQ3 += vQ3; countQ3++; }
-    if (!isNaN(vQ4) && vQ4 > 0) { sumQ4 += vQ4; countQ4++; }
+    if (isNewFormat) {
+      vQ1 = Number(r[10]);
+      vQ2 = Number(r[11]);
+      vQ3 = Number(r[12]);
+      vQ4 = Number(r[13]);
+      vQ5 = Number(r[14]);
+      vQ6 = Number(r[15]);
+      vQ7 = Number(r[16]);
+      vScore = Number(r[17]);
+      vIkm = Number(r[18]);
+      mutu = String(r[19] || "");
+      saran = String(r[20] || "");
+      rincian = String(r[21] || "");
+      device = String(r[22] || "Web");
+    } else {
+      vQ1 = Number(r[10]);
+      vQ2 = Number(r[11]);
+      vQ3 = Number(r[12]);
+      vQ4 = Number(r[13]);
+      vQ5 = 0;
+      vQ6 = 0;
+      vQ7 = 0;
+      vScore = Number(r[14]);
+      vIkm = Number(r[15]);
+      mutu = String(r[16] || "");
+      saran = String(r[17] || "");
+      device = String(r[18] || "Web");
+    }
+
+    if (isNaN(vQ1)) vQ1 = 0;
+    if (isNaN(vQ2)) vQ2 = 0;
+    if (isNaN(vQ3)) vQ3 = 0;
+    if (isNaN(vQ4)) vQ4 = 0;
+    if (isNaN(vQ5)) vQ5 = 0;
+    if (isNaN(vQ6)) vQ6 = 0;
+    if (isNaN(vQ7)) vQ7 = 0;
+
+    if (vQ1 > 0) { sumQ1 += vQ1; countQ1++; }
+    if (vQ2 > 0) { sumQ2 += vQ2; countQ2++; }
+    if (vQ3 > 0) { sumQ3 += vQ3; countQ3++; }
+    if (vQ4 > 0) { sumQ4 += vQ4; countQ4++; }
+    if (vQ5 > 0) { sumQ5 += vQ5; countQ5++; }
+    if (vQ6 > 0) { sumQ6 += vQ6; countQ6++; }
+    if (vQ7 > 0) { sumQ7 += vQ7; countQ7++; }
 
     if (!isNaN(vScore) && vScore > 0) {
       sumScore += vScore;
@@ -228,6 +324,10 @@ function getDashboardData() {
     if (mutu.indexOf("A") !== -1 || mutu.indexOf("Sangat Baik") !== -1) mutuDist.a++;
     else if (mutu.indexOf("B") !== -1 || mutu.indexOf("Baik") !== -1) mutuDist.b++;
     else if (mutu.indexOf("C") !== -1 || mutu.indexOf("Cukup") !== -1) mutuDist.c++;
+    else if (mutu.indexOf("D") !== -1 || mutu.indexOf("Kurang") !== -1) mutuDist.d++;
+    else if (vScore >= 3.5) mutuDist.a++;
+    else if (vScore >= 3.0) mutuDist.b++;
+    else if (vScore >= 2.5) mutuDist.c++;
     else mutuDist.d++;
 
     // Distribusi Layanan
@@ -238,10 +338,10 @@ function getDashboardData() {
     else if (jk.indexOf("P") !== -1) genderDist.P++;
     else genderDist.other++;
 
-    // Simpan daftar respon
+    // Simpan data respon
     recentResponses.push({
       timestamp: r[0] instanceof Date ? Utilities.formatDate(r[0], "Asia/Makassar", "dd/MM/yyyy HH:mm") : String(r[0]),
-      id: String(r[1]),
+      id: String(r[1] || Utilities.getUuid()),
       tanggalSurvei: tgl,
       jamSurvei: String(r[3] || ""),
       namaPasien: nama,
@@ -250,19 +350,22 @@ function getDashboardData() {
       usia: usia,
       pekerjaan: String(r[8] || "-"),
       jenisLayanan: layanan,
-      q1: !isNaN(vQ1) ? vQ1 : 0,
-      q2: !isNaN(vQ2) ? vQ2 : 0,
-      q3: !isNaN(vQ3) ? vQ3 : 0,
-      q4: !isNaN(vQ4) ? vQ4 : 0,
-      avgScore: !isNaN(vScore) ? Number(vScore.toFixed(2)) : 0,
-      ikm100: !isNaN(vIkm) ? Number(vIkm.toFixed(2)) : (!isNaN(vScore) ? Number((vScore/4*100).toFixed(2)) : 0),
-      mutuLayanan: mutu || "Baik (B)",
-      saran: saran !== "-" ? saran : "",
-      device: String(r[18] || "Web")
+      q1: vQ1,
+      q2: vQ2,
+      q3: vQ3,
+      q4: vQ4,
+      q5: vQ5,
+      q6: vQ6,
+      q7: vQ7,
+      avgScore: !isNaN(vScore) && vScore > 0 ? Number(vScore.toFixed(2)) : 0,
+      ikm100: !isNaN(vIkm) && vIkm > 0 ? Number(vIkm.toFixed(2)) : (!isNaN(vScore) && vScore > 0 ? Number((vScore/4*100).toFixed(2)) : 0),
+      mutuLayanan: mutu || (vScore >= 3.5 ? "Sangat Baik (A)" : (vScore >= 3.0 ? "Baik (B)" : "Cukup (C)")),
+      saran: (saran && saran !== "-") ? saran : "",
+      rincianAspek: (rincian && rincian !== "-") ? rincian : "",
+      device: device || "Web"
     });
   }
 
-  // Urutkan dari respon paling baru
   recentResponses.reverse();
 
   const total = values.length;
@@ -285,7 +388,10 @@ function getDashboardData() {
       q1: countQ1 > 0 ? Number((sumQ1 / countQ1).toFixed(2)) : 0,
       q2: countQ2 > 0 ? Number((sumQ2 / countQ2).toFixed(2)) : 0,
       q3: countQ3 > 0 ? Number((sumQ3 / countQ3).toFixed(2)) : 0,
-      q4: countQ4 > 0 ? Number((sumQ4 / countQ4).toFixed(2)) : 0
+      q4: countQ4 > 0 ? Number((sumQ4 / countQ4).toFixed(2)) : 0,
+      q5: countQ5 > 0 ? Number((sumQ5 / countQ5).toFixed(2)) : 0,
+      q6: countQ6 > 0 ? Number((sumQ6 / countQ6).toFixed(2)) : 0,
+      q7: countQ7 > 0 ? Number((sumQ7 / countQ7).toFixed(2)) : 0
     },
     mutuDist: mutuDist,
     layananDist: layananDist,
@@ -297,7 +403,7 @@ function getDashboardData() {
 }
 
 /**
- * Setup Header Kolom Spreadsheet sesuai Kuesioner Resmi
+ * Setup Header Kolom Spreadsheet (23 Kolom Lengkap)
  */
 function setupHeaders(sheet) {
   const headers = [
@@ -315,10 +421,14 @@ function setupHeaders(sheet) {
     "2. Kebersihan Kamar & Kamar Mandi",
     "3. Ketersediaan & Fasilitas Kamar",
     "4. Ketenangan & Keamanan Lingkungan",
+    "5. Kunjungan Dokter",
+    "6. Kejelasan Informasi Medis",
+    "7. Responsivitas & Kesiapan Perawat",
     "Rata-rata Skor (Skala 1-4)",
     "Indeks IKM (Skala 100)",
     "Mutu Pelayanan",
     "Saran / Masukan",
+    "Rincian Aspek Lengkap",
     "Perangkat Pengisi"
   ];
 
@@ -329,6 +439,19 @@ function setupHeaders(sheet) {
     .setFontWeight("bold")
     .setHorizontalAlignment("center");
   sheet.setFrozenRows(1);
+}
+
+/**
+ * Upgrade Header jika sheet lama masih menggunakan 19 kolom
+ */
+function checkAndUpgradeHeaders(sheet) {
+  try {
+    if (sheet.getLastColumn() < 23) {
+      setupHeaders(sheet);
+    }
+  } catch (e) {
+    // Ignore if locked
+  }
 }
 
 /**
@@ -345,11 +468,14 @@ function updateDashboardSheet(ss) {
 
   const cards = [
     ["Total Responden", '=COUNTA(Data_Survei_Aeramo!B2:B)'],
-    ["Rata-Rata IKM (Skala 100)", '=IFERROR(AVERAGE(Data_Survei_Aeramo!P2:P), 0)'],
+    ["Rata-Rata IKM (Skala 100)", '=IFERROR(AVERAGE(Data_Survei_Aeramo!S2:S), 0)'],
     ["1. Kenyamanan Kamar & Tempat Tidur", '=IFERROR(AVERAGE(Data_Survei_Aeramo!K2:K), 0)'],
     ["2. Kebersihan Kamar & Kamar Mandi", '=IFERROR(AVERAGE(Data_Survei_Aeramo!L2:L), 0)'],
     ["3. Kualitas & Fasilitas Kamar", '=IFERROR(AVERAGE(Data_Survei_Aeramo!M2:M), 0)'],
-    ["4. Ketenangan & Keamanan Lingkungan", '=IFERROR(AVERAGE(Data_Survei_Aeramo!N2:N), 0)']
+    ["4. Ketenangan & Keamanan Lingkungan", '=IFERROR(AVERAGE(Data_Survei_Aeramo!N2:N), 0)'],
+    ["5. Kunjungan Dokter", '=IFERROR(AVERAGE(Data_Survei_Aeramo!O2:O), 0)'],
+    ["6. Kejelasan Informasi Dokter", '=IFERROR(AVERAGE(Data_Survei_Aeramo!P2:P), 0)'],
+    ["7. Responsivitas Perawat", '=IFERROR(AVERAGE(Data_Survei_Aeramo!Q2:Q), 0)']
   ];
 
   for (let i = 0; i < cards.length; i++) {
@@ -358,7 +484,7 @@ function updateDashboardSheet(ss) {
     dash.getRange(row, 2).setFormula(cards[i][1]).setNumberFormat("0.00");
   }
 
-  dash.getRange("A4:B9").setBorder(true, true, true, true, true, true);
+  dash.getRange("A4:B12").setBorder(true, true, true, true, true, true);
 }
 `;
 
@@ -368,77 +494,66 @@ export const GOOGLE_APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard Survei Kepuasan Pasien - RSUD Aeramo</title>
-  
-  <!-- Tailwind CSS & Chart.js via CDN -->
+  <!-- Tailwind CSS & Chart.js CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
-          }
-        }
-      }
-    }
-  </script>
-
   <style>
-    body { font-family: 'Plus Jakarta Sans', sans-serif; }
-    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
-    .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
-    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-    @media print {
-      .no-print { display: none !important; }
-      body { background: white !important; }
-      .print-shadow-none { box-shadow: none !important; border: 1px solid #e2e8f0 !important; }
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      height: 6px;
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
     }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col antialiased">
+<body class="bg-slate-50 text-slate-800 min-h-screen">
 
-  <!-- TOP HEADER RSUD AERAMO -->
-  <header class="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30 shadow-md">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col sm:flex-row items-center justify-between gap-3">
-      <div class="flex items-center gap-3 text-center sm:text-left">
-        <div class="w-11 h-11 rounded-2xl bg-blue-600 flex items-center justify-center font-black text-lg text-white shadow-md shadow-blue-500/30">
-          🏥
+  <!-- Header Atas -->
+  <header class="bg-gradient-to-r from-blue-900 via-blue-950 to-slate-900 text-white shadow-md sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center font-black text-xl text-white shadow-xs">
+          ⚕️
         </div>
         <div>
-          <div class="flex items-center gap-2 justify-center sm:justify-start">
-            <h1 class="text-base sm:text-lg font-black tracking-tight text-white">RSUD AERAMO</h1>
-            <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-500/20 text-blue-300 border border-blue-400/30">
-              KAB. NAGEKEO
-            </span>
-          </div>
-          <p class="text-xs text-slate-400">Dashboard Eksekutif Hasil Survei Kepuasan Pasien</p>
+          <h1 class="text-base sm:text-lg font-extrabold tracking-tight leading-tight">
+            Dashboard Survei Kepuasan Pasien
+          </h1>
+          <p class="text-xs text-blue-200">
+            RSUD Aeramo • Kabupaten Nagekeo
+          </p>
         </div>
       </div>
 
-      <!-- Action Buttons -->
-      <div class="flex items-center gap-2 no-print">
-        <button id="btn-refresh" onclick="refreshData()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition border border-slate-700">
+      <div class="flex items-center gap-2 self-stretch sm:self-auto justify-between sm:justify-end">
+        <span class="text-[11px] text-blue-200 hidden md:inline">
+          Sinkron Otomatis Google Sheets
+        </span>
+        <button
+          onclick="fetchData()"
+          id="btn-refresh"
+          class="px-3.5 py-1.5 rounded-lg bg-blue-700 hover:bg-blue-600 active:scale-95 text-xs font-semibold shadow-xs transition flex items-center gap-1.5"
+        >
           <svg id="refresh-spinner" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
           </svg>
-          <span id="refresh-text">Muat Ulang</span>
+          <span id="btn-refresh-text">Muat Ulang</span>
         </button>
-
-        <button onclick="window.print()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition border border-slate-700">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
-          </svg>
-          <span>Cetak</span>
-        </button>
-
-        <button onclick="exportCSV()" class="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold flex items-center gap-1.5 transition shadow-sm">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <button
+          onclick="exportCSV()"
+          id="btn-export-csv"
+          class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-semibold transition flex items-center gap-1.5"
+        >
+          <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
           </svg>
           <span>Ekspor CSV</span>
@@ -447,197 +562,181 @@ export const GOOGLE_APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
     </div>
   </header>
 
-  <!-- SUB-BAR METADATA -->
-  <div class="bg-white border-b border-slate-200">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex flex-wrap items-center justify-between text-xs text-slate-500 gap-2">
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+
+    <!-- Info Banner Panduan & Update Struktur Data -->
+    <div class="p-3.5 rounded-2xl bg-blue-50/80 border border-blue-200 text-xs text-blue-950 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 shadow-2xs">
       <div class="flex items-center gap-2">
-        <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-        <span class="font-medium text-slate-700">Status Data: Real-time Sinkron Google Sheets</span>
+        <span class="text-base">ℹ️</span>
+        <div>
+          <strong class="font-bold text-blue-900">Struktur Instrumen Lengkap:</strong>
+          <span class="text-blue-800"> Dashboard ini memuat 7 unsur evaluasi Rawat Inap (Kenyamanan, Kebersihan, Fasilitas, Ketenangan, Kunjungan Dokter, Penjelasan Medis, Responsivitas Perawat) serta rincian lengkap untuk unit Radiologi, Rawat Jalan, dan IGD.</span>
+        </div>
       </div>
-      <div class="flex items-center gap-2 text-slate-500">
-        <span>Terakhir Diperbarui:</span>
-        <span id="label-last-updated" class="font-bold text-slate-800">-</span>
+      <div class="text-[11px] text-blue-700 whitespace-nowrap font-medium self-end sm:self-auto">
+        Formula IKM: Skala 100 (KemenPAN-RB)
       </div>
     </div>
-  </div>
 
-  <!-- MAIN CONTAINER -->
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 flex-1 w-full">
-
-    <!-- KPI STATS CARDS -->
+    <!-- KPI Ringkasan Eksekutif -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
       
-      <!-- Card 1: Total Responden -->
-      <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs print-shadow-none">
-        <div class="flex items-center justify-between text-slate-500 mb-2">
-          <span class="text-xs font-bold uppercase tracking-wider">Total Responden</span>
-          <span class="p-2 rounded-xl bg-blue-50 text-blue-600 font-bold text-sm">👥</span>
-        </div>
+      <!-- Total Responden -->
+      <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-xs border border-slate-200/80 space-y-1">
+        <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Total Responden</p>
         <div class="flex items-baseline gap-2">
-          <span id="kpi-total" class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">0</span>
-          <span class="text-xs text-slate-500 font-medium">pasien / wali</span>
+          <span id="kpi-total" class="text-2xl sm:text-3xl font-black text-slate-900">0</span>
+          <span class="text-xs text-slate-400">pasien</span>
         </div>
-        <div class="mt-2 text-[11px] text-slate-500">
-          Instrumen RSUD Aeramo
-        </div>
+        <p class="text-[10px] text-slate-400 pt-1">Terakhir update: <span id="label-last-updated">-</span></p>
       </div>
 
-      <!-- Card 2: Indeks IKM Skala 100 -->
-      <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs print-shadow-none">
-        <div class="flex items-center justify-between text-slate-500 mb-2">
-          <span class="text-xs font-bold uppercase tracking-wider">Indeks IKM (0-100)</span>
-          <span class="p-2 rounded-xl bg-emerald-50 text-emerald-600 font-bold text-sm">📊</span>
-        </div>
+      <!-- IKM (Skala 100) -->
+      <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-xs border border-slate-200/80 space-y-1">
+        <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Indeks Kepuasan (IKM 100)</p>
         <div class="flex items-baseline gap-2">
-          <span id="kpi-ikm" class="text-2xl sm:text-3xl font-black text-blue-700 tracking-tight">0.00</span>
+          <span id="kpi-ikm" class="text-2xl sm:text-3xl font-black text-blue-700">0.00</span>
+          <span class="text-xs text-slate-400">/ 100</span>
+        </div>
+        <div class="pt-1">
           <span id="kpi-mutu-badge" class="px-2 py-0.5 rounded-md text-[11px] font-extrabold bg-blue-100 text-blue-800">
             -
           </span>
         </div>
-        <div class="mt-2 text-[11px] text-slate-500">
-          Standar KemenPAN-RB
-        </div>
       </div>
 
-      <!-- Card 3: Rata-Rata Skor Aspek (1-4) -->
-      <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs print-shadow-none">
-        <div class="flex items-center justify-between text-slate-500 mb-2">
-          <span class="text-xs font-bold uppercase tracking-wider">Rata-Rata Skor</span>
-          <span class="p-2 rounded-xl bg-amber-50 text-amber-600 font-bold text-sm">⭐</span>
-        </div>
+      <!-- Skor Rata-Rata (1-4) -->
+      <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-xs border border-slate-200/80 space-y-1">
+        <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Skor Rata-Rata</p>
         <div class="flex items-baseline gap-2">
-          <span id="kpi-score" class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">0.00</span>
-          <span class="text-xs text-slate-500 font-medium">dari skala 4.00</span>
+          <span id="kpi-score" class="text-2xl sm:text-3xl font-black text-emerald-700">0.00</span>
+          <span class="text-xs text-slate-400">/ 4.00</span>
         </div>
-        <div class="mt-2 text-[11px] text-slate-500">
-          Target Layanan Prima: ≥ 3.00
-        </div>
+        <p class="text-[10px] text-slate-500 pt-1">Skala Likert Kuesioner</p>
       </div>
 
-      <!-- Card 4: Persentase Kepuasan -->
-      <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs print-shadow-none">
-        <div class="flex items-center justify-between text-slate-500 mb-2">
-          <span class="text-xs font-bold uppercase tracking-wider">Tingkat Kepuasan</span>
-          <span class="p-2 rounded-xl bg-purple-50 text-purple-600 font-bold text-sm">❤️</span>
-        </div>
+      <!-- Tingkat Kepuasan % -->
+      <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-xs border border-slate-200/80 space-y-1">
+        <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Tingkat Pasien Puas</p>
         <div class="flex items-baseline gap-2">
-          <span id="kpi-puas-rate" class="text-2xl sm:text-3xl font-black text-emerald-600 tracking-tight">0%</span>
-          <span class="text-xs text-slate-500 font-medium">Puas / Sangat Puas</span>
+          <span id="kpi-puas-rate" class="text-2xl sm:text-3xl font-black text-indigo-700">0%</span>
         </div>
-        <div class="mt-2 text-[11px] text-slate-500">
-          Responden skor rata-rata ≥ 3.0
-        </div>
+        <p class="text-[10px] text-slate-500 pt-1">Responden nilai &gt;= 3.00 (Baik/Sangat Baik)</p>
       </div>
 
     </div>
 
-    <!-- CHARTS GRID -->
+    <!-- Grafik Visualisasi Data -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       
-      <!-- Chart 1: Rata-Rata per Unsur Pelayanan (Bar Chart) -->
-      <div class="lg:col-span-2 bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs print-shadow-none flex flex-col justify-between">
-        <div>
-          <div class="flex items-center justify-between mb-1">
-            <h2 class="text-sm sm:text-base font-bold text-slate-900">Rata-Rata Nilai per Aspek Pelayanan</h2>
-            <span class="text-[11px] text-slate-500">Skala 1.00 - 4.00</span>
+      <!-- Grafik Rata-Rata 7 Unsur Pelayanan -->
+      <div class="bg-white rounded-3xl p-5 sm:p-6 shadow-xs border border-slate-200/80 lg:col-span-2 space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="font-bold text-slate-900 text-sm sm:text-base">Rata-Rata Aspek Pelayanan Rawat Inap (Skala 1 - 4)</h3>
+            <p class="text-xs text-slate-500">Perbandingan skor 7 unsur kepuasan pasien RSUD Aeramo</p>
           </div>
-          <p class="text-xs text-slate-500 mb-4">Evaluasi kenyamanan, kebersihan, fasilitas, dan keamanan kamar RSUD Aeramo</p>
+          <span class="text-[11px] px-2.5 py-1 rounded-full bg-slate-100 font-semibold text-slate-600">Q1 s/d Q7</span>
         </div>
-        
-        <div class="h-64 sm:h-72 w-full relative">
+        <div class="relative h-64 sm:h-72 w-full">
           <canvas id="chartUnsur"></canvas>
         </div>
       </div>
 
-      <!-- Chart 2: Distribusi Mutu Pelayanan (Doughnut Chart) -->
-      <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs print-shadow-none flex flex-col justify-between">
+      <!-- Donut Chart Distribusi Mutu -->
+      <div class="bg-white rounded-3xl p-5 sm:p-6 shadow-xs border border-slate-200/80 space-y-4">
         <div>
-          <div class="flex items-center justify-between mb-1">
-            <h2 class="text-sm sm:text-base font-bold text-slate-900">Distribusi Predikat Mutu</h2>
-            <span class="text-[11px] text-slate-500">Kategori IKM</span>
-          </div>
-          <p class="text-xs text-slate-500 mb-4">Proporsi kepuasan responden survei</p>
+          <h3 class="font-bold text-slate-900 text-sm sm:text-base">Distribusi Mutu Pelayanan</h3>
+          <p class="text-xs text-slate-500">Kategori mutu berdasarkan standar IKM</p>
         </div>
-
-        <div class="h-56 sm:h-64 w-full relative flex items-center justify-center">
+        <div class="relative h-64 w-full flex items-center justify-center">
           <canvas id="chartMutu"></canvas>
-        </div>
-
-        <div class="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 text-xs text-slate-600 mt-2">
-          <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> A (Sangat Baik)</div>
-          <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span> B (Baik)</div>
-          <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> C (Cukup)</div>
-          <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> D (Kurang)</div>
         </div>
       </div>
 
     </div>
 
-    <!-- TABEL DATA RESPONDEN LENGKAP -->
-    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden print-shadow-none">
+    <!-- Tabel Data Responden -->
+    <div class="bg-white rounded-3xl shadow-xs border border-slate-200/80 overflow-hidden space-y-4">
       
-      <!-- Filter & Search Toolbar -->
-      <div class="p-4 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50">
+      <!-- Bar Filter & Pencarian -->
+      <div class="p-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 class="text-base font-bold text-slate-900">Daftar Hasil Responden Terbaru</h2>
-          <p class="text-xs text-slate-500">Data hasil pengisian kuesioner pasien yang tersimpan di Google Sheets</p>
+          <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+            <span>Daftar Jawaban Responden Pasien</span>
+            <span id="label-count-filtered" class="px-2 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800">0</span>
+            <span class="text-xs text-slate-400 font-normal">dari <span id="label-count-total">0</span> total</span>
+          </h3>
+          <p class="text-xs text-slate-500">Klik salah satu baris untuk melihat rincian lengkap kuesioner pasien</p>
         </div>
 
-        <div class="flex flex-wrap items-center gap-2 no-print">
+        <div class="flex flex-wrap items-center gap-2">
           <!-- Filter Layanan -->
-          <select id="filter-layanan" onchange="applyFilters()" class="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="ALL">Semua Jenis Layanan</option>
+          <select
+            id="filter-layanan"
+            onchange="applyFilters()"
+            class="text-xs px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 font-semibold focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="ALL">Semua Unit Layanan</option>
             <option value="Rawat Inap">Rawat Inap</option>
-            <option value="Rawat Jalan">Rawat Jalan / Poliklinik</option>
+            <option value="Radiologi">Radiologi</option>
+            <option value="Rawat Jalan">Rawat Jalan</option>
             <option value="IGD">IGD (Gawat Darurat)</option>
+            <option value="Farmasi">Farmasi / Obat</option>
+            <option value="Laboratorium">Laboratorium</option>
+            <option value="Kebidanan">Kebidanan & Kandungan</option>
+            <option value="Lainnya">Lainnya</option>
           </select>
 
           <!-- Filter Mutu -->
-          <select id="filter-mutu" onchange="applyFilters()" class="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="ALL">Semua Predikat</option>
-            <option value="Sangat Baik">Sangat Baik (A)</option>
-            <option value="Baik">Baik (B)</option>
-            <option value="Cukup">Cukup (C)</option>
-            <option value="Kurang">Kurang (D)</option>
+          <select
+            id="filter-mutu"
+            onchange="applyFilters()"
+            class="text-xs px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 font-semibold focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="ALL">Semua Predikat Mutu</option>
+            <option value="A">Sangat Baik (A)</option>
+            <option value="B">Baik (B)</option>
+            <option value="C">Cukup (C)</option>
+            <option value="D">Kurang Baik (D)</option>
           </select>
 
-          <!-- Input Pencarian -->
-          <div class="relative">
-            <input 
-              type="text" 
-              id="search-input" 
-              oninput="applyFilters()" 
-              placeholder="Cari pasien / saran..." 
-              class="pl-8 pr-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 w-48 sm:w-56"
-            />
-            <span class="absolute left-2.5 top-2 text-slate-400 text-xs">🔍</span>
-          </div>
+          <!-- Input Cari -->
+          <input
+            type="text"
+            id="input-search"
+            oninput="applyFilters()"
+            placeholder="Cari nama / tanggal..."
+            class="text-xs px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500 w-44 sm:w-56"
+          />
         </div>
       </div>
 
-      <!-- Table Container -->
+      <!-- Container Tabel Responsif -->
       <div class="overflow-x-auto custom-scrollbar">
         <table class="w-full text-left text-xs">
           <thead class="bg-slate-100/80 text-slate-700 uppercase font-bold text-[11px] border-b border-slate-200">
             <tr>
-              <th class="py-3 px-4">Waktu / Tgl</th>
-              <th class="py-3 px-4">Nama Pasien</th>
-              <th class="py-3 px-4">Profil Demografi</th>
-              <th class="py-3 px-4">Jenis Layanan</th>
-              <th class="py-3 px-4 text-center">Q1 Kamar</th>
-              <th class="py-3 px-4 text-center">Q2 Bersih</th>
-              <th class="py-3 px-4 text-center">Q3 Fasilitas</th>
-              <th class="py-3 px-4 text-center">Q4 Tenang</th>
-              <th class="py-3 px-4 text-center">Rata-rata</th>
-              <th class="py-3 px-4 text-center">IKM (100)</th>
-              <th class="py-3 px-4 text-center">Mutu</th>
-              <th class="py-3 px-4">Saran / Masukan</th>
+              <th class="py-3 px-3">Waktu / Tgl</th>
+              <th class="py-3 px-3">Nama Pasien</th>
+              <th class="py-3 px-3">Demografi</th>
+              <th class="py-3 px-3">Layanan</th>
+              <th class="py-3 px-2 text-center" title="1. Kenyamanan Kamar & Tempat Tidur">Q1 Kamar</th>
+              <th class="py-3 px-2 text-center" title="2. Kebersihan Kamar & Kamar Mandi">Q2 Bersih</th>
+              <th class="py-3 px-2 text-center" title="3. Ketersediaan & Fasilitas Kamar">Q3 Fasilitas</th>
+              <th class="py-3 px-2 text-center" title="4. Ketenangan & Keamanan Lingkungan">Q4 Tenang</th>
+              <th class="py-3 px-2 text-center" title="5. Kunjungan Dokter">Q5 Dokter</th>
+              <th class="py-3 px-2 text-center" title="6. Kejelasan Informasi Medis Dokter">Q6 Info</th>
+              <th class="py-3 px-2 text-center" title="7. Responsivitas & Kesiapan Perawat">Q7 Perawat</th>
+              <th class="py-3 px-2 text-center">Rata-rata</th>
+              <th class="py-3 px-2 text-center">IKM (100)</th>
+              <th class="py-3 px-2 text-center">Mutu</th>
+              <th class="py-3 px-3">Saran / Masukan</th>
             </tr>
           </thead>
           <tbody id="table-body" class="divide-y divide-slate-100 font-medium text-slate-700">
-            <!-- Rendered by JavaScript -->
             <tr>
-              <td colspan="12" class="py-12 text-center text-slate-400">
+              <td colspan="15" class="py-12 text-center text-slate-400">
                 Memuat data survei dari Google Sheets...
               </td>
             </tr>
@@ -645,105 +744,81 @@ export const GOOGLE_APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
         </table>
       </div>
 
-      <!-- Table Footer Counter -->
-      <div class="p-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 bg-slate-50/50">
-        <div>
-          Menampilkan <span id="label-count-filtered" class="font-bold text-slate-800">0</span> dari <span id="label-count-total" class="font-bold text-slate-800">0</span> responden
-        </div>
-        <div class="text-[11px] text-slate-400">
-          Klik baris untuk melihat rincian pengisian
-        </div>
-      </div>
-
     </div>
 
   </main>
 
-  <!-- MODAL DETAIL RESPONDEN -->
+  <!-- Modal Detail Jawaban Pasien -->
   <div id="modal-detail" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs hidden items-center justify-center p-4">
-    <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 relative">
-      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+    <div class="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
         <div>
-          <h3 class="text-base font-bold text-slate-900">Rincian Survei Pasien</h3>
-          <p id="modal-sub" class="text-xs text-slate-500">-</p>
+          <h3 class="font-bold text-slate-900 text-base" id="modal-title">Rincian Lengkap Jawaban Pasien</h3>
+          <p class="text-xs text-slate-500" id="modal-sub">-</p>
         </div>
-        <button onclick="closeModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center font-bold">
+        <button onclick="closeModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-bold">
           ✕
         </button>
       </div>
 
-      <div id="modal-content" class="text-xs space-y-3 max-h-[70vh] overflow-y-auto pr-1">
-        <!-- Injected via JS -->
+      <div id="modal-content" class="space-y-4 text-xs text-slate-700">
+        <!-- Rendered by JS -->
       </div>
 
-      <div class="pt-3 border-t border-slate-100 flex justify-end">
-        <button onclick="closeModal()" class="px-4 py-2 rounded-xl bg-slate-800 text-white font-bold text-xs">
-          Tutup Rincian
+      <div class="pt-3 border-t border-slate-100 flex items-center justify-between">
+        <button
+          onclick="printModalSheet()"
+          class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs flex items-center gap-1.5 transition"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+          </svg>
+          <span>Cetak Lembar Pasien Ini</span>
+        </button>
+        <button
+          onclick="closeModal()"
+          class="px-5 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs shadow-xs"
+        >
+          Tutup
         </button>
       </div>
     </div>
   </div>
 
-  <!-- FOOTER RSUD AERAMO -->
-  <footer class="bg-white border-t border-slate-200 py-4 mt-8 no-print">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500 text-center sm:text-left">
-      <div>
-        <span class="font-bold text-slate-700">RSUD Aeramo</span> • Pemerintah Kabupaten Nagekeo, Nusa Tenggara Timur
-      </div>
-      <div>
-        Sistem Survei Kepuasan Pasien Terintegrasi Google Apps Script
-      </div>
-    </div>
-  </footer>
-
-  <!-- SCRIPT LOGIC -->
   <script>
-    // State lokal dashboard
     var rawData = null;
     var filteredList = [];
     var chartUnsurInstance = null;
     var chartMutuInstance = null;
+    var currentModalRecord = null;
 
-    // Saat pertama kali load, ambil data
-    window.addEventListener('DOMContentLoaded', function() {
-      // Jika template injects data langsung:
-      <? if (typeof getDashboardData === 'function') { ?>
-        try {
-          var serverData = <?!= JSON.stringify(getDashboardData()) ?>;
-          if (serverData) {
-            handleDataLoaded(serverData);
-            return;
-          }
-        } catch (e) {
-          console.log('Fallback to google.script.run');
-        }
-      <? } ?>
-
-      refreshData();
+    document.addEventListener('DOMContentLoaded', function() {
+      fetchData();
     });
 
-    function refreshData() {
-      var btnText = document.getElementById('refresh-text');
+    function fetchData() {
+      var btn = document.getElementById('btn-refresh');
       var spinner = document.getElementById('refresh-spinner');
+      var btnText = document.getElementById('btn-refresh-text');
+
       if (btnText) btnText.innerText = 'Memuat...';
       if (spinner) spinner.classList.add('animate-spin');
 
       if (typeof google !== 'undefined' && google.script && google.script.run) {
         google.script.run
-          .withSuccessHandler(function(res) {
-            handleDataLoaded(res);
+          .withSuccessHandler(function(data) {
+            handleDataLoaded(data);
             if (btnText) btnText.innerText = 'Muat Ulang';
             if (spinner) spinner.classList.remove('animate-spin');
           })
           .withFailureHandler(function(err) {
-            alert('Gagal mengambil data dari Google Sheets: ' + err.toString());
+            alert('Gagal mengambil data dari Google Sheets: ' + err);
             if (btnText) btnText.innerText = 'Muat Ulang';
             if (spinner) spinner.classList.remove('animate-spin');
           })
           .getDashboardData();
       } else {
-        // Mock preview jika dijalankan di luar Google Apps Script
-        console.warn('google.script.run tidak tersedia. Berjalan di lingkungan preview.');
+        console.warn('google.script.run tidak tersedia. Berjalan di lingkungan simulasi.');
         if (btnText) btnText.innerText = 'Muat Ulang';
         if (spinner) spinner.classList.remove('animate-spin');
       }
@@ -753,14 +828,12 @@ export const GOOGLE_APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       rawData = data;
       filteredList = data.recentResponses || [];
 
-      // Update KPI
       document.getElementById('kpi-total').innerText = data.totalResponden || 0;
       document.getElementById('kpi-ikm').innerText = (data.avgIkm || 0).toFixed(2);
       document.getElementById('kpi-score').innerText = (data.avgScore || 0).toFixed(2);
       document.getElementById('kpi-puas-rate').innerText = (data.kepuasanRate || 0) + '%';
       document.getElementById('label-last-updated').innerText = data.lastUpdated || '-';
 
-      // Badge Mutu
       var badge = document.getElementById('kpi-mutu-badge');
       if (badge) {
         badge.innerText = data.mutuPelayanan || '-';
@@ -780,65 +853,88 @@ export const GOOGLE_APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
     }
 
     function renderCharts(data) {
-      // 1. Chart Rata-rata Unsur Pelayanan
+      // 1. Chart Rata-rata 7 Unsur Pelayanan
       var ctxUnsur = document.getElementById('chartUnsur');
       if (ctxUnsur) {
         if (chartUnsurInstance) chartUnsurInstance.destroy();
         
-        var u = data.unsurScores || { q1: 0, q2: 0, q3: 0, q4: 0 };
+        var u = data.unsurScores || { q1: 0, q2: 0, q3: 0, q4: 0, q5: 0, q6: 0, q7: 0 };
         chartUnsurInstance = new Chart(ctxUnsur, {
           type: 'bar',
           data: {
             labels: [
               ['1. Kenyamanan', 'Kamar & Tidur'],
               ['2. Kebersihan', 'Kamar & Mandi'],
-              ['3. Kualitas', 'Fasilitas'],
-              ['4. Ketenangan', '& Keamanan']
+              ['3. Fasilitas', 'Peralatan'],
+              ['4. Ketenangan', '& Keamanan'],
+              ['5. Kunjungan', 'Dokter'],
+              ['6. Penjelasan', 'Info Dokter'],
+              ['7. Responsif', 'Perawat']
             ],
             datasets: [{
               label: 'Skor Rata-rata (1 - 4)',
-              data: [u.q1, u.q2, u.q3, u.q4],
-              backgroundColor: ['#2563eb', '#059669', '#d97706', '#7c3aed'],
+              data: [u.q1, u.q2, u.q3, u.q4, u.q5, u.q6, u.q7],
+              backgroundColor: [
+                '#2563eb',
+                '#059669',
+                '#d97706',
+                '#7c3aed',
+                '#0284c7',
+                '#4f46e5',
+                '#0d9488'
+              ],
               borderRadius: 8,
               borderSkipped: false,
-              barThickness: 36
+              barThickness: 22
             }]
           },
           options: {
             responsive: true,
             maintainAspectRatio: false,
+            scales: {
+              y: {
+                beginAtZero: true,
+                max: 4.0,
+                ticks: {
+                  stepSize: 1.0,
+                  font: { family: 'Plus Jakarta Sans', size: 11 }
+                },
+                grid: { color: '#f1f5f9' }
+              },
+              x: {
+                ticks: {
+                  font: { family: 'Plus Jakarta Sans', size: 10, weight: '600' }
+                },
+                grid: { display: false }
+              }
+            },
             plugins: {
               legend: { display: false },
               tooltip: {
                 callbacks: {
-                  label: function(ctx) { return ' Skor: ' + ctx.parsed.y.toFixed(2) + ' / 4.00'; }
+                  label: function(c) {
+                    return ' Skor Rata-Rata: ' + c.raw.toFixed(2) + ' / 4.00';
+                  }
                 }
-              }
-            },
-            scales: {
-              y: {
-                min: 0,
-                max: 4.0,
-                ticks: { stepSize: 1 }
               }
             }
           }
         });
       }
 
-      // 2. Chart Distribusi Mutu
+      // 2. Chart Donut Distribusi Mutu
       var ctxMutu = document.getElementById('chartMutu');
       if (ctxMutu) {
         if (chartMutuInstance) chartMutuInstance.destroy();
-        var m = data.mutuDist || { a: 0, b: 0, c: 0, d: 0 };
         
+        var m = data.mutuDist || { a: 0, b: 0, c: 0, d: 0 };
         chartMutuInstance = new Chart(ctxMutu, {
           type: 'doughnut',
           data: {
-            labels: ['Sangat Baik (A)', 'Baik (B)', 'Cukup (C)', 'Kurang (D)'],
+            labels: ['Sangat Baik (A)', 'Baik (B)', 'Cukup (C)', 'Kurang Baik (D)'],
             datasets: [{
               data: [m.a, m.b, m.c, m.d],
-              backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#f43f5e'],
+              backgroundColor: ['#059669', '#2563eb', '#d97706', '#e11d48'],
               borderWidth: 2,
               borderColor: '#ffffff'
             }]
@@ -847,9 +943,15 @@ export const GOOGLE_APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-              legend: { display: false }
+              legend: {
+                position: 'bottom',
+                labels: {
+                  boxWidth: 12,
+                  font: { family: 'Plus Jakarta Sans', size: 10, weight: '600' }
+                }
+              }
             },
-            cutout: '70%'
+            cutout: '68%'
           }
         });
       }
@@ -860,20 +962,50 @@ export const GOOGLE_APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
 
       var filterLayanan = document.getElementById('filter-layanan').value;
       var filterMutu = document.getElementById('filter-mutu').value;
-      var search = (document.getElementById('search-input').value || '').toLowerCase();
+      var search = (document.getElementById('input-search').value || '').toLowerCase().trim();
 
       filteredList = rawData.recentResponses.filter(function(item) {
         var matchLayanan = (filterLayanan === 'ALL') || (item.jenisLayanan === filterLayanan);
-        var matchMutu = (filterMutu === 'ALL') || (item.mutuLayanan.indexOf(filterMutu) !== -1);
-        var matchSearch = !search || 
-          item.namaPasien.toLowerCase().indexOf(search) !== -1 ||
-          item.saran.toLowerCase().indexOf(search) !== -1 ||
-          item.tanggalSurvei.toLowerCase().indexOf(search) !== -1;
+        
+        var matchMutu = true;
+        if (filterMutu !== 'ALL') {
+          matchMutu = item.mutuLayanan.indexOf(filterMutu) !== -1;
+        }
+
+        var matchSearch = !search ||
+          (item.namaPasien && item.namaPasien.toLowerCase().indexOf(search) !== -1) ||
+          (item.tanggalSurvei && item.tanggalSurvei.toLowerCase().indexOf(search) !== -1) ||
+          (item.jenisLayanan && item.jenisLayanan.toLowerCase().indexOf(search) !== -1) ||
+          (item.saran && item.saran.toLowerCase().indexOf(search) !== -1);
 
         return matchLayanan && matchMutu && matchSearch;
       });
 
       renderTable();
+    }
+
+    function formatScoreCell(val) {
+      if (!val || val === 0 || val === '-') {
+        return '<span class="text-slate-300 font-normal">-</span>';
+      }
+      var colorClass = 'text-blue-700 bg-blue-50';
+      if (val === 4) colorClass = 'text-emerald-700 bg-emerald-50';
+      else if (val === 3) colorClass = 'text-blue-700 bg-blue-50';
+      else if (val === 2) colorClass = 'text-amber-700 bg-amber-50';
+      else if (val === 1) colorClass = 'text-rose-700 bg-rose-50';
+      return '<span class="inline-block w-6 h-6 leading-6 text-center rounded-md font-bold text-xs ' + colorClass + '">' + val + '</span>';
+    }
+
+    function formatScoreBadge(val) {
+      if (!val || val === 0 || val === '-') {
+        return '<span class="text-slate-300 font-normal">-</span>';
+      }
+      var colorClass = 'text-blue-700 bg-blue-100';
+      if (val === 4) colorClass = 'text-emerald-800 bg-emerald-100';
+      else if (val === 3) colorClass = 'text-blue-800 bg-blue-100';
+      else if (val === 2) colorClass = 'text-amber-800 bg-amber-100';
+      else if (val === 1) colorClass = 'text-rose-800 bg-rose-100';
+      return '<span class="px-2 py-0.5 rounded-full font-bold text-xs ' + colorClass + '">Nilai ' + val + '</span>';
     }
 
     function renderTable() {
@@ -882,7 +1014,7 @@ export const GOOGLE_APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       document.getElementById('label-count-total').innerText = (rawData && rawData.recentResponses) ? rawData.recentResponses.length : 0;
 
       if (!filteredList || filteredList.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="12" class="py-12 text-center text-slate-400">Belum ada data responden yang sesuai filter.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="15" class="py-12 text-center text-slate-400">Belum ada data responden yang sesuai filter.</td></tr>';
         return;
       }
 
@@ -900,18 +1032,21 @@ export const GOOGLE_APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
         }
 
         html += '<tr onclick="openDetail(' + i + ')" class="hover:bg-blue-50/50 cursor-pointer transition border-b border-slate-100">' +
-          '<td class="py-3 px-4 font-mono text-[11px] text-slate-500 whitespace-nowrap">' + r.tanggalSurvei + '<br><span class="text-[10px] text-slate-400">' + (r.jamSurvei || '') + '</span></td>' +
-          '<td class="py-3 px-4 font-bold text-slate-900 whitespace-nowrap">' + escapeHtml(r.namaPasien) + '</td>' +
-          '<td class="py-3 px-4 text-[11px] text-slate-600 whitespace-nowrap">' + (r.jenisKelamin === 'L' ? '👨 Laki-laki' : (r.jenisKelamin === 'P' ? '👩 Perempuan' : '-')) + ' • ' + (r.usia ? r.usia + ' thn' : '-') + '</td>' +
-          '<td class="py-3 px-4 whitespace-nowrap"><span class="px-2 py-0.5 rounded-md bg-slate-100 font-semibold text-[11px] text-slate-700">' + escapeHtml(r.jenisLayanan) + '</span></td>' +
-          '<td class="py-3 px-4 text-center font-bold text-blue-700">' + r.q1 + '</td>' +
-          '<td class="py-3 px-4 text-center font-bold text-emerald-700">' + r.q2 + '</td>' +
-          '<td class="py-3 px-4 text-center font-bold text-amber-700">' + r.q3 + '</td>' +
-          '<td class="py-3 px-4 text-center font-bold text-purple-700">' + r.q4 + '</td>' +
-          '<td class="py-3 px-4 text-center font-extrabold text-slate-900">' + r.avgScore.toFixed(2) + '</td>' +
-          '<td class="py-3 px-4 text-center font-black text-blue-800">' + r.ikm100.toFixed(1) + '</td>' +
-          '<td class="py-3 px-4 text-center whitespace-nowrap"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ' + mutuClass + '">' + r.mutuLayanan + '</span></td>' +
-          '<td class="py-3 px-4 max-w-xs truncate text-slate-600" title="' + escapeHtml(r.saran) + '">' + (r.saran ? escapeHtml(r.saran) : '<span class="text-slate-300 italic">-</span>') + '</td>' +
+          '<td class="py-3 px-3 font-mono text-[11px] text-slate-500 whitespace-nowrap">' + r.tanggalSurvei + '<br><span class="text-[10px] text-slate-400">' + (r.jamSurvei || '') + '</span></td>' +
+          '<td class="py-3 px-3 font-bold text-slate-900 whitespace-nowrap">' + escapeHtml(r.namaPasien) + '</td>' +
+          '<td class="py-3 px-3 text-[11px] text-slate-600 whitespace-nowrap">' + (r.jenisKelamin === 'L' ? '👨 L' : (r.jenisKelamin === 'P' ? '👩 P' : '-')) + ' • ' + (r.usia ? r.usia + ' thn' : '-') + '</td>' +
+          '<td class="py-3 px-3 whitespace-nowrap"><span class="px-2 py-0.5 rounded-md bg-slate-100 font-semibold text-[11px] text-slate-700">' + escapeHtml(r.jenisLayanan) + '</span></td>' +
+          '<td class="py-3 px-2 text-center">' + formatScoreCell(r.q1) + '</td>' +
+          '<td class="py-3 px-2 text-center">' + formatScoreCell(r.q2) + '</td>' +
+          '<td class="py-3 px-2 text-center">' + formatScoreCell(r.q3) + '</td>' +
+          '<td class="py-3 px-2 text-center">' + formatScoreCell(r.q4) + '</td>' +
+          '<td class="py-3 px-2 text-center">' + formatScoreCell(r.q5) + '</td>' +
+          '<td class="py-3 px-2 text-center">' + formatScoreCell(r.q6) + '</td>' +
+          '<td class="py-3 px-2 text-center">' + formatScoreCell(r.q7) + '</td>' +
+          '<td class="py-3 px-2 text-center font-extrabold text-slate-900">' + (r.avgScore > 0 ? r.avgScore.toFixed(2) : '-') + '</td>' +
+          '<td class="py-3 px-2 text-center font-black text-blue-800">' + (r.ikm100 > 0 ? r.ikm100.toFixed(1) : '-') + '</td>' +
+          '<td class="py-3 px-2 text-center whitespace-nowrap"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ' + mutuClass + '">' + r.mutuLayanan + '</span></td>' +
+          '<td class="py-3 px-3 max-w-xs truncate text-slate-600" title="' + escapeHtml(r.saran) + '">' + (r.saran ? escapeHtml(r.saran) : '<span class="text-slate-300 italic">-</span>') + '</td>' +
         '</tr>';
       }
 
@@ -921,9 +1056,31 @@ export const GOOGLE_APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
     function openDetail(index) {
       var r = filteredList[index];
       if (!r) return;
+      currentModalRecord = r;
 
       document.getElementById('modal-sub').innerText = r.tanggalSurvei + ' • ' + (r.jamSurvei || '') + ' (' + r.jenisLayanan + ')';
       
+      var aspectListHtml = '';
+      if (r.rincianAspek && r.rincianAspek !== '-') {
+        var items = r.rincianAspek.split(' | ');
+        aspectListHtml = '<div class="space-y-1.5">';
+        for (var k = 0; k < items.length; k++) {
+          aspectListHtml += '<div class="p-2 rounded-lg bg-white border border-blue-100 flex justify-between items-center text-xs text-slate-700"><span>' + escapeHtml(items[k]) + '</span></div>';
+        }
+        aspectListHtml += '</div>';
+      } else {
+        aspectListHtml = 
+          '<div class="space-y-1.5">' +
+            '<div class="flex justify-between items-center py-1 border-b border-blue-100 text-xs text-slate-700"><span>1. Kenyamanan Kamar & Tempat Tidur:</span> ' + formatScoreBadge(r.q1) + '</div>' +
+            '<div class="flex justify-between items-center py-1 border-b border-blue-100 text-xs text-slate-700"><span>2. Kebersihan Kamar & Kamar Mandi:</span> ' + formatScoreBadge(r.q2) + '</div>' +
+            '<div class="flex justify-between items-center py-1 border-b border-blue-100 text-xs text-slate-700"><span>3. Fasilitas & Peralatan Kamar:</span> ' + formatScoreBadge(r.q3) + '</div>' +
+            '<div class="flex justify-between items-center py-1 border-b border-blue-100 text-xs text-slate-700"><span>4. Ketenangan & Keamanan Lingkungan:</span> ' + formatScoreBadge(r.q4) + '</div>' +
+            '<div class="flex justify-between items-center py-1 border-b border-blue-100 text-xs text-slate-700"><span>5. Frekuensi Kunjungan Dokter:</span> ' + formatScoreBadge(r.q5) + '</div>' +
+            '<div class="flex justify-between items-center py-1 border-b border-blue-100 text-xs text-slate-700"><span>6. Kejelasan Informasi Penjelasan Dokter:</span> ' + formatScoreBadge(r.q6) + '</div>' +
+            '<div class="flex justify-between items-center py-1 text-xs text-slate-700"><span>7. Responsivitas & Kesiapan Perawat:</span> ' + formatScoreBadge(r.q7) + '</div>' +
+          '</div>';
+      }
+
       var content = 
         '<div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">' +
           '<div class="flex justify-between"><strong>Nama Pasien:</strong> <span>' + escapeHtml(r.namaPasien) + '</span></div>' +
@@ -933,15 +1090,12 @@ export const GOOGLE_APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
           '<div class="flex justify-between"><strong>Jenis Layanan:</strong> <span class="font-bold text-blue-700">' + escapeHtml(r.jenisLayanan) + '</span></div>' +
         '</div>' +
 
-        '<div class="bg-blue-50/60 p-4 rounded-2xl border border-blue-200 space-y-2">' +
-          '<h4 class="font-bold text-blue-900 mb-2">Nilai Aspek Kepuasan (Skala 1 - 4):</h4>' +
-          '<div class="flex justify-between"><span>1. Kenyamanan Kamar & Tempat Tidur:</span> <strong class="text-base text-blue-800">' + r.q1 + '</strong></div>' +
-          '<div class="flex justify-between"><span>2. Kebersihan Kamar & Kamar Mandi:</span> <strong class="text-base text-emerald-800">' + r.q2 + '</strong></div>' +
-          '<div class="flex justify-between"><span>3. Kualitas & Fasilitas Kamar:</span> <strong class="text-base text-amber-800">' + r.q3 + '</strong></div>' +
-          '<div class="flex justify-between"><span>4. Ketenangan & Keamanan Lingkungan:</span> <strong class="text-base text-purple-800">' + r.q4 + '</strong></div>' +
-          '<div class="pt-2 border-t border-blue-200 flex justify-between font-bold text-slate-800">' +
-            '<span>Rata-Rata: ' + r.avgScore.toFixed(2) + '</span>' +
-            '<span class="text-blue-700">Indeks IKM: ' + r.ikm100.toFixed(2) + ' (' + r.mutuLayanan + ')</span>' +
+        '<div class="bg-blue-50/60 p-4 rounded-2xl border border-blue-200 space-y-2.5">' +
+          '<h4 class="font-bold text-blue-900 mb-1">Rincian Penilaian Aspek Kepuasan:</h4>' +
+          aspectListHtml +
+          '<div class="pt-2.5 border-t border-blue-200 flex justify-between font-bold text-slate-800">' +
+            '<span>Rata-Rata: ' + (r.avgScore > 0 ? r.avgScore.toFixed(2) : '-') + '</span>' +
+            '<span class="text-blue-700">Indeks IKM: ' + (r.ikm100 > 0 ? r.ikm100.toFixed(2) : '-') + ' (' + r.mutuLayanan + ')</span>' +
           '</div>' +
         '</div>' +
 
@@ -960,13 +1114,46 @@ export const GOOGLE_APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       document.getElementById('modal-detail').classList.remove('flex');
     }
 
+    function printModalSheet() {
+      if (!currentModalRecord) return;
+      var w = window.open('', '_blank');
+      var r = currentModalRecord;
+      var printHtml = 
+        '<html><head><title>Lembar Survei - ' + escapeHtml(r.namaPasien) + '</title>' +
+        '<style>body{font-family:sans-serif;padding:30px;color:#1e293b}h2{color:#1e3a8a;margin-bottom:4px}table{width:100%;border-collapse:collapse;margin-top:15px}td,th{border:1px solid #cbd5e1;padding:8px 12px;font-size:12px}.bg{background:#f8fafc;font-weight:bold}</style>' +
+        '</head><body>' +
+        '<h2>RSUD AERAMO - LEMBAR EVALUASI KEPUASAN PASIEN</h2>' +
+        '<p style="font-size:12px;color:#64748b;margin-top:0">Kabupaten Nagekeo | Waktu Survei: ' + r.tanggalSurvei + ' ' + (r.jamSurvei || '') + '</p>' +
+        '<hr/>' +
+        '<table>' +
+          '<tr><td class="bg" width="30%">ID Survei</td><td>' + r.id + '</td></tr>' +
+          '<tr><td class="bg">Nama Pasien</td><td>' + escapeHtml(r.namaPasien) + '</td></tr>' +
+          '<tr><td class="bg">Jenis Kelamin / Usia</td><td>' + (r.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan') + ' / ' + (r.usia || '-') + ' Tahun</td></tr>' +
+          '<tr><td class="bg">Pendidikan / Pekerjaan</td><td>' + escapeHtml(r.pendidikan) + ' / ' + escapeHtml(r.pekerjaan) + '</td></tr>' +
+          '<tr><td class="bg">Jenis Layanan</td><td>' + escapeHtml(r.jenisLayanan) + '</td></tr>' +
+          '<tr><td class="bg">Skor Rata-Rata</td><td><strong>' + r.avgScore.toFixed(2) + '</strong> (Skala 1 - 4)</td></tr>' +
+          '<tr><td class="bg">Indeks IKM 100</td><td><strong>' + r.ikm100.toFixed(2) + '</strong> (' + r.mutuLayanan + ')</td></tr>' +
+          '<tr><td class="bg">Rincian Aspek</td><td>' + (r.rincianAspek ? escapeHtml(r.rincianAspek) : ('Q1: ' + r.q1 + ', Q2: ' + r.q2 + ', Q3: ' + r.q3 + ', Q4: ' + r.q4 + ', Q5: ' + r.q5 + ', Q6: ' + r.q6 + ', Q7: ' + r.q7)) + '</td></tr>' +
+          '<tr><td class="bg">Saran / Masukan</td><td>' + (r.saran ? escapeHtml(r.saran) : '-') + '</td></tr>' +
+        '</table>' +
+        '<p style="font-size:11px;color:#94a3b8;margin-top:20px;text-align:right">Dicetak dari Dashboard RSUD Aeramo pada ' + new Date().toLocaleString('id-ID') + '</p>' +
+        '</body></html>';
+      w.document.write(printHtml);
+      w.document.close();
+      setTimeout(function() { w.print(); }, 500);
+    }
+
     function exportCSV() {
       if (!filteredList || filteredList.length === 0) {
         alert('Tidak ada data untuk diekspor.');
         return;
       }
 
-      var headers = ['Tanggal', 'Jam', 'Nama Pasien', 'Jenis Kelamin', 'Usia', 'Pendidikan', 'Pekerjaan', 'Jenis Layanan', 'Q1 Kenyamanan', 'Q2 Kebersihan', 'Q3 Fasilitas', 'Q4 Ketenangan', 'Rata-Rata Skor', 'IKM 100', 'Mutu Pelayanan', 'Saran'];
+      var headers = [
+        'Tanggal', 'Jam', 'Nama Pasien', 'Jenis Kelamin', 'Usia', 'Pendidikan', 'Pekerjaan', 'Jenis Layanan',
+        'Q1 Kamar', 'Q2 Kebersihan', 'Q3 Fasilitas', 'Q4 Ketenangan', 'Q5 Dokter', 'Q6 Info Medis', 'Q7 Perawat',
+        'Rata-Rata Skor', 'IKM 100', 'Mutu Pelayanan', 'Saran', 'Rincian Aspek'
+      ];
       var csvRows = [headers.join(',')];
 
       for (var i = 0; i < filteredList.length; i++) {
@@ -980,14 +1167,18 @@ export const GOOGLE_APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
           '"' + r.pendidikan + '"',
           '"' + (r.pekerjaan || '').replace(/"/g, '""') + '"',
           '"' + r.jenisLayanan + '"',
-          r.q1,
-          r.q2,
-          r.q3,
-          r.q4,
-          r.avgScore,
-          r.ikm100,
+          r.q1 || '-',
+          r.q2 || '-',
+          r.q3 || '-',
+          r.q4 || '-',
+          r.q5 || '-',
+          r.q6 || '-',
+          r.q7 || '-',
+          r.avgScore || 0,
+          r.ikm100 || 0,
           '"' + r.mutuLayanan + '"',
-          '"' + (r.saran || '').replace(/"/g, '""') + '"'
+          '"' + (r.saran || '').replace(/"/g, '""') + '"',
+          '"' + (r.rincianAspek || '').replace(/"/g, '""') + '"'
         ];
         csvRows.push(row.join(','));
       }

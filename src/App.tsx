@@ -1,3 +1,4 @@
+import './preamble';
 import React, { useState, useEffect, useCallback } from 'react';
 import { Header } from './components/Header';
 import { SurveyForm } from './components/SurveyForm';
@@ -8,7 +9,8 @@ import {
   saveAppConfig, 
   loadSubmissions, 
   loadPendingQueue, 
-  syncAllPendingQueue 
+  syncAllPendingQueue,
+  fetchServerConfig
 } from './services/sheetsService';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
 import { AppConfig, SurveySubmission } from './types';
@@ -24,6 +26,21 @@ export default function App() {
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+
+  // Sinkronisasi otomatis konfigurasi dari server agar aktif di semua perangkat (HP, Laptop, Tablet, Kiosk)
+  useEffect(() => {
+    let isMounted = true;
+    const syncServerConfig = async () => {
+      const serverConfig = await fetchServerConfig();
+      if (isMounted && serverConfig && serverConfig.appsScriptUrl) {
+        setConfig(serverConfig);
+      }
+    };
+    syncServerConfig();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const refreshData = useCallback(() => {
     const list = loadSubmissions();

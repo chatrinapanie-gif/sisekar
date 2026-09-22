@@ -8,9 +8,11 @@ import {
   FileText, 
   ArrowRight,
   Sparkles,
-  HelpCircle,
   Building2,
-  CheckCircle2
+  CheckCircle2,
+  Stethoscope,
+  Bed,
+  Check
 } from 'lucide-react';
 import { SKALA_OPTIONS } from '../surveyConfig';
 import { NagekeoLogo } from './NagekeoLogo';
@@ -32,11 +34,11 @@ export const PatientGuideView: React.FC<PatientGuideViewProps> = ({ onStartSurve
           </div>
 
           <h1 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight leading-snug">
-            Petunjuk Pengisian Survei Evaluasi Pelayanan Rawat Inap
+            Petunjuk Pengisian Survei Evaluasi Pelayanan Pasien
           </h1>
 
           <p className="text-xs sm:text-sm text-blue-100/90 leading-relaxed">
-            Terima kasih telah mempercayakan perawatan kesehatan Anda dan keluarga di RSUD Aeramo Kabupaten Nagekeo. Pendapat dan penilaian jujur Anda sangat berharga untuk terus memajukan kualitas fasilitas dan kenyamanan rumah sakit.
+            Terima kasih telah mempercayakan perawatan kesehatan Anda dan keluarga di RSUD Aeramo Kabupaten Nagekeo. Pendapat dan penilaian jujur Anda sangat berharga untuk terus memajukan kualitas fasilitas, ketanggapan tenaga kesehatan, dan kenyamanan rumah sakit.
           </p>
 
           <div className="pt-2">
@@ -56,6 +58,74 @@ export const PatientGuideView: React.FC<PatientGuideViewProps> = ({ onStartSurve
         </div>
       </div>
 
+      {/* Rangkuman 7 Aspek Pelayanan */}
+      <div className="bg-white rounded-3xl p-5 sm:p-7 shadow-xs border border-slate-200 space-y-4">
+        <div className="flex items-center gap-2 text-blue-900 font-bold text-base">
+          <Building2 className="w-5 h-5 text-blue-700" />
+          <span>7 Aspek Evaluasi Pelayanan Pasien (Rawat Inap & Unit Terkait)</span>
+        </div>
+        <p className="text-xs text-slate-600 leading-relaxed">
+          Kuesioner disusun secara komprehensif untuk mengevaluasi seluruh tahapan pengalaman perawatan Anda selama di RSUD Aeramo:
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1">
+          <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-100 flex items-start gap-2.5">
+            <span className="w-6 h-6 rounded-lg bg-blue-700 text-white flex items-center justify-center text-xs font-bold shrink-0">1</span>
+            <div>
+              <p className="text-xs font-bold text-slate-900">Kenyamanan Kamar & Tempat Tidur</p>
+              <p className="text-[11px] text-slate-500">Kenyamanan matras, sprei bersih, sirkulasi udara & suhu ruangan.</p>
+            </div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-emerald-50/70 border border-emerald-100 flex items-start gap-2.5">
+            <span className="w-6 h-6 rounded-lg bg-emerald-700 text-white flex items-center justify-center text-xs font-bold shrink-0">2</span>
+            <div>
+              <p className="text-xs font-bold text-slate-900">Kebersihan Kamar & Kamar Mandi</p>
+              <p className="text-[11px] text-slate-500">Kebersihan lantai, ketersediaan air mengalir, kehigienisan sanitasi.</p>
+            </div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-100 flex items-start gap-2.5">
+            <span className="w-6 h-6 rounded-lg bg-amber-700 text-white flex items-center justify-center text-xs font-bold shrink-0">3</span>
+            <div>
+              <p className="text-xs font-bold text-slate-900">Ketersediaan & Kualitas Fasilitas</p>
+              <p className="text-[11px] text-slate-500">Lampu penerangan, tiang infus, bel panggilan, fasilitas pendukung.</p>
+            </div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-purple-50/70 border border-purple-100 flex items-start gap-2.5">
+            <span className="w-6 h-6 rounded-lg bg-purple-700 text-white flex items-center justify-center text-xs font-bold shrink-0">4</span>
+            <div>
+              <p className="text-xs font-bold text-slate-900">Ketenangan & Keamanan Lingkungan</p>
+              <p className="text-[11px] text-slate-500">Suasana tenang waktu istirahat malam, ketertiban jam kunjung.</p>
+            </div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-sky-50/70 border border-sky-100 flex items-start gap-2.5">
+            <span className="w-6 h-6 rounded-lg bg-sky-700 text-white flex items-center justify-center text-xs font-bold shrink-0">5</span>
+            <div>
+              <p className="text-xs font-bold text-slate-900">Frekuensi Kunjungan Dokter (Visite)</p>
+              <p className="text-[11px] text-slate-500">Keteraturan dokter memeriksa perkembangan kesehatan pasien.</p>
+            </div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-indigo-50/70 border border-indigo-100 flex items-start gap-2.5">
+            <span className="w-6 h-6 rounded-lg bg-indigo-700 text-white flex items-center justify-center text-xs font-bold shrink-0">6</span>
+            <div>
+              <p className="text-xs font-bold text-slate-900">Kejelasan Informasi Penjelasan Dokter</p>
+              <p className="text-[11px] text-slate-500">Bahasa mudah dipahami mengenai diagnosa, obat, & tindakan.</p>
+            </div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-teal-50/70 border border-teal-100 sm:col-span-2 lg:col-span-3 flex items-start gap-2.5">
+            <span className="w-6 h-6 rounded-lg bg-teal-700 text-white flex items-center justify-center text-xs font-bold shrink-0">7</span>
+            <div>
+              <p className="text-xs font-bold text-slate-900">Ketersediaan & Responsivitas Perawat</p>
+              <p className="text-[11px] text-slate-500">Kecepatan perawat datang dan membantu dengan ramah saat dipanggil atau membutuhkan bantuan.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Grid Panduan Praktis */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
         
@@ -69,7 +139,7 @@ export const PatientGuideView: React.FC<PatientGuideViewProps> = ({ onStartSurve
             Formulir survei ini dapat diisi langsung oleh:
           </p>
           <ul className="text-xs text-slate-700 space-y-1.5 pl-4 list-disc">
-            <li><strong>Pasien yang sedang atau telah dirawat</strong> di unit rawat inap RSUD Aeramo.</li>
+            <li><strong>Pasien yang sedang atau telah dirawat</strong> di unit Rawat Inap maupun poliklinik/penunjang RSUD Aeramo.</li>
             <li><strong>Keluarga / Wali pendamping pasien</strong> apabila pasien membutuhkan bantuan untuk mengisi di layar gawai/telepon pintar.</li>
           </ul>
         </div>
@@ -81,11 +151,11 @@ export const PatientGuideView: React.FC<PatientGuideViewProps> = ({ onStartSurve
           </div>
           <h3 className="text-base font-bold text-slate-900">2. Jaminan Kerahasiaan Jawaban</h3>
           <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-            Semua penilaian Anda bersifat <strong>rahasia</strong> dan terlindungi kode etik:
+            Semua penilaian Anda bersifat <strong>rahasia</strong> dan terlindungi:
           </p>
           <ul className="text-xs text-slate-700 space-y-1.5 pl-4 list-disc">
             <li>Kolom nama bersifat <strong>opsional (boleh dikosongkan/anonim)</strong>.</li>
-            <li>Penilaian Anda tidak akan pernah mempengaruhi mutu perawatan atau pelayanan medis yang Anda terima.</li>
+            <li>Penilaian Anda tidak akan pernah mempengaruhi mutu perawatan medis yang Anda terima.</li>
           </ul>
         </div>
 
@@ -117,10 +187,10 @@ export const PatientGuideView: React.FC<PatientGuideViewProps> = ({ onStartSurve
           </div>
           <h3 className="text-base font-bold text-slate-900">4. Tahapan Pengisian Formulir</h3>
           <ol className="text-xs text-slate-700 space-y-2 pl-4 list-decimal">
-            <li><strong>Lengkapi Profil:</strong> Pilih tanggal, jam survei, jenis kelamin, usia, pendidikan, dan pekerjaan.</li>
-            <li><strong>Berikan Penilaian:</strong> Pilih salah satu dari 4 opsi nilai pada setiap butir pertanyaan kenyamanan kamar.</li>
-            <li><strong>Tulis Saran:</strong> Masukkan masukan atau keluhan membangun bila ada.</li>
-            <li><strong>Tekan Tombol Kirim:</strong> Jawaban Anda akan langsung tersimpan secara otomatis.</li>
+            <li><strong>Lengkapi Profil:</strong> Pilih tanggal, jam survei, jenis kelamin, usia, pendidikan, pekerjaan, dan unit layanan.</li>
+            <li><strong>Berikan Penilaian:</strong> Pilih salah satu dari 4 opsi nilai pada setiap butir aspek yang dinilai.</li>
+            <li><strong>Tulis Saran:</strong> Masukkan masukan membangun atau apresiasi Anda.</li>
+            <li><strong>Tekan Tombol Kirim:</strong> Jawaban Anda langsung tersimpan ke spreadsheet dan dashboard rumah sakit.</li>
           </ol>
         </div>
 
@@ -131,10 +201,10 @@ export const PatientGuideView: React.FC<PatientGuideViewProps> = ({ onStartSurve
         <div>
           <h3 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
             <Star className="w-5 h-5 text-amber-500 fill-amber-400" />
-            <span>Panduan Makna 4 Pilihan Skala Kepuasan</span>
+            <span>Panduan Makna 4 Pilihan Skala Penilaian</span>
           </h3>
           <p className="text-xs text-slate-500 mt-1">
-            Gunakan panduan berikut sebagai acuan saat memilih salah satu opsi pada tabel evaluasi:
+            Gunakan panduan berikut sebagai acuan saat memilih salah satu opsi pada formulir evaluasi:
           </p>
         </div>
 
@@ -169,13 +239,18 @@ export const PatientGuideView: React.FC<PatientGuideViewProps> = ({ onStartSurve
               </h4>
 
               <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                {opt.value === 1 && 'Fasilitas atau pelayanan sangat mengecewakan, kotor, atau sangat mengganggu ketenangan.'}
-                {opt.value === 2 && 'Fasilitas atau pelayanan belum memenuhi harapan dan memerlukan perbaikan segera.'}
-                {opt.value === 3 && 'Fasilitas bersih, memadai, nyaman, dan telah memenuhi standar pelayanan dengan baik.'}
-                {opt.value === 4 && 'Fasilitas sangat bersih, tenang, prima, dan pelayanan melebihi ekspektasi Anda.'}
+                {opt.value === 1 && 'Sangat mengecewakan, tidak ramah, kotor, lambat, persyaratan tidak sesuai, atau sangat mengganggu ketenangan.'}
+                {opt.value === 2 && 'Pelayanan atau fasilitas belum memenuhi harapan, kurang bersih, atau penanganan lambat sehingga perlu perbaikan.'}
+                {opt.value === 3 && 'Pelayanan ramah, tertib, bersih, tenaga medis berkomunikasi dengan baik, serta memenuhi standar rumah sakit.'}
+                {opt.value === 4 && 'Pelayanan prima, fasilitas sangat bersih & higienis, dokter/perawat sangat tanggap dan profesional, melebihi ekspektasi Anda.'}
               </p>
             </div>
           ))}
+        </div>
+
+        {/* Informasi ragam pilihan skala spesifik */}
+        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 leading-relaxed">
+          <strong>Catatan Opsi Jawaban:</strong> Setiap butir pertanyaan menyajikan label pilihan yang disesuaikan secara spesifik (misalnya: <em>Sangat Sesuai / Sesuai / Kurang Sesuai / Tidak Sesuai</em> untuk kesesuaian prosedur; <em>Cepat & Siap</em> untuk respons perawat; atau <em>Sangat Nyaman</em> untuk tempat tidur), semuanya berbobot nilai 1 s/d 4 yang setara secara matematis.
         </div>
       </div>
 

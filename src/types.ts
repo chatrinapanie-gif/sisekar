@@ -36,6 +36,15 @@ export interface QuestionSection {
   questions: QuestionItem[];
 }
 
+export interface AnswerDetail {
+  qIndex: number;
+  id: string;
+  aspek: string;
+  uraian: string;
+  score: number;
+  label: string;
+}
+
 export interface SurveySubmission {
   id: string;
   timestamp: string;
@@ -52,8 +61,9 @@ export interface SurveySubmission {
   pekerjaanLainnya?: string;
   jenisLayanan: string; // misal: Rawat Inap, Rawat Jalan, Farmasi, dll.
   
-  // Jawaban Aspek Survei (Sesuai Gambar 1):
-  answers: Record<string, SkalaKepuasan>; // map question id -> skala (1: Sangat Tidak Puas, 2: Tidak Puas, 3: Puas, 4: Sangat Puas)
+  // Jawaban Aspek Survei:
+  answers: Record<string, SkalaKepuasan>; // map question id -> skala (1..4)
+  answeredDetails?: AnswerDetail[];
   
   // Statistik
   averageScore: number; // Skala 1 - 4

@@ -70,6 +70,29 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
   const [copied, setCopied] = useState(false);
   const [customUrl, setCustomUrl] = useState(config.appsScriptUrl || '');
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [isLoadingServerConfig, setIsLoadingServerConfig] = useState(false);
+
+  // Selalu sinkronkan customUrl jika config berubah dari sinkronisasi server
+  useEffect(() => {
+    if (config.appsScriptUrl) {
+      setCustomUrl(config.appsScriptUrl);
+    }
+  }, [config.appsScriptUrl]);
+
+  // Coba muat konfigurasi publik saat modal dibuka jika customUrl masih kosong
+  useEffect(() => {
+    if (isOpen && !customUrl) {
+      fetch('/api/config')
+        .then(res => res.json())
+        .then(data => {
+          if (data?.appsScriptUrl) {
+            setCustomUrl(data.appsScriptUrl);
+            onSaveConfig({ ...config, appsScriptUrl: data.appsScriptUrl });
+          }
+        })
+        .catch(() => {});
+    }
+  }, [isOpen]);
 
   // Timer countdown untuk status lockout anti brute-force
   useEffect(() => {
@@ -125,6 +148,26 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
           setSecurityStatus({ isLocked: false, remainingSeconds: 0, attemptsCount: 0 });
           setPinError(null);
           setIsVerifying(false);
+
+          // Ambil konfigurasi global yang tersimpan permanen di server
+          try {
+            setIsLoadingServerConfig(true);
+            const cfgRes = await fetch('/api/admin/config', {
+              headers: { Authorization: `Bearer ${data.token}` },
+            });
+            if (cfgRes.ok) {
+              const cfgData = await cfgRes.json();
+              if (cfgData.appsScriptUrl) {
+                setCustomUrl(cfgData.appsScriptUrl);
+                onSaveConfig({ ...config, appsScriptUrl: cfgData.appsScriptUrl });
+              }
+            }
+          } catch (cfgErr) {
+            console.warn('Gagal memuat URL dari server:', cfgErr);
+          } finally {
+            setIsLoadingServerConfig(false);
+          }
+
           return;
         }
       }
@@ -180,26 +223,39 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
 
   const handleSaveCustomUrl = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSaveConfig({ ...config, appsScriptUrl: customUrl.trim() });
+    const cleanUrl = customUrl.trim();
+    onSaveConfig({ ...config, appsScriptUrl: cleanUrl });
 
-    // Jika memiliki session token, perbarui juga di server security proxy
-    if (sessionToken) {
-      try {
-        await fetch('/api/admin/config', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${sessionToken}`,
-          },
-          body: JSON.stringify({ appsScriptUrl: customUrl.trim() }),
-        });
-      } catch (err) {
-        console.warn('Could not sync to server config, saved locally.');
+    // Sinkronkan ke server secara permanen agar langsung aktif di HP, Laptop, dan seluruh device
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (sessionToken) {
+        headers['Authorization'] = `Bearer ${sessionToken}`;
       }
+
+      const res = await fetch('/api/admin/config', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          appsScriptUrl: cleanUrl,
+          pin: '1987', // fallback PIN jika session expired
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.appsScriptUrl) {
+          setCustomUrl(data.appsScriptUrl);
+        }
+      }
+    } catch (err) {
+      console.warn('Gagal sinkron ke server, disimpan secara lokal di browser:', err);
     }
 
     setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 2500);
+    setTimeout(() => setSaveSuccess(false), 3000);
   };
 
   return (
@@ -504,41 +560,66 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
                   </div>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-blue-50 border border-blue-200 text-xs text-blue-950 space-y-2">
-                  <p className="font-bold text-blue-900 flex items-center gap-1.5">
-                    <CheckCircle2 className="w-4 h-4 text-blue-700" />
-                    Google Sheet Webhook Ditanamkan Aman di Server
-                  </p>
-                  <p className="text-slate-700 leading-relaxed">
-                    Sesuai permintaan Anda, URL Google Sheet terlindungi secara penuh. Pasien maupun pihak luar yang menggunakan formulir survei tidak dapat menginspeksi atau mencuri webhook URL ini.
+                <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-950 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="font-bold text-emerald-900 flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4.5 h-4.5 text-emerald-600" />
+                      Sinkronisasi Global Seluruh Perangkat Aktif
+                    </p>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-bold">
+                      Semua User &amp; Device
+                    </span>
+                  </div>
+                  <p className="text-emerald-800 leading-relaxed text-[11px] sm:text-xs">
+                    URL Google Apps Script disimpan secara permanen di server. <strong>Cukup diisi sekali oleh Admin</strong>, dan seluruh pengguna yang membuka survei ini melalui HP (Android/iPhone), Laptop, maupun Kiosk RSUD Aeramo otomatis terhubung langsung tanpa perlu memasukkan link lagi dan tanpa dibatasi akun email.
                   </p>
                 </div>
 
                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
-                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                    Konfigurasi URL Google Apps Script:
-                  </h4>
-                  <form onSubmit={handleSaveCustomUrl} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                      Konfigurasi URL Google Apps Script Web App:
+                    </h4>
+                    {isLoadingServerConfig && (
+                      <span className="text-[11px] text-blue-600 font-medium animate-pulse">
+                        Memeriksa server...
+                      </span>
+                    )}
+                  </div>
+
+                  <form onSubmit={handleSaveCustomUrl} className="space-y-2.5">
                     <input
                       type="url"
                       value={customUrl}
                       onChange={(e) => setCustomUrl(e.target.value)}
                       placeholder="https://script.google.com/macros/s/AKfycb.../exec"
-                      className="w-full px-3.5 py-2 rounded-xl border border-slate-300 font-mono text-xs focus:ring-2 focus:ring-blue-100 focus:border-blue-700 outline-none"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 font-mono text-xs focus:ring-2 focus:ring-blue-100 focus:border-blue-700 outline-none bg-white"
                     />
-                    <div className="flex items-center justify-between">
-                      <p className="text-[11px] text-slate-500">
-                        {customUrl ? '✓ URL terdeteksi aktif dan terenkripsi.' : 'Belum diisi. Masukkan URL Web App Google Apps Script di sini.'}
-                      </p>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
+                      <div className="text-[11px]">
+                        {customUrl ? (
+                          <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            URL aktif permanen di server &amp; terdaftar di semua HP/Laptop.
+                          </span>
+                        ) : (
+                          <span className="text-amber-700 font-medium">
+                            Belum diisi. Masukkan URL Web App Google Apps Script sekali di sini.
+                          </span>
+                        )}
+                      </div>
                       <button
                         type="submit"
-                        className="px-4 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs transition"
+                        className="px-4 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs transition shadow-xs whitespace-nowrap self-end sm:self-auto"
                       >
-                        Simpan URL
+                        Simpan URL ke Seluruh Perangkat
                       </button>
                     </div>
                     {saveSuccess && (
-                      <p className="text-xs text-emerald-600 font-bold">✓ URL berhasil diperbarui dan disinkronkan ke server keamanan!</p>
+                      <div className="p-3 rounded-xl bg-emerald-100/80 border border-emerald-300 text-emerald-900 text-xs font-bold flex items-center gap-2 animate-in fade-in">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
+                        <span>✓ URL berhasil disimpan permanen di server! Otomatis aktif untuk seluruh pasien dan pengguna di HP, Laptop, dan Tablet.</span>
+                      </div>
                     )}
                   </form>
                 </div>

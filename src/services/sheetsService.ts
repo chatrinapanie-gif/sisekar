@@ -32,6 +32,32 @@ export function loadAppConfig(): AppConfig {
   }
 }
 
+/**
+ * Sinkronkan konfigurasi dari server agar otomatis aktif di semua perangkat (HP, Laptop, Tablet, Kiosk)
+ */
+export async function fetchServerConfig(): Promise<AppConfig | null> {
+  try {
+    const res = await fetch('/api/config');
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success) {
+        const current = loadAppConfig();
+        const updated: AppConfig = {
+          ...current,
+          appsScriptUrl: (typeof data.appsScriptUrl === 'string' && data.appsScriptUrl) ? data.appsScriptUrl : current.appsScriptUrl,
+          hospitalName: data.hospitalName || current.hospitalName,
+          hospitalSubTitle: data.hospitalSubTitle || current.hospitalSubTitle,
+        };
+        saveAppConfig(updated);
+        return updated;
+      }
+    }
+  } catch (err) {
+    console.warn('Gagal memuat konfigurasi server:', err);
+  }
+  return null;
+}
+
 export function saveAppConfig(config: AppConfig): void {
   try {
     localStorage.setItem(STORAGE_KEYS.CONFIG, JSON.stringify(config));
@@ -226,12 +252,12 @@ export async function sendSurveyToGoogleSheet(
 /**
  * Sinkronisasi antrean yang belum terkirim
  */
-export async function syncAllPendingQueue(scriptUrl: string): Promise<{
+export async function syncAllPendingQueue(scriptUrl?: string): Promise<{
   syncedCount: number;
   failedCount: number;
 }> {
   const queue = loadPendingQueue();
-  if (queue.length === 0 || !scriptUrl) {
+  if (queue.length === 0) {
     return { syncedCount: 0, failedCount: 0 };
   }
 
@@ -240,22 +266,12 @@ export async function syncAllPendingQueue(scriptUrl: string): Promise<{
 
   for (const item of queue) {
     try {
-      await fetch(scriptUrl.trim(), {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(item),
-      });
-
-      const updated: SurveySubmission = {
-        ...item,
-        status: 'synced',
-        syncedAt: new Date().toISOString(),
-        errorMessage: undefined,
-      };
-      saveSubmissionLocally(updated);
-      removeFromPendingQueue(item.id);
-      syncedCount++;
+      const res = await sendSurveyToGoogleSheet(item, scriptUrl);
+      if (res.mode === 'online') {
+        syncedCount++;
+      } else {
+        failedCount++;
+      }
     } catch {
       failedCount++;
     }
@@ -284,33 +300,57 @@ export function exportToCSV(submissions: SurveySubmission[]): void {
     'Q2 (Kebersihan Kamar & Mandi)',
     'Q3 (Kualitas Fasilitas)',
     'Q4 (Ketenangan & Keamanan)',
+    'Q5 (Kunjungan Dokter)',
+    'Q6 (Kejelasan Informasi)',
+    'Q7 (Responsivitas Perawat)',
     'Rata-rata Skor (1-4)',
     'Indeks IKM (Skala 100)',
     'Mutu Layanan',
     'Saran',
+    'Rincian Aspek Lengkap',
     'Status Sinkron',
   ];
 
-  const rows = submissions.map(s => [
-    `"${s.id}"`,
-    `"${s.tanggalSurvei}"`,
-    `"${s.jamSurvei}"`,
-    `"${s.namaPasien || '(Anonim)'}"`,
-    `"${s.jenisKelamin}"`,
-    `"${s.pendidikan}"`,
-    `"${s.usia}"`,
-    `"${s.pekerjaan}"`,
-    `"${s.jenisLayanan}"`,
-    s.answers?.['q1_kenyamanan_kamar'] || '-',
-    s.answers?.['q2_kebersihan_kamar'] || '-',
-    s.answers?.['q3_kualitas_fasilitas'] || '-',
-    s.answers?.['q4_ketenangan_keamanan'] || '-',
-    s.averageScore,
-    s.ikmScore,
-    `"${s.mutuLayanan}"`,
-    `"${(s.saran || '').replace(/"/g, '""')}"`,
-    `"${s.status}"`,
-  ]);
+  const rows = submissions.map(s => {
+    // Ambil nilai Q1 s/d Q7 secara fleksibel (mendukung format id baru ri_q1, q1, dll.)
+    const a = s.answers || {};
+    const q1 = a['ri_q1_kenyamanan_kamar'] || a['q1_kenyamanan_kamar'] || a['q1'] || '-';
+    const q2 = a['ri_q2_kebersihan_kamar'] || a['q2_kebersihan_kamar'] || a['q2'] || '-';
+    const q3 = a['ri_q3_kualitas_fasilitas'] || a['q3_kualitas_fasilitas'] || a['q3'] || '-';
+    const q4 = a['ri_q4_ketenangan_keamanan'] || a['q4_ketenangan_keamanan'] || a['q4'] || '-';
+    const q5 = a['ri_q5_kunjungan_nakes'] || a['q5_kunjungan_nakes'] || a['q5'] || '-';
+    const q6 = a['ri_q6_kejelasan_informasi'] || a['q6_kejelasan_informasi'] || a['q6'] || '-';
+    const q7 = a['ri_q7_ketersediaan_responsive'] || a['q7_ketersediaan_responsive'] || a['q7'] || '-';
+
+    const rincianText = s.answeredDetails && s.answeredDetails.length > 0
+      ? s.answeredDetails.map(d => `${d.aspek}: ${d.score} (${d.label})`).join(' | ')
+      : Object.entries(a).map(([k, v]) => `${k}: ${v}`).join(' | ');
+
+    return [
+      `"${s.id}"`,
+      `"${s.tanggalSurvei}"`,
+      `"${s.jamSurvei}"`,
+      `"${s.namaPasien || '(Anonim)'}"`,
+      `"${s.jenisKelamin}"`,
+      `"${s.pendidikan}"`,
+      `"${s.usia}"`,
+      `"${s.pekerjaan}"`,
+      `"${s.jenisLayanan}"`,
+      q1,
+      q2,
+      q3,
+      q4,
+      q5,
+      q6,
+      q7,
+      s.averageScore,
+      s.ikmScore,
+      `"${s.mutuLayanan}"`,
+      `"${(s.saran || '').replace(/"/g, '""')}"`,
+      `"${rincianText.replace(/"/g, '""')}"`,
+      `"${s.status}"`,
+    ];
+  });
 
   const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
   const encodedUri = encodeURI(csvContent);

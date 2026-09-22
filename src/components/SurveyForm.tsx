@@ -253,6 +253,20 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
     const isAndroid = typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent);
     const platform = isAndroid ? 'Android PWA' : 'Web Browser';
 
+    const answeredDetails = currentSections.flatMap(sec => sec.questions).map((q, idx) => {
+      const val = answers[q.id];
+      const qOptions = q.options && q.options.length === 4 ? q.options : SKALA_OPTIONS;
+      const opt = qOptions.find(o => o.value === val);
+      return {
+        qIndex: idx + 1,
+        id: q.id,
+        aspek: q.aspek,
+        uraian: q.uraian,
+        score: val || 0,
+        label: opt ? opt.label : (val ? `Nilai ${val}` : '-'),
+      };
+    });
+
     const submission: SurveySubmission = {
       id: submissionId,
       timestamp: now.toISOString(),
@@ -270,6 +284,7 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
       pekerjaanLainnya: pekerjaan === 'LAINNYA' ? pekerjaanLainnya : undefined,
       jenisLayanan,
       answers,
+      answeredDetails,
       averageScore: avg,
       ikmScore: ikm,
       mutuLayanan: mutu,

@@ -292,7 +292,7 @@ export const SERVICE_QUESTIONS: Record<ServiceKey, QuestionSection[]> = {
       description: 'Penilaian terhadap fasilitas, kebersihan, dan kenyamanan kamar rawat inap',
       questions: [
         {
-          id: 'ri_q1_keterpenuhan_kamar',
+          id: 'ri_q1_keterpenuhan_pelayanan',
           aspek: 'Aspek Keterpenuhan Pelayanan Pasien Rawat Inap',
           uraian: 'Menurut Bapak/Ibu, apakah persyaratan untuk mendapatkan pelayanan di Rumah Sakit ini mudah dipenuhi dan sesuai dengan pelayanan yang dibutuhkan?',
           options: OPSI_KESESUAIAN,

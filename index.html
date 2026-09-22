@@ -9,14 +9,32 @@
       (function() {
         const origError = console.error;
         const origWarn = console.warn;
+        function isViteMessage(args) {
+          if (!args || !args.length) return false;
+          for (let i = 0; i < args.length; i++) {
+            const a = args[i];
+            if (typeof a === 'string' && (a.includes('[vite]') || a.includes('websocket') || a.includes('connecting...'))) return true;
+            if (a && typeof a.message === 'string' && (a.message.includes('[vite]') || a.message.includes('websocket'))) return true;
+          }
+          return false;
+        }
         console.error = function(...args) {
-          if (args && typeof args[0] === 'string' && args[0].includes('[vite]')) return;
+          if (isViteMessage(args)) return;
           origError.apply(console, args);
         };
         console.warn = function(...args) {
-          if (args && typeof args[0] === 'string' && args[0].includes('[vite]')) return;
+          if (isViteMessage(args)) return;
           origWarn.apply(console, args);
         };
+        window.addEventListener('error', function(event) {
+          if (event && (
+            (typeof event.message === 'string' && event.message.includes('[vite]')) ||
+            (event.error && typeof event.error.message === 'string' && event.error.message.includes('[vite]'))
+          )) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+          }
+        }, true);
       })();
     </script>
     <meta charset="UTF-8" />

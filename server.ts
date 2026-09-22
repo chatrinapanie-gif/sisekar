@@ -14,8 +14,25 @@ app.use(express.json({ limit: '1mb' }));
 // =============================================================================
 const DATA_DIR = path.join(process.cwd(), 'data');
 const CONFIG_FILE = path.join(DATA_DIR, 'app-config.json');
+const SURVEY_CONFIG_FILE = path.join(process.cwd(), 'src', 'surveyConfig.ts');
+const ENV_FILE = path.join(process.cwd(), '.env');
 
 function loadPersistedConfig(): { appsScriptUrl: string } {
+  // 1. Prioritas Utama: Baca langsung dari src/surveyConfig.ts (Permanen di Source Code & Vite Bundle)
+  try {
+    if (fs.existsSync(SURVEY_CONFIG_FILE)) {
+      const code = fs.readFileSync(SURVEY_CONFIG_FILE, 'utf-8');
+      const match = code.match(/appsScriptUrl:\s*['"`](https?:\/\/[^'"`]+)['"`]/);
+      if (match && match[1]) {
+        console.log('[Server Storage] Memuat URL dari src/surveyConfig.ts:', match[1]);
+        return { appsScriptUrl: match[1].trim() };
+      }
+    }
+  } catch (err) {
+    console.warn('[Server Storage] Gagal membaca src/surveyConfig.ts:', err);
+  }
+
+  // 2. Prioritas Kedua: Baca dari data/app-config.json
   try {
     if (!fs.existsSync(DATA_DIR)) {
       fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -23,29 +40,70 @@ function loadPersistedConfig(): { appsScriptUrl: string } {
     if (fs.existsSync(CONFIG_FILE)) {
       const content = fs.readFileSync(CONFIG_FILE, 'utf-8');
       const parsed = JSON.parse(content);
-      if (typeof parsed?.appsScriptUrl === 'string') {
+      if (typeof parsed?.appsScriptUrl === 'string' && parsed.appsScriptUrl.trim()) {
         return { appsScriptUrl: parsed.appsScriptUrl.trim() };
       }
     }
   } catch (err) {
-    console.warn('[Server Storage] Gagal membaca konfigurasi persisten:', err);
+    console.warn('[Server Storage] Gagal membaca data/app-config.json:', err);
   }
+
+  // 3. Prioritas Ketiga: Environment variable
+  if (process.env.APPS_SCRIPT_URL && process.env.APPS_SCRIPT_URL.trim()) {
+    return { appsScriptUrl: process.env.APPS_SCRIPT_URL.trim() };
+  }
+
   return { appsScriptUrl: '' };
 }
 
 function savePersistedConfig(appsScriptUrl: string): void {
+  const cleanUrl = appsScriptUrl.trim();
+
+  // 1. Simpan ke data/app-config.json
   try {
     if (!fs.existsSync(DATA_DIR)) {
       fs.mkdirSync(DATA_DIR, { recursive: true });
     }
     const data = {
-      appsScriptUrl: appsScriptUrl.trim(),
+      appsScriptUrl: cleanUrl,
       updatedAt: new Date().toISOString(),
     };
     fs.writeFileSync(CONFIG_FILE, JSON.stringify(data, null, 2), 'utf-8');
-    console.log('[Server Storage] Konfigurasi Google Apps Script berhasil disimpan secara permanen di server.');
+    console.log('[Server Storage] Disimpan ke data/app-config.json.');
   } catch (err) {
-    console.error('[Server Storage] Gagal menyimpan file konfigurasi:', err);
+    console.error('[Server Storage] Gagal menyimpan data/app-config.json:', err);
+  }
+
+  // 2. Simpan LANGSUNG ke src/surveyConfig.ts agar terbawa permanen ke SEMUA user, email lain, dan seluruh device
+  try {
+    if (fs.existsSync(SURVEY_CONFIG_FILE)) {
+      let content = fs.readFileSync(SURVEY_CONFIG_FILE, 'utf-8');
+      if (/appsScriptUrl:\s*['"`][^'"`]*['"`]/.test(content)) {
+        content = content.replace(
+          /appsScriptUrl:\s*['"`][^'"`]*['"`]/,
+          `appsScriptUrl: '${cleanUrl}'`
+        );
+        fs.writeFileSync(SURVEY_CONFIG_FILE, content, 'utf-8');
+        console.log('[Server Storage] URL berhasil ditanamkan permanen ke src/surveyConfig.ts.');
+      }
+    }
+  } catch (err) {
+    console.error('[Server Storage] Gagal menanamkan ke src/surveyConfig.ts:', err);
+  }
+
+  // 3. Simpan ke .env jika ada
+  try {
+    if (fs.existsSync(ENV_FILE)) {
+      let envContent = fs.readFileSync(ENV_FILE, 'utf-8');
+      if (envContent.includes('APPS_SCRIPT_URL=')) {
+        envContent = envContent.replace(/APPS_SCRIPT_URL=.*/, `APPS_SCRIPT_URL=${cleanUrl}`);
+      } else {
+        envContent += `\nAPPS_SCRIPT_URL=${cleanUrl}\n`;
+      }
+      fs.writeFileSync(ENV_FILE, envContent, 'utf-8');
+    }
+  } catch (err) {
+    console.warn('[Server Storage] Gagal menyimpan ke .env:', err);
   }
 }
 
@@ -293,7 +351,10 @@ app.post('/api/survey/submit', async (req: Request, res: Response) => {
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: { 
+        middlewareMode: true,
+        hmr: false,
+      },
       appType: 'spa',
     });
     app.use(vite.middlewares);

@@ -84,3 +84,13 @@ export interface AppConfig {
   kioskMode: boolean;
   autoResetSeconds: number;
 }
+
+export interface QRSession {
+  appsScriptUrl: string;
+  token: string;
+  createdAt: number;
+  expiresAt: number;
+  hospitalName?: string;
+  hospitalSubTitle?: string;
+}
+

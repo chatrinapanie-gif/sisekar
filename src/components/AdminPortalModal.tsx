@@ -20,12 +20,16 @@ import {
   KeyRound,
   ShieldCheck,
   ShieldAlert,
-  Shield
+  Shield,
+  Link2,
+  Share2,
+  QrCode
 } from 'lucide-react';
 import { AppConfig, SurveySubmission } from '../types';
 import { ADMIN_CONFIG } from '../surveyConfig';
 import { exportToCSV } from '../services/sheetsService';
 import { GOOGLE_APPS_SCRIPT_CODE } from '../services/appsScriptCode';
+import { AdminQRDisplayTab } from './AdminQRDisplayTab';
 import { 
   getSecurityStatus, 
   recordFailedAttempt, 
@@ -66,11 +70,14 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
   const [pinError, setPinError] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [securityStatus, setSecurityStatus] = useState<SecurityStatus>(getSecurityStatus());
-  const [activeAdminTab, setActiveAdminTab] = useState<'history' | 'url_config' | 'script'>('history');
+  const [activeAdminTab, setActiveAdminTab] = useState<'qr_access' | 'history' | 'url_config' | 'script'>('qr_access');
   const [copied, setCopied] = useState(false);
   const [customUrl, setCustomUrl] = useState(config.appsScriptUrl || '');
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [isLoadingServerConfig, setIsLoadingServerConfig] = useState(false);
+  const [isTestingUrl, setIsTestingUrl] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [copiedShareLink, setCopiedShareLink] = useState(false);
 
   // Selalu sinkronkan customUrl jika config berubah dari sinkronisasi server
   useEffect(() => {
@@ -81,7 +88,8 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
 
   // Coba muat konfigurasi publik saat modal dibuka jika customUrl masih kosong
   useEffect(() => {
-    if (isOpen && !customUrl) {
+    if (isOpen) {
+      setIsLoadingServerConfig(true);
       fetch('/api/config')
         .then(res => res.json())
         .then(data => {
@@ -90,7 +98,8 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
             onSaveConfig({ ...config, appsScriptUrl: data.appsScriptUrl });
           }
         })
-        .catch(() => {});
+        .catch(() => {})
+        .finally(() => setIsLoadingServerConfig(false));
     }
   }, [isOpen]);
 
@@ -224,9 +233,19 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
   const handleSaveCustomUrl = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanUrl = customUrl.trim();
+    if (!cleanUrl) {
+      alert('Silakan masukkan URL Google Apps Script Web App yang valid.');
+      return;
+    }
+    
+    if (cleanUrl.includes('docs.google.com/spreadsheets')) {
+      alert('PERINGATAN: Link yang dimasukkan adalah Google Spreadsheet, BUKAN Web App Apps Script!\n\nSilakan buka menu "Salin Script Google Sheet", lalu di Spreadsheet buka Extensions > Apps Script > Deploy > New deployment > Web App, lalu salin URL yang berakhiran /exec.');
+      return;
+    }
+
     onSaveConfig({ ...config, appsScriptUrl: cleanUrl });
 
-    // Sinkronkan ke server secara permanen agar langsung aktif di HP, Laptop, dan seluruh device
+    // Sinkronkan ke server secara permanen agar langsung aktif di HP, Laptop, seluruh email, dan seluruh device
     try {
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
@@ -248,6 +267,7 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
         const data = await res.json();
         if (data.appsScriptUrl) {
           setCustomUrl(data.appsScriptUrl);
+          onSaveConfig({ ...config, appsScriptUrl: data.appsScriptUrl });
         }
       }
     } catch (err) {
@@ -255,7 +275,64 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
     }
 
     setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 3000);
+    setTimeout(() => setSaveSuccess(false), 4000);
+  };
+
+  const handleTestConnection = async () => {
+    const cleanUrl = customUrl.trim();
+    if (!cleanUrl) {
+      setTestResult({ success: false, message: 'Silakan masukkan URL Web App Google Apps Script terlebih dahulu.' });
+      return;
+    }
+    if (cleanUrl.includes('docs.google.com/spreadsheets')) {
+      setTestResult({ 
+        success: false, 
+        message: '⚠️ URL ini adalah link Google Spreadsheet, BUKAN link Web App. Gunakan URL dari Deploy > New deployment (berakhiran /exec).' 
+      });
+      return;
+    }
+    setIsTestingUrl(true);
+    setTestResult(null);
+    try {
+      const res = await fetch('/api/survey/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          test: true,
+          scriptUrl: cleanUrl,
+          tanggal: new Date().toISOString(),
+          waktu: new Date().toLocaleTimeString('id-ID'),
+          jenisLayanan: 'rawat_inap',
+          namaLayanan: 'Uji Koneksi Petugas Admin',
+          namaPasien: 'SYSTEM_DIAGNOSTIC_PING',
+          noHp: '-',
+          norm: '000000',
+          namaRuangan: 'Uji Sistem RSUD Aeramo',
+          answers: {},
+          answeredDetails: [],
+          saran: 'Uji konektivitas sistem SISEKAR RSUD Aeramo.',
+        }),
+      });
+      const data = await res.json();
+      if (data.mode === 'online') {
+        setTestResult({ success: true, message: '✓ Koneksi Berhasil! Google Sheet RSUD Aeramo siap menerima hasil survei.' });
+      } else {
+        setTestResult({ success: true, message: '✓ Server siap menghubungkan. Catatan: ' + (data.message || 'Status OK') });
+      }
+    } catch (err: any) {
+      setTestResult({ success: false, message: 'Koneksi gagal: ' + (err.message || 'Periksa jaringan internet') });
+    } finally {
+      setIsTestingUrl(false);
+    }
+  };
+
+  const handleCopyShareLink = () => {
+    const cleanUrl = customUrl.trim();
+    if (!cleanUrl) return;
+    const shareableUrl = `${window.location.origin}/?scriptUrl=${encodeURIComponent(cleanUrl)}`;
+    navigator.clipboard.writeText(shareableUrl);
+    setCopiedShareLink(true);
+    setTimeout(() => setCopiedShareLink(false), 2500);
   };
 
   return (
@@ -379,22 +456,34 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
           <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
             
             {/* Navigasi Tab Admin */}
-            <div className="flex items-center gap-2 border-b border-slate-200 pb-3">
+            <div className="flex items-center gap-2 border-b border-slate-200 pb-3 overflow-x-auto">
+              <button
+                onClick={() => setActiveAdminTab('qr_access')}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+                  activeAdminTab === 'qr_access'
+                    ? 'bg-blue-800 text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                <QrCode className="w-4 h-4" />
+                <span>QR Code Pasien (2 Jam)</span>
+              </button>
+
               <button
                 onClick={() => setActiveAdminTab('history')}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
                   activeAdminTab === 'history'
                     ? 'bg-blue-800 text-white shadow-xs'
                     : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                 }`}
               >
                 <ListTodo className="w-4 h-4" />
-                <span>Rekap Riwayat Survei ({submissions.length})</span>
+                <span>Riwayat Jawaban ({submissions.length})</span>
               </button>
 
               <button
                 onClick={() => setActiveAdminTab('url_config')}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
                   activeAdminTab === 'url_config'
                     ? 'bg-blue-800 text-white shadow-xs'
                     : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
@@ -406,16 +495,26 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
 
               <button
                 onClick={() => setActiveAdminTab('script')}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
                   activeAdminTab === 'script'
                     ? 'bg-blue-800 text-white shadow-xs'
                     : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                 }`}
               >
                 <Code2 className="w-4 h-4" />
-                <span>Salin Script Google Sheet (Code.gs)</span>
+                <span>Salin Script (Code.gs)</span>
               </button>
             </div>
+
+            {/* TAB 0: QR CODE AKSES PASIEN DENGAN KADALUARSA 2 JAM */}
+            {activeAdminTab === 'qr_access' && (
+              <AdminQRDisplayTab
+                config={config}
+                onUpdateConfigUrl={(url) => {
+                  onSaveConfig({ ...config, appsScriptUrl: url });
+                }}
+              />
+            )}
 
             {/* TAB 1: REKAP RIWAYAT SURVEI */}
             {activeAdminTab === 'history' && (
@@ -575,11 +674,16 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
                   </p>
                 </div>
 
-                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+                <div className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200 space-y-4">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                      Konfigurasi URL Google Apps Script Web App:
-                    </h4>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                        Konfigurasi URL Google Apps Script Web App:
+                      </h4>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Tersimpan permanen di server &amp; ditanamkan ke sistem sehingga otomatis aktif di semua email &amp; perangkat.
+                      </p>
+                    </div>
                     {isLoadingServerConfig && (
                       <span className="text-[11px] text-blue-600 font-medium animate-pulse">
                         Memeriksa server...
@@ -587,20 +691,38 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
                     )}
                   </div>
 
-                  <form onSubmit={handleSaveCustomUrl} className="space-y-2.5">
-                    <input
-                      type="url"
-                      value={customUrl}
-                      onChange={(e) => setCustomUrl(e.target.value)}
-                      placeholder="https://script.google.com/macros/s/AKfycb.../exec"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 font-mono text-xs focus:ring-2 focus:ring-blue-100 focus:border-blue-700 outline-none bg-white"
-                    />
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
+                  <form onSubmit={handleSaveCustomUrl} className="space-y-3">
+                    <div>
+                      <input
+                        type="url"
+                        value={customUrl}
+                        onChange={(e) => {
+                          setCustomUrl(e.target.value);
+                          setTestResult(null);
+                        }}
+                        placeholder="https://script.google.com/macros/s/AKfycb.../exec"
+                        className={`w-full px-3.5 py-2.5 rounded-xl border font-mono text-xs outline-none bg-white transition ${
+                          customUrl.includes('docs.google.com/spreadsheets')
+                            ? 'border-rose-400 bg-rose-50/50 text-rose-900 focus:ring-2 focus:ring-rose-200'
+                            : 'border-slate-300 focus:ring-2 focus:ring-blue-100 focus:border-blue-700'
+                        }`}
+                      />
+                      {customUrl.includes('docs.google.com/spreadsheets') && (
+                        <div className="mt-1.5 p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-[11px] text-rose-800 flex items-start gap-1.5">
+                          <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                          <span>
+                            <strong>Perhatian:</strong> Ini adalah link Google Spreadsheet! Yang dibutuhkan adalah link <strong>Web App Google Apps Script</strong> dari menu <em>Deploy &gt; New deployment &gt; Web App</em> (URL berakhiran <strong>/exec</strong>).
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-1">
                       <div className="text-[11px]">
-                        {customUrl ? (
+                        {customUrl && !customUrl.includes('docs.google.com/spreadsheets') ? (
                           <span className="text-emerald-700 font-semibold flex items-center gap-1">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            URL aktif permanen di server &amp; terdaftar di semua HP/Laptop.
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            URL siap disimpan &amp; disinkronkan ke seluruh pengguna.
                           </span>
                         ) : (
                           <span className="text-amber-700 font-medium">
@@ -608,17 +730,79 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
                           </span>
                         )}
                       </div>
-                      <button
-                        type="submit"
-                        className="px-4 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs transition shadow-xs whitespace-nowrap self-end sm:self-auto"
-                      >
-                        Simpan URL ke Seluruh Perangkat
-                      </button>
+
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {customUrl && !customUrl.includes('docs.google.com/spreadsheets') && (
+                          <button
+                            type="button"
+                            onClick={handleTestConnection}
+                            disabled={isTestingUrl}
+                            className="px-3 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold text-xs transition flex items-center gap-1.5 disabled:opacity-50"
+                          >
+                            {isTestingUrl ? (
+                              <>
+                                <Clock className="w-3.5 h-3.5 animate-spin text-blue-600" />
+                                <span>Menguji...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Link2 className="w-3.5 h-3.5" />
+                                <span>Uji Koneksi</span>
+                              </>
+                            )}
+                          </button>
+                        )}
+
+                        <button
+                          type="submit"
+                          className="px-4 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs transition shadow-xs whitespace-nowrap"
+                        >
+                          Simpan URL ke Seluruh Perangkat
+                        </button>
+                      </div>
                     </div>
+
+                    {/* Banner Hasil Uji Koneksi */}
+                    {testResult && (
+                      <div className={`p-3 rounded-xl border text-xs font-semibold flex items-start gap-2 animate-in fade-in ${
+                        testResult.success 
+                          ? 'bg-emerald-50 border-emerald-300 text-emerald-900' 
+                          : 'bg-rose-50 border-rose-300 text-rose-900'
+                      }`}>
+                        {testResult.success ? (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        ) : (
+                          <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                        )}
+                        <span>{testResult.message}</span>
+                      </div>
+                    )}
+
+                    {/* Banner Sukses Simpan */}
                     {saveSuccess && (
-                      <div className="p-3 rounded-xl bg-emerald-100/80 border border-emerald-300 text-emerald-900 text-xs font-bold flex items-center gap-2 animate-in fade-in">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
-                        <span>✓ URL berhasil disimpan permanen di server! Otomatis aktif untuk seluruh pasien dan pengguna di HP, Laptop, dan Tablet.</span>
+                      <div className="p-3.5 rounded-xl bg-emerald-100/90 border border-emerald-300 text-emerald-950 text-xs font-bold space-y-2 animate-in fade-in">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="w-4.5 h-4.5 text-emerald-700 shrink-0" />
+                          <span>✓ URL Google Apps Script Berhasil Disimpan Permanen!</span>
+                        </div>
+                        <p className="text-[11px] font-normal text-emerald-800 pl-6.5">
+                          Telah ditanamkan ke server. Seluruh pasien dan petugas di HP, Laptop, dan akun email mana pun otomatis langsung terhubung.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Opsi Tautan Cepat untuk Dibagikan ke HP / Rekan Lain */}
+                    {customUrl && !customUrl.includes('docs.google.com/spreadsheets') && (
+                      <div className="pt-2 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-slate-600">
+                        <span>Ingin bagikan link instan ke HP atau email lain?</span>
+                        <button
+                          type="button"
+                          onClick={handleCopyShareLink}
+                          className="px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold flex items-center gap-1.5 transition self-start sm:self-auto border border-blue-200"
+                        >
+                          {copiedShareLink ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Share2 className="w-3.5 h-3.5" />}
+                          <span>{copiedShareLink ? 'Link Tersalin!' : 'Salin Link Auto-Connect'}</span>
+                        </button>
                       </div>
                     )}
                   </form>

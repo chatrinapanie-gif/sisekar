@@ -19,7 +19,9 @@ import {
   LayoutGrid,
   ShieldCheck,
   ChevronDown,
-  Smartphone
+  Smartphone,
+  QrCode,
+  Camera
 } from 'lucide-react';
 import { NagekeoLogo } from './NagekeoLogo';
 import { 
@@ -39,7 +41,8 @@ import {
   Pekerjaan, 
   SkalaKepuasan, 
   SurveySubmission, 
-  AppConfig 
+  AppConfig,
+  QRSession
 } from '../types';
 import { sendSurveyToGoogleSheet } from '../services/sheetsService';
 
@@ -48,6 +51,10 @@ interface SurveyFormProps {
   isOnline: boolean;
   onSubmissionSuccess: () => void;
   onOpenGuide: () => void;
+  activeQRSession?: QRSession | null;
+  onOpenQRScanner?: () => void;
+  qrRemainingText?: string;
+  isQRExpired?: boolean;
 }
 
 const getOptionColors = (val: 1 | 2 | 3 | 4, isSelected: boolean) => {
@@ -96,6 +103,10 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
   isOnline,
   onSubmissionSuccess,
   onOpenGuide,
+  activeQRSession,
+  onOpenQRScanner,
+  qrRemainingText,
+  isQRExpired,
 }) => {
   // Profil Responden (Gambar 2)
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -443,6 +454,100 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
 
           {/* Garis Ganda Standar Kop Dinas (Tebal & Tipis) */}
           <div className="w-full h-0.5 bg-black mt-1" />
+        </div>
+
+        {/* ========================================================================= */}
+        {/* BANNER STATUS SESI QR CODE 2 JAM                                         */}
+        {/* ========================================================================= */}
+        <div className="mt-5 mb-2 print:hidden">
+          {activeQRSession && !isQRExpired ? (
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border border-emerald-300 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in">
+              <div className="flex items-start gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-xs sm:text-sm text-emerald-950">
+                      Sesi Survei Aktif &amp; Terdaftar
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white font-mono text-[11px] font-bold flex items-center gap-1 shadow-xs">
+                      <Clock className="w-3 h-3" />
+                      <span>Sisa: {qrRemainingText || '02:00:00'}</span>
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-emerald-800 mt-0.5">
+                    Terhubung ke sistem RSUD Aeramo via Scan QR. Sesi berlaku selama 2 jam.
+                  </p>
+                </div>
+              </div>
+
+              {onOpenQRScanner && (
+                <button
+                  type="button"
+                  onClick={onOpenQRScanner}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-900 border border-emerald-300/80 font-bold text-xs flex items-center gap-1.5 transition self-start sm:self-auto shrink-0"
+                >
+                  <QrCode className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>Scan Ulang QR</span>
+                </button>
+              )}
+            </div>
+          ) : isQRExpired ? (
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-rose-50 border-2 border-rose-300 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in shake">
+              <div className="flex items-start gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-rose-600 text-white flex items-center justify-center shrink-0 mt-0.5">
+                  <AlertCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="font-bold text-xs sm:text-sm text-rose-950">
+                    Sesi Survei Telah Kadaluarsa (Batas 2 Jam Habis)
+                  </span>
+                  <p className="text-[11px] text-rose-800 mt-0.5">
+                    Waktu pengisian survei Anda telah melewati batas 2 jam. Silakan lakukan scan ulang QR Code di meja petugas RSUD Aeramo untuk melanjutkan.
+                  </p>
+                </div>
+              </div>
+
+              {onOpenQRScanner && (
+                <button
+                  type="button"
+                  onClick={onOpenQRScanner}
+                  className="px-4 py-2 rounded-xl bg-rose-700 hover:bg-rose-800 text-white font-bold text-xs flex items-center gap-1.5 transition shadow-xs self-start sm:self-auto shrink-0"
+                >
+                  <QrCode className="w-4 h-4" />
+                  <span>Scan QR Baru</span>
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-start gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-blue-700 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
+                  <QrCode className="w-4.5 h-4.5" />
+                </div>
+                <div>
+                  <p className="font-bold text-xs sm:text-sm text-blue-950">
+                    Pendaftaran Survei Pasien via QR Code
+                  </p>
+                  <p className="text-[11px] text-blue-800 mt-0.5">
+                    Scan QR Code yang disediakan di loket/meja petugas RSUD Aeramo untuk mendaftarkan link &amp; mengaktifkan sesi survei (aktif 2 jam).
+                  </p>
+                </div>
+              </div>
+
+              {onOpenQRScanner && (
+                <button
+                  type="button"
+                  onClick={onOpenQRScanner}
+                  className="px-4 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs flex items-center gap-1.5 transition shadow-xs self-start sm:self-auto shrink-0"
+                >
+                  <Camera className="w-4 h-4" />
+                  <span>Buka Scanner Kamera</span>
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* ========================================================================= */}
@@ -1157,14 +1262,19 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
 
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || isQRExpired}
             id="btn-submit-aeramo-survey"
-            className="w-full sm:w-auto flex-1 max-w-md py-3 px-6 rounded-xl bg-gradient-to-r from-blue-700 to-blue-900 hover:from-blue-800 hover:to-blue-950 active:scale-98 text-white font-bold text-xs sm:text-sm shadow-md shadow-blue-900/20 flex items-center justify-center gap-2 transition disabled:opacity-50"
+            className="w-full sm:w-auto flex-1 max-w-md py-3 px-6 rounded-xl bg-gradient-to-r from-blue-700 to-blue-900 hover:from-blue-800 hover:to-blue-950 active:scale-98 text-white font-bold text-xs sm:text-sm shadow-md shadow-blue-900/20 flex items-center justify-center gap-2 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? (
               <>
                 <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
                 <span>Menyimpan ke Google Sheet...</span>
+              </>
+            ) : isQRExpired ? (
+              <>
+                <AlertCircle className="w-4 h-4 text-rose-300" />
+                <span>Waktu 2 Jam Habis (Scan QR Ulang)</span>
               </>
             ) : (
               <>
@@ -1177,7 +1287,16 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
 
       </form>
 
-     
+      {/* Petunjuk Pengembangan Mandiri untuk User */}
+      <div className="mt-6 p-4 rounded-2xl bg-blue-50 border border-blue-200 text-blue-950 text-xs space-y-1.5 print:hidden">
+        <p className="font-bold flex items-center gap-1.5 text-blue-900">
+          <Sparkles className="w-4 h-4 text-blue-700" />
+          Petunjuk Pengembangan Formulir Mandiri:
+        </p>
+        <p className="text-slate-700 leading-relaxed">
+          Pertanyaan di atas dikonfigurasikan di dalam berkas <code className="bg-white px-1.5 py-0.5 rounded border font-mono text-[11px] text-blue-800">src/surveyConfig.ts</code>. Anda dapat dengan sangat mudah menambahkan <strong>Bagian 2</strong>, <strong>Bagian 3</strong>, atau butir pertanyaan baru kapan saja dengan mengedit daftar pertanyaan di file tersebut!
+        </p>
+      </div>
 
     </div>
   );

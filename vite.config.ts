@@ -9,6 +9,19 @@ export default defineConfig(() => {
     plugins: [
       react(),
       tailwindcss(),
+      {
+        name: 'silence-vite-client-ws-errors',
+        transform(code, id) {
+          if (id.includes('vite/dist/client/client.mjs') || id.includes('@vite/client')) {
+            return {
+              code: code
+                .replace(/console\.error\(\s*`\[vite\] failed to connect/g, 'console.debug(`[vite] failed to connect')
+                .replace(/error:\s*\(err\)\s*=>\s*console\.error\("\[vite\]",\s*err\)/g, 'error: (err) => console.debug("[vite]", err)'),
+              map: null,
+            };
+          }
+        },
+      },
       VitePWA({
         registerType: 'autoUpdate',
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'icon.svg'],
@@ -56,6 +69,9 @@ export default defineConfig(() => {
       alias: {
         '@': path.resolve(__dirname, '.'),
       },
+    },
+    server: {
+      hmr: false,
     },
   };
 });

@@ -1177,16 +1177,7 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
 
       </form>
 
-      {/* Petunjuk Pengembangan Mandiri untuk User */}
-      <div className="mt-6 p-4 rounded-2xl bg-blue-50 border border-blue-200 text-blue-950 text-xs space-y-1.5 print:hidden">
-        <p className="font-bold flex items-center gap-1.5 text-blue-900">
-          <Sparkles className="w-4 h-4 text-blue-700" />
-          Petunjuk Pengembangan Formulir Mandiri:
-        </p>
-        <p className="text-slate-700 leading-relaxed">
-          Pertanyaan di atas dikonfigurasikan di dalam berkas <code className="bg-white px-1.5 py-0.5 rounded border font-mono text-[11px] text-blue-800">src/surveyConfig.ts</code>. Anda dapat dengan sangat mudah menambahkan <strong>Bagian 2</strong>, <strong>Bagian 3</strong>, atau butir pertanyaan baru kapan saja dengan mengedit daftar pertanyaan di file tersebut!
-        </p>
-      </div>
+     
 
     </div>
   );

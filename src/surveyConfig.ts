@@ -11,7 +11,7 @@ import { QuestionSection } from './types';
  */
 export const ADMIN_CONFIG = {
   // Masukkan URL Google Apps Script Web App Anda di sini (atau biarkan kosong untuk diisi via Portal Petugas Terproteksi):
-  appsScriptUrl: '', // Contoh: 'https://script.google.com/macros/s/AKfycbw.../exec'
+  appsScriptUrl: 'https://script.google.com/macros/s/AKfycbyj5BLjouB1BJsJCMMu9ngzesqFns1JgQiPEKpYFBTno97gJ5qmHd_LgfkiMaDNMOBEbw/exec', // Web App RSUD Aeramo
   
   /**
    * PENGATURAN LOGO RESMI:

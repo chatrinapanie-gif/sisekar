@@ -4,7 +4,6 @@ import { Header } from './components/Header';
 import { SurveyForm } from './components/SurveyForm';
 import { PatientGuideView } from './components/PatientGuideView';
 import { AdminPortalModal } from './components/AdminPortalModal';
-import { QRScannerModal } from './components/QRScannerModal';
 import { 
   loadAppConfig, 
   saveAppConfig, 
@@ -13,15 +12,9 @@ import {
   syncAllPendingQueue,
   fetchServerConfig
 } from './services/sheetsService';
-import { 
-  getActiveQRSession, 
-  parseAndActivateQRSession, 
-  formatRemainingTime, 
-  clearQRSession 
-} from './services/qrSessionService';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
-import { AppConfig, SurveySubmission, QRSession } from './types';
-import { CheckCircle2, AlertCircle, Lock, ShieldCheck, QrCode } from 'lucide-react';
+import { AppConfig, SurveySubmission } from './types';
+import { CheckCircle2, AlertCircle, Lock, ShieldCheck } from 'lucide-react';
 import { initializeClientSecurityProtections } from './utils/security';
 
 export default function App() {
@@ -31,64 +24,37 @@ export default function App() {
   const [pendingCount, setPendingCount] = useState<number>(0);
   const [activeTab, setActiveTab] = useState<'survey' | 'guide'>('survey');
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
-  const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
 
-  // Sesi QR Pasien (Masa berlaku 2 jam)
-  const [activeQRSession, setActiveQRSession] = useState<QRSession | null>(() => getActiveQRSession());
-  const [qrRemainingText, setQrRemainingText] = useState<string>('02:00:00');
-  const [isQRExpired, setIsQRExpired] = useState<boolean>(false);
-
-  // Live timer untuk mengecek dan mengupdate sisa waktu 2 jam
-  useEffect(() => {
-    if (!activeQRSession) {
-      setQrRemainingText('00:00:00');
-      setIsQRExpired(false);
-      return;
-    }
-
-    const checkTimer = () => {
-      const { formatted, isExpired } = formatRemainingTime(activeQRSession.expiresAt);
-      setQrRemainingText(formatted);
-      setIsQRExpired(isExpired);
-
-      if (isExpired) {
-        clearQRSession();
-        setActiveQRSession(null);
-        showToast('error', 'Waktu sesi survei (2 jam) telah habis. Silakan scan ulang QR Code petugas.');
-      }
-    };
-
-    checkTimer();
-    const interval = setInterval(checkTimer, 1000);
-    return () => clearInterval(interval);
-  }, [activeQRSession]);
-
-  // Sinkronisasi otomatis konfigurasi dari server dan deteksi scan QR dari link HP bawaan (?qr=...)
+  // Sinkronisasi otomatis konfigurasi dari server agar aktif di semua perangkat (HP, Laptop, Tablet, Kiosk)
   useEffect(() => {
     let isMounted = true;
     const syncServerConfig = async () => {
-      // 1. Deteksi Scan QR dari Kamera HP bawaan (?qr=... atau ?scriptUrl=...)
+      // 1. Deteksi Tautan Aktivasi Cepat jika ada parameter ?scriptUrl=
       try {
-        const fullHref = window.location.href;
-        if (fullHref.includes('?qr=') || fullHref.includes('?scriptUrl=') || fullHref.includes('?url=')) {
-          const res = parseAndActivateQRSession(fullHref);
-          if (res.success && res.session) {
-            if (isMounted) {
-              setActiveQRSession(res.session);
-              const updatedConfig: AppConfig = { ...loadAppConfig(), appsScriptUrl: res.session.appsScriptUrl };
-              setConfig(updatedConfig);
-              saveAppConfig(updatedConfig);
-              setToast({ type: 'success', msg: '✓ Sesi QR Survei Aktif (Batas Waktu: 2 Jam)' });
-            }
-            // Bersihkan query URL agar rapi
-            window.history.replaceState({}, document.title, window.location.pathname);
-            return;
+        const params = new URLSearchParams(window.location.search);
+        const paramUrl = params.get('scriptUrl') || params.get('url');
+        if (paramUrl && paramUrl.startsWith('https://script.google.com')) {
+          const cleanParamUrl = paramUrl.trim();
+          const currentConfig = loadAppConfig();
+          const updated: AppConfig = { ...currentConfig, appsScriptUrl: cleanParamUrl };
+          if (isMounted) {
+            setConfig(updated);
+            saveAppConfig(updated);
+            setToast({ type: 'success', msg: '✓ URL Google Apps Script otomatis aktif dari tautan!' });
           }
+          // Simpan permanen ke server
+          fetch('/api/admin/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ appsScriptUrl: cleanParamUrl, pin: '1987' }),
+          }).catch(() => {});
+          window.history.replaceState({}, document.title, window.location.pathname);
+          return;
         }
       } catch (err) {
-        console.warn('Gagal membaca parameter QR Code:', err);
+        console.warn('Gagal membaca parameter tautan:', err);
       }
 
       // 2. Ambil konfigurasi global yang tersimpan di server jika ada
@@ -122,11 +88,10 @@ export default function App() {
 
   // Otomatis sinkronisasi antrean saat koneksi online pulih
   useEffect(() => {
-    const effectiveUrl = activeQRSession?.appsScriptUrl || config.appsScriptUrl;
-    if (isOnline && pendingCount > 0 && effectiveUrl) {
+    if (isOnline && pendingCount > 0 && config.appsScriptUrl) {
       handleSyncQueue();
     }
-  }, [isOnline, pendingCount, config.appsScriptUrl, activeQRSession]);
+  }, [isOnline, pendingCount, config.appsScriptUrl]);
 
   const showToast = (type: 'success' | 'error', msg: string) => {
     setToast({ type, msg });
@@ -134,13 +99,12 @@ export default function App() {
   };
 
   const handleSyncQueue = async () => {
-    const effectiveUrl = activeQRSession?.appsScriptUrl || config.appsScriptUrl;
-    if (!effectiveUrl || effectiveUrl.trim() === '') {
+    if (!config.appsScriptUrl || config.appsScriptUrl.trim() === '') {
       return;
     }
 
     setIsSyncing(true);
-    const res = await syncAllPendingQueue(effectiveUrl);
+    const res = await syncAllPendingQueue(config.appsScriptUrl);
     setIsSyncing(false);
     refreshData();
 
@@ -157,14 +121,6 @@ export default function App() {
     showToast('success', 'Pengaturan berhasil diperbarui!');
   };
 
-  const handleSessionActivated = (session: QRSession) => {
-    setActiveQRSession(session);
-    const updated: AppConfig = { ...config, appsScriptUrl: session.appsScriptUrl };
-    setConfig(updated);
-    saveAppConfig(updated);
-    showToast('success', '✓ QR Code Petugas Terverifikasi! Sesi aktif selama 2 jam.');
-  };
-
   const handleClearHistory = () => {
     if (window.confirm('Hapus seluruh riwayat survei lokal di perangkat ini? (Data di Google Sheet tetap aman)')) {
       localStorage.removeItem('sisekar_aeramo_submissions');
@@ -174,18 +130,12 @@ export default function App() {
     }
   };
 
-  // Gunakan URL aktif dari QR session jika ada, atau fallback ke config
-  const effectiveAppConfig: AppConfig = {
-    ...config,
-    appsScriptUrl: activeQRSession?.appsScriptUrl || config.appsScriptUrl
-  };
-
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
       
-      {/* Header — HANYA Menampilkan Tab Formulir Survei dan Panduan Pengisian */}
+      {/* Header — Menampilkan Tab Formulir Survei dan Panduan Pengisian */}
       <Header
-        config={effectiveAppConfig}
+        config={config}
         isOnline={isOnline}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -213,14 +163,10 @@ export default function App() {
       <main className="flex-1">
         {activeTab === 'survey' ? (
           <SurveyForm
-            config={effectiveAppConfig}
+            config={config}
             isOnline={isOnline}
             onSubmissionSuccess={refreshData}
             onOpenGuide={() => setActiveTab('guide')}
-            activeQRSession={activeQRSession}
-            onOpenQRScanner={() => setIsScannerOpen(true)}
-            qrRemainingText={qrRemainingText}
-            isQRExpired={isQRExpired}
           />
         ) : (
           <PatientGuideView
@@ -241,16 +187,6 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-2.5">
-            {/* Tombol Cepat Scan QR Pasien */}
-            <button
-              onClick={() => setIsScannerOpen(true)}
-              className="inline-flex items-center gap-1.5 text-[11px] text-blue-700 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-lg border border-blue-200 transition font-bold"
-              title="Scan QR Code Petugas RSUD Aeramo"
-            >
-              <QrCode className="w-3.5 h-3.5 text-blue-700" />
-              <span>Scan QR Petugas</span>
-            </button>
-
             <span 
               className="inline-flex items-center gap-1 text-[11px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/80 font-medium select-none"
               title="Sistem Keamanan Siber Aktif: Anti-Inspeksi Kiosk &amp; Webhook Terenkripsi"
@@ -272,13 +208,6 @@ export default function App() {
           </div>
         </div>
       </footer>
-
-      {/* Modal Scanner QR Kamera Pasien */}
-      <QRScannerModal
-        isOpen={isScannerOpen}
-        onClose={() => setIsScannerOpen(false)}
-        onSessionActivated={handleSessionActivated}
-      />
 
       {/* Modal Admin & Riwayat (Dilindungi PIN, tidak terlihat pasien) */}
       <AdminPortalModal

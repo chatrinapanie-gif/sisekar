@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { AppConfig, SurveySubmission } from '../types';
 import { ADMIN_CONFIG } from '../surveyConfig';
-import { exportToCSV } from '../services/sheetsService';
+import { exportToCSV, testAppsScriptConnection } from '../services/sheetsService';
 import { GOOGLE_APPS_SCRIPT_CODE } from '../services/appsScriptCode';
 import { AdminQRDisplayTab } from './AdminQRDisplayTab';
 import { 
@@ -70,7 +70,7 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
   const [pinError, setPinError] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [securityStatus, setSecurityStatus] = useState<SecurityStatus>(getSecurityStatus());
-  const [activeAdminTab, setActiveAdminTab] = useState<'qr_access' | 'history' | 'url_config' | 'script'>('qr_access');
+  const [activeAdminTab, setActiveAdminTab] = useState<'history' | 'url_config' | 'script'>('history');
   const [copied, setCopied] = useState(false);
   const [customUrl, setCustomUrl] = useState(config.appsScriptUrl || '');
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -284,41 +284,11 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
       setTestResult({ success: false, message: 'Silakan masukkan URL Web App Google Apps Script terlebih dahulu.' });
       return;
     }
-    if (cleanUrl.includes('docs.google.com/spreadsheets')) {
-      setTestResult({ 
-        success: false, 
-        message: '⚠️ URL ini adalah link Google Spreadsheet, BUKAN link Web App. Gunakan URL dari Deploy > New deployment (berakhiran /exec).' 
-      });
-      return;
-    }
     setIsTestingUrl(true);
     setTestResult(null);
     try {
-      const res = await fetch('/api/survey/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          test: true,
-          scriptUrl: cleanUrl,
-          tanggal: new Date().toISOString(),
-          waktu: new Date().toLocaleTimeString('id-ID'),
-          jenisLayanan: 'rawat_inap',
-          namaLayanan: 'Uji Koneksi Petugas Admin',
-          namaPasien: 'SYSTEM_DIAGNOSTIC_PING',
-          noHp: '-',
-          norm: '000000',
-          namaRuangan: 'Uji Sistem RSUD Aeramo',
-          answers: {},
-          answeredDetails: [],
-          saran: 'Uji konektivitas sistem SISEKAR RSUD Aeramo.',
-        }),
-      });
-      const data = await res.json();
-      if (data.mode === 'online') {
-        setTestResult({ success: true, message: '✓ Koneksi Berhasil! Google Sheet RSUD Aeramo siap menerima hasil survei.' });
-      } else {
-        setTestResult({ success: true, message: '✓ Server siap menghubungkan. Catatan: ' + (data.message || 'Status OK') });
-      }
+      const result = await testAppsScriptConnection(cleanUrl);
+      setTestResult(result);
     } catch (err: any) {
       setTestResult({ success: false, message: 'Koneksi gagal: ' + (err.message || 'Periksa jaringan internet') });
     } finally {
@@ -458,18 +428,6 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
             {/* Navigasi Tab Admin */}
             <div className="flex items-center gap-2 border-b border-slate-200 pb-3 overflow-x-auto">
               <button
-                onClick={() => setActiveAdminTab('qr_access')}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
-                  activeAdminTab === 'qr_access'
-                    ? 'bg-blue-800 text-white shadow-xs'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                }`}
-              >
-                <QrCode className="w-4 h-4" />
-                <span>QR Code Pasien (2 Jam)</span>
-              </button>
-
-              <button
                 onClick={() => setActiveAdminTab('history')}
                 className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
                   activeAdminTab === 'history'
@@ -490,7 +448,7 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
                 }`}
               >
                 <FileSpreadsheet className="w-4 h-4" />
-                <span>Status Google Sheet URL</span>
+                <span>Status Google Sheet URL (Tertanam)</span>
               </button>
 
               <button
@@ -505,16 +463,6 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
                 <span>Salin Script (Code.gs)</span>
               </button>
             </div>
-
-            {/* TAB 0: QR CODE AKSES PASIEN DENGAN KADALUARSA 2 JAM */}
-            {activeAdminTab === 'qr_access' && (
-              <AdminQRDisplayTab
-                config={config}
-                onUpdateConfigUrl={(url) => {
-                  onSaveConfig({ ...config, appsScriptUrl: url });
-                }}
-              />
-            )}
 
             {/* TAB 1: REKAP RIWAYAT SURVEI */}
             {activeAdminTab === 'history' && (

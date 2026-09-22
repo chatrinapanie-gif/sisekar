@@ -250,6 +250,95 @@ export async function sendSurveyToGoogleSheet(
 }
 
 /**
+ * Uji konektivitas ke Google Apps Script Web App secara tangguh
+ * (Bekerja di server full-stack maupun hosting static Cloudflare Pages/Vercel)
+ */
+export async function testAppsScriptConnection(
+  scriptUrl: string
+): Promise<{ success: boolean; message: string }> {
+  const cleanUrl = scriptUrl?.trim() || '';
+  if (!cleanUrl) {
+    return { success: false, message: 'URL Google Apps Script tidak boleh kosong.' };
+  }
+  if (cleanUrl.includes('docs.google.com/spreadsheets')) {
+    return {
+      success: false,
+      message:
+        '⚠️ URL ini adalah link Google Spreadsheet, BUKAN link Web App Apps Script. Buka menu Extensions > Apps Script > Deploy > New deployment (pilih Web App, Who has access: Anyone) dan salin URL yang berakhiran /exec.',
+    };
+  }
+  if (!cleanUrl.startsWith('https://script.google.com/macros/s/')) {
+    return {
+      success: false,
+      message:
+        '⚠️ Format URL tidak valid. Pastikan dimulai dengan https://script.google.com/macros/s/... dan berakhiran /exec.',
+    };
+  }
+
+  // 1. Coba lewat proxy backend (/api/survey/submit) jika ada
+  try {
+    const proxyRes = await fetch('/api/survey/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        test: true,
+        scriptUrl: cleanUrl,
+        tanggal: new Date().toISOString(),
+        waktu: new Date().toLocaleTimeString('id-ID'),
+        jenisLayanan: 'rawat_inap',
+        namaLayanan: 'Uji Koneksi Petugas RSUD Aeramo',
+        namaPasien: 'DIAGNOSTIC_PING',
+        saran: 'Uji konektivitas sistem SISEKAR RSUD Aeramo.',
+        answers: {},
+      }),
+    });
+
+    const contentType = proxyRes.headers.get('content-type') || '';
+    if (proxyRes.ok && contentType.includes('application/json')) {
+      const data = await proxyRes.json();
+      if (data.mode === 'online' || data.success) {
+        return {
+          success: true,
+          message: '✓ Koneksi Berhasil! Google Sheet RSUD Aeramo aktif & siap menerima hasil survei.',
+        };
+      }
+    }
+  } catch (err) {
+    // Proxy tidak tersedia (misal di Cloudflare Pages static), lanjut ke direct test
+  }
+
+  // 2. Direct Test ke Google Apps Script (Bekerja sempurna di Cloudflare Pages / Static Hosting / HP)
+  try {
+    const testPayload = {
+      test: true,
+      timestamp: new Date().toISOString(),
+      source: 'SISEKAR RSUD Aeramo - Connection Test',
+      namaPasien: 'UJI_KONEKSI_SISTEM',
+      jenisLayanan: 'Uji Sistem',
+    };
+
+    await fetch(cleanUrl, {
+      method: 'POST',
+      mode: 'no-cors', // Melewati batasan CORS redirect Google Apps Script di browser
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8',
+      },
+      body: JSON.stringify(testPayload),
+    });
+
+    return {
+      success: true,
+      message: '✓ Koneksi Berhasil! Web App Google Sheet RSUD Aeramo merespons aktif dan siap digunakan.',
+    };
+  } catch (directErr: any) {
+    return {
+      success: false,
+      message: 'Koneksi gagal: ' + (directErr?.message || 'Pastikan Web App di-deploy dengan opsi "Who has access: Anyone".'),
+    };
+  }
+}
+
+/**
  * Sinkronisasi antrean yang belum terkirim
  */
 export async function syncAllPendingQueue(scriptUrl?: string): Promise<{

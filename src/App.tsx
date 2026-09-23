@@ -20,7 +20,7 @@ import {
   setActiveSessionPatientPin
 } from './services/sheetsService';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
-import { AppConfig, SurveySubmission, OneTimeSubmissionLock } from './types';
+import { AppConfig, SurveySubmission, OneTimeSubmissionLock, PatientPinToken } from './types';
 import { CheckCircle2, AlertCircle, Lock, ShieldCheck } from 'lucide-react';
 import { initializeClientSecurityProtections } from './utils/security';
 
@@ -39,6 +39,7 @@ export default function App() {
 
   // Status PIN Akses Pasien yang Terverifikasi
   const [verifiedPatientPin, setVerifiedPatientPin] = useState<string | null>(() => getActiveSessionPatientPin());
+  const [verifiedPatientToken, setVerifiedPatientToken] = useState<PatientPinToken | null>(null);
   const [initialUrlPin, setInitialUrlPin] = useState<string>('');
 
   // Sinkronisasi otomatis konfigurasi dari server & deteksi parameter link pasien (?pin=...)
@@ -159,17 +160,20 @@ export default function App() {
   };
 
   // Handler saat PIN pasien berhasil diverifikasi
-  const handlePinVerified = (token: any, pinString: string) => {
+  const handlePinVerified = (token: PatientPinToken, pinString: string) => {
     setVerifiedPatientPin(pinString);
+    setVerifiedPatientToken(token);
     setActiveSessionPatientPin(pinString);
     setActiveTab('survey');
-    showToast('success', `✓ PIN ${pinString} terverifikasi! Selamat mengisi survei.`);
+    const patientName = token.registeredPatientName || token.label;
+    showToast('success', `✓ PIN ${pinString} terverifikasi${patientName ? ` untuk ${patientName}` : ''}! Selamat mengisi survei.`);
   };
 
   // Handler saat survei berhasil disubmit oleh pasien
   const handleSubmissionSuccess = (submission: SurveySubmission) => {
     refreshData();
     setVerifiedPatientPin(null);
+    setVerifiedPatientToken(null);
     setActiveSessionPatientPin(null);
     setOneTimeLock({
       isSubmitted: true,
@@ -189,6 +193,7 @@ export default function App() {
     clearOneTimeLock();
     setOneTimeLock(null);
     setVerifiedPatientPin(null);
+    setVerifiedPatientToken(null);
     setActiveSessionPatientPin(null);
     setActiveTab('survey');
     showToast('success', 'Silakan masukkan PIN akses pasien baru.');
@@ -199,6 +204,7 @@ export default function App() {
     clearOneTimeLock();
     setOneTimeLock(null);
     setVerifiedPatientPin(null);
+    setVerifiedPatientToken(null);
     setActiveSessionPatientPin(null);
     setActiveTab('survey');
     setIsAdminModalOpen(false);
@@ -260,6 +266,7 @@ export default function App() {
             config={config}
             isOnline={isOnline}
             patientPin={verifiedPatientPin || undefined}
+            patientPinToken={verifiedPatientToken || undefined}
             onSubmissionSuccess={handleSubmissionSuccess}
             onOpenGuide={() => setActiveTab('guide')}
           />

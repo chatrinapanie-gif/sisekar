@@ -16,13 +16,17 @@ import {
   Filter,
   UserCheck,
   Building2,
-  RefreshCw
+  RefreshCw,
+  FileSpreadsheet,
+  Globe2,
+  Smartphone
 } from 'lucide-react';
 import { PatientPinToken } from '../types';
 import { 
   generatePatientPins, 
   revokePatientPin, 
-  deletePatientPin 
+  deletePatientPin,
+  syncPinsWithGoogleSheet
 } from '../services/sheetsService';
 
 interface AdminPatientPinsTabProps {
@@ -39,12 +43,17 @@ export const AdminPatientPinsTab: React.FC<AdminPatientPinsTabProps> = ({
   onToast,
 }) => {
   const [generateCount, setGenerateCount] = useState<number>(1);
+  const [patientNameInput, setPatientNameInput] = useState<string>('');
+  const [serviceInput, setServiceInput] = useState<string>('Rawat Inap');
+  const [roomInput, setRoomInput] = useState<string>('');
   const [labelInput, setLabelInput] = useState<string>('');
   const [notesInput, setNotesInput] = useState<string>('');
   const [customPinInput, setCustomPinInput] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [isSyncingSheet, setIsSyncingSheet] = useState<boolean>(false);
   const [copiedPin, setCopiedPin] = useState<string | null>(null);
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
+  const [copiedWa, setCopiedWa] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'used' | 'revoked'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showPrintModal, setShowPrintModal] = useState<boolean>(false);
@@ -63,12 +72,32 @@ export const AdminPatientPinsTab: React.FC<AdminPatientPinsTabProps> = ({
       const q = searchQuery.toLowerCase().trim();
       const matchPin = p.pin.includes(q);
       const matchLabel = p.label?.toLowerCase().includes(q);
-      const matchName = p.usedBy?.namaPasien?.toLowerCase().includes(q);
-      const matchService = p.usedBy?.jenisLayanan?.toLowerCase().includes(q);
-      return matchPin || matchLabel || matchName || matchService;
+      const matchRegName = p.registeredPatientName?.toLowerCase().includes(q);
+      const matchRegService = p.registeredService?.toLowerCase().includes(q);
+      const matchRegRoom = p.registeredRoom?.toLowerCase().includes(q);
+      const matchUsedName = p.usedBy?.namaPasien?.toLowerCase().includes(q);
+      const matchUsedService = p.usedBy?.jenisLayanan?.toLowerCase().includes(q);
+      return matchPin || matchLabel || matchRegName || matchRegService || matchRegRoom || matchUsedName || matchUsedService;
     }
     return true;
   });
+
+  const handleSyncSheet = async () => {
+    setIsSyncingSheet(true);
+    try {
+      const res = await syncPinsWithGoogleSheet();
+      if (res.success) {
+        onToast('success', `✓ ${res.message}`);
+        onRefresh();
+      } else {
+        onToast('error', res.message || 'Gagal sinkronisasi dengan Google Sheet.');
+      }
+    } catch (err: any) {
+      onToast('error', err?.message || 'Terjadi kesalahan saat sinkronisasi.');
+    } finally {
+      setIsSyncingSheet(false);
+    }
+  };
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,14 +105,19 @@ export const AdminPatientPinsTab: React.FC<AdminPatientPinsTabProps> = ({
     try {
       const res = await generatePatientPins({
         count: generateCount,
-        label: labelInput.trim() || undefined,
+        registeredPatientName: patientNameInput.trim() || undefined,
+        registeredService: serviceInput.trim() || undefined,
+        registeredRoom: roomInput.trim() || undefined,
+        label: labelInput.trim() || (patientNameInput.trim() ? `Pasien: ${patientNameInput.trim()}` : undefined),
         notes: notesInput.trim() || undefined,
         customPin: customPinInput.trim() || undefined,
         adminToken: adminToken || undefined,
       });
 
       if (res && res.length > 0) {
-        onToast('success', `✓ Berhasil menerbitkan ${res.length} PIN akses pasien baru!`);
+        onToast('success', `✓ Berhasil menerbitkan ${res.length} PIN akses pasien untuk Google Sheet!`);
+        setPatientNameInput('');
+        setRoomInput('');
         setLabelInput('');
         setCustomPinInput('');
         setNotesInput('');
@@ -102,6 +136,32 @@ export const AdminPatientPinsTab: React.FC<AdminPatientPinsTabProps> = ({
     const origin = window.location.origin;
     const pathname = window.location.pathname;
     return `${origin}${pathname}?pin=${pin}`;
+  };
+
+  const getWhatsAppMessageText = (pinObj: PatientPinToken) => {
+    const name = pinObj.registeredPatientName || pinObj.usedBy?.namaPasien || 'Bapak/Ibu Pasien';
+    const svc = pinObj.registeredService || pinObj.usedBy?.jenisLayanan || 'Pelayanan';
+    const link = getDirectPatientLink(pinObj.pin);
+
+    return `Halo Bapak/Ibu *${name}*,%0A%0AAnda telah menyelesaikan layanan *${svc}* di *RSUD Aeramo Kabupaten Nagekeo*.%0A%0ASilakan klik tautan di bawah ini untuk menjawab kuesioner singkat evaluasi kepuasan layanan:%0A👉 ${encodeURIComponent(link)}%0A%0APIN Akses: *${pinObj.pin}*%0A%0AKami sangat menghargai partisipasi Anda demi peningkatan mutu layanan kami.%0A_RSUD Aeramo - Melayani dengan Kasih_`;
+  };
+
+  const handleShareWhatsApp = (pinObj: PatientPinToken) => {
+    const msg = getWhatsAppMessageText(pinObj);
+    const waUrl = `https://api.whatsapp.com/send?text=${msg}`;
+    window.open(waUrl, '_blank');
+  };
+
+  const handleCopyWhatsAppText = (pinObj: PatientPinToken) => {
+    const name = pinObj.registeredPatientName || pinObj.usedBy?.namaPasien || 'Bapak/Ibu Pasien';
+    const svc = pinObj.registeredService || pinObj.usedBy?.jenisLayanan || 'Pelayanan';
+    const link = getDirectPatientLink(pinObj.pin);
+    const text = `Halo Bapak/Ibu *${name}*,\n\nAnda telah menyelesaikan layanan *${svc}* di *RSUD Aeramo Kabupaten Nagekeo*.\n\nSilakan klik tautan di bawah ini untuk menjawab kuesioner singkat evaluasi kepuasan layanan:\n👉 ${link}\n\nPIN Akses: *${pinObj.pin}*\n\nKami sangat menghargai partisipasi Anda demi peningkatan mutu layanan kami.\n_RSUD Aeramo - Melayani dengan Kasih_`;
+    
+    navigator.clipboard.writeText(text);
+    setCopiedWa(pinObj.pin);
+    setTimeout(() => setCopiedWa(null), 2500);
+    onToast('success', `Teks pesan WhatsApp untuk ${name} berhasil disalin!`);
   };
 
   const handleCopyPin = (pin: string) => {
@@ -186,6 +246,40 @@ export const AdminPatientPinsTab: React.FC<AdminPatientPinsTabProps> = ({
         </div>
       </div>
 
+      {/* Info Cloud Sync Google Sheet Multi-Device */}
+      <div className="bg-gradient-to-r from-blue-50 via-indigo-50/60 to-emerald-50/60 border border-blue-200/80 rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-xs">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+            <Globe2 className="w-5 h-5" />
+          </div>
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-2">
+              <h4 className="text-xs sm:text-sm font-black text-blue-950">
+                Sistem PIN Terhubung ke Google Sheet (Multi-Device)
+              </h4>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Tab PIN_PASIEN
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-600 leading-relaxed">
+              Seluruh PIN tersimpan di Tab <strong>PIN_PASIEN</strong> Google Sheet. Pasien dapat langsung membuka kuesioner dari smartphone mereka masing-masing tanpa petugas perlu membuka portal admin di perangkat pasien.
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleSyncSheet}
+          disabled={isSyncingSheet}
+          className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 active:scale-98 text-white font-bold text-xs shadow-xs flex items-center gap-2 transition shrink-0 disabled:opacity-50"
+          title="Tarik data PIN terbaru dari Google Sheet"
+        >
+          <FileSpreadsheet className={`w-4 h-4 ${isSyncingSheet ? 'animate-spin' : ''}`} />
+          <span>{isSyncingSheet ? 'Sinkronisasi Sheet...' : 'Sinkronkan Google Sheet'}</span>
+        </button>
+      </div>
+
       {/* Form Pembuatan PIN Akses Pasien Baru */}
       <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -195,21 +289,86 @@ export const AdminPatientPinsTab: React.FC<AdminPatientPinsTabProps> = ({
             </div>
             <div>
               <h4 className="text-xs sm:text-sm font-extrabold text-slate-900">Terbitkan PIN Akses Pasien Baru</h4>
-              <p className="text-[11px] text-slate-500">Buat PIN 1x pakai atau bagikan link langsung ke pasien</p>
+              <p className="text-[11px] text-slate-500">PIN otomatis dicatat ke Google Sheet &amp; berlaku di seluruh smartphone pasien</p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onRefresh}
-            className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 transition"
-            title="Refresh Data PIN"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleSyncSheet}
+              disabled={isSyncingSheet}
+              className="px-2.5 py-1.5 rounded-lg border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold transition flex items-center gap-1.5"
+              title="Tarik perubahan dari Google Sheet"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncingSheet ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Tarik dari Sheet</span>
+            </button>
+            <button
+              type="button"
+              onClick={onRefresh}
+              className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 transition"
+              title="Refresh Tampilan"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         <form onSubmit={handleGenerate} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            
+            {/* Nama Pasien Terdaftar */}
+            <div className="lg:col-span-2">
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                Nama Pasien (Terdaftar)
+              </label>
+              <input
+                type="text"
+                placeholder="Contoh: CHATRINA HERLOFINA PANIE"
+                value={patientNameInput}
+                onChange={e => setPatientNameInput(e.target.value)}
+                className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600 uppercase"
+              />
+              <span className="text-[10px] text-slate-400 mt-0.5 block">Nama otomatis terisi saat pasien memasukkan PIN di gawainya</span>
+            </div>
+
+            {/* Layanan Pasien */}
+            <div>
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                Layanan Rumah Sakit
+              </label>
+              <select
+                value={serviceInput}
+                onChange={e => setServiceInput(e.target.value)}
+                className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white"
+              >
+                <option value="Rawat Inap">Rawat Inap</option>
+                <option value="Rawat Jalan / Poliklinik">Rawat Jalan / Poliklinik</option>
+                <option value="Instalasi Gawat Darurat (IGD 24 Jam)">Instalasi Gawat Darurat (IGD)</option>
+                <option value="Kebidanan & Kandungan (VK)">Kebidanan &amp; Kandungan (VK)</option>
+                <option value="Instalasi Farmasi">Instalasi Farmasi</option>
+                <option value="Laboratorium & Radiologi">Laboratorium &amp; Radiologi</option>
+                <option value="Pelayanan RSUD Aeramo Umum">Pelayanan Umum</option>
+              </select>
+            </div>
+
+            {/* Kamar / Bangsal / Ruangan */}
+            <div>
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                Kamar / Ruang (Opsional)
+              </label>
+              <input
+                type="text"
+                placeholder="Contoh: Kamar Mawar 102 / Poli Gigi"
+                value={roomInput}
+                onChange={e => setRoomInput(e.target.value)}
+                className="w-full p-2.5 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-blue-600"
+              />
+            </div>
+
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 border-t border-slate-100">
             
             <div>
               <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
@@ -230,11 +389,11 @@ export const AdminPatientPinsTab: React.FC<AdminPatientPinsTabProps> = ({
 
             <div>
               <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                Label / Ruangan Pasien (Opsional)
+                Label Tambahan (Opsional)
               </label>
               <input
                 type="text"
-                placeholder="Contoh: Kamar 102 / Ruang Mawar / Poli Gigi"
+                placeholder="Contoh: Shift Pagi / Loket A"
                 value={labelInput}
                 onChange={e => setLabelInput(e.target.value)}
                 className="w-full p-2.5 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-blue-600"
@@ -271,7 +430,7 @@ export const AdminPatientPinsTab: React.FC<AdminPatientPinsTabProps> = ({
               ) : (
                 <>
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>Terbitkan {generateCount} PIN Akses</span>
+                  <span>Terbitkan {generateCount} PIN Akses (Simpan ke Sheet)</span>
                 </>
               )}
             </button>
@@ -390,18 +549,35 @@ export const AdminPatientPinsTab: React.FC<AdminPatientPinsTabProps> = ({
                         )}
                       </td>
 
-                      {/* Label & Pasien */}
+                      {/* Label & Pasien Terdaftar */}
                       <td className="py-3 px-3">
-                        <div className="space-y-0.5">
-                          {pinObj.label ? (
+                        <div className="space-y-1">
+                          {pinObj.registeredPatientName ? (
+                            <div className="space-y-0.5">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded">
+                                  Pasien Terdaftar
+                                </span>
+                                <span className="font-bold text-slate-900 text-xs">
+                                  {pinObj.registeredPatientName}
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-slate-600 flex items-center gap-2">
+                                <span>Layanan: <strong>{pinObj.registeredService || 'Rawat Inap'}</strong></span>
+                                {pinObj.registeredRoom && (
+                                  <span className="text-slate-400">• {pinObj.registeredRoom}</span>
+                                )}
+                              </div>
+                            </div>
+                          ) : pinObj.label ? (
                             <span className="font-semibold text-slate-800 block text-xs">{pinObj.label}</span>
                           ) : (
-                            <span className="text-slate-400 italic text-[11px]">Tanpa label</span>
+                            <span className="text-slate-400 italic text-[11px]">Umum (Tanpa Registrasi Nama)</span>
                           )}
 
                           {pinObj.usedBy && (
-                            <div className="text-[11px] text-blue-900 bg-blue-50/60 p-1 rounded border border-blue-100 mt-1">
-                              <strong>Diisi oleh:</strong> {pinObj.usedBy.namaPasien || 'Pasien Anonim'} ({pinObj.usedBy.jenisLayanan})
+                            <div className="text-[11px] text-blue-900 bg-blue-50/80 p-1.5 rounded-lg border border-blue-100 mt-1">
+                              <strong>Telah Diisi:</strong> {pinObj.usedBy.namaPasien || 'Pasien Anonim'} ({pinObj.usedBy.jenisLayanan})
                             </div>
                           )}
                         </div>
@@ -419,10 +595,31 @@ export const AdminPatientPinsTab: React.FC<AdminPatientPinsTabProps> = ({
                         )}
                       </td>
 
-                      {/* Aksi */}
+                      {/* Aksi & Bagikan */}
                       <td className="py-3 px-3 text-right">
                         <div className="inline-flex items-center gap-1">
                           
+                          {/* Tombol Bagikan ke WhatsApp */}
+                          <button
+                            type="button"
+                            onClick={() => handleShareWhatsApp(pinObj)}
+                            className="px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 text-[11px] font-bold transition flex items-center gap-1 shadow-2xs"
+                            title="Kirim link PIN kuesioner via WhatsApp ke pasien"
+                          >
+                            <Smartphone className="w-3 h-3 text-emerald-600" />
+                            <span>Kirim WA</span>
+                          </button>
+
+                          {/* Salin Teks Undangan WA */}
+                          <button
+                            type="button"
+                            onClick={() => handleCopyWhatsAppText(pinObj)}
+                            className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-600 transition"
+                            title="Salin pesan ajakan WhatsApp lengkap"
+                          >
+                            {copiedWa === pinObj.pin ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                          </button>
+
                           {/* Salin Tautan Langsung */}
                           <button
                             type="button"

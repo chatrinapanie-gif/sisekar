@@ -31,6 +31,7 @@ export const GOOGLE_APPS_SCRIPT_CODE = `/**
 
 const SHEET_NAME_RESPONSES = "Data_Survei_Aeramo"; // Sheet Aktif Minggu Berjalan
 const SHEET_NAME_ARCHIVE = "Arsip_Mingguan_Survei"; // Sheet Arsip Permanen
+const SHEET_NAME_PINS = "PIN_PASIEN"; // Sheet Database PIN Akses Pasien Multi-Device
 const SHEET_NAME_DASHBOARD = "Dashboard_IKM";
 
 /**
@@ -39,11 +40,127 @@ const SHEET_NAME_DASHBOARD = "Dashboard_IKM";
 function onOpen() {
   const ui = SpreadsheetApp.getUi();
   ui.createMenu("📊 SISEKAR RSUD Aeramo")
+    .addItem("🔑 Buat 10 PIN Pasien Baru (Otomatis)", "generate10PinsMenu")
+    .addItem("🔑 Buat 50 PIN Pasien Baru (Otomatis)", "generate50PinsMenu")
+    .addItem("📋 Periksa & Siapkan Tab Sheet PIN_PASIEN", "setupPinSheetManual")
+    .addSeparator()
     .addItem("🔄 Jalankan Rotasi & Arsip Mingguan", "rotasiMingguanOtomatis")
     .addItem("⚙️ Pasang Auto-Trigger Mingguan Otomatis", "setupWeeklyTrigger")
     .addSeparator()
     .addItem("📈 Perbarui Dashboard IKM", "refreshDashboardManually")
     .addToUi();
+}
+
+/**
+ * Inisialisasi / Siapkan Header Tab Sheet PIN_PASIEN
+ */
+function setupPinSheetManual() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  ensurePinSheetExists(ss);
+  SpreadsheetApp.getUi().alert("✓ Tab 'PIN_PASIEN' berhasil disiapkan & siap digunakan oleh seluruh perangkat!");
+}
+
+function ensurePinSheetExists(ss) {
+  let pinSheet = ss.getSheetByName(SHEET_NAME_PINS);
+  if (!pinSheet) {
+    pinSheet = ss.insertSheet(SHEET_NAME_PINS);
+  }
+
+  // Jika belum ada header
+  if (pinSheet.getLastRow() < 1) {
+    const headers = [
+      "PIN (6 DIGIT)", 
+      "STATUS", 
+      "NAMA_PASIEN_TERDAFTAR",
+      "LAYANAN_TERDAFTAR",
+      "KAMAR / RUANGAN",
+      "DIBUAT_PADA", 
+      "DIGUNAKAN_PADA", 
+      "NAMA_RESPONDEN_SURVEI", 
+      "LAYANAN_SURVEI", 
+      "SKOR_IKM", 
+      "SUBMISSION_ID", 
+      "KETERANGAN / CATATAN"
+    ];
+    pinSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    
+    // Format Header Cantik
+    const headerRange = pinSheet.getRange(1, 1, 1, headers.length);
+    headerRange.setBackground("#1e3a8a")
+      .setFontColor("#ffffff")
+      .setFontWeight("bold")
+      .setHorizontalAlignment("center")
+      .setFontFamily("Arial");
+    
+    pinSheet.setFrozenRows(1);
+    pinSheet.setColumnWidth(1, 130); // PIN
+    pinSheet.setColumnWidth(2, 110); // STATUS
+    pinSheet.setColumnWidth(3, 240); // NAMA PASIEN
+    pinSheet.setColumnWidth(4, 180); // LAYANAN
+    pinSheet.setColumnWidth(5, 160); // KAMAR
+    pinSheet.setColumnWidth(6, 160); // DIBUAT
+    pinSheet.setColumnWidth(7, 160); // DIGUNAKAN
+    pinSheet.setColumnWidth(8, 200); // RESPONDEN
+    pinSheet.setColumnWidth(9, 180); // LAYANAN SURVEI
+    pinSheet.setColumnWidth(10, 100); // IKM
+    pinSheet.setColumnWidth(11, 220); // ID
+    pinSheet.setColumnWidth(12, 200); // KET
+
+    // Buat beberapa PIN contoh awal jika kosong
+    const nowStr = Utilities.formatDate(new Date(), "Asia/Makassar", "yyyy-MM-dd HH:mm:ss 'WITA'");
+    const initialSamples = [
+      ["'582049", "AKTIF", "CHATRINA HERLOFINA PANIE", "Rawat Inap", "Kamar Mawar 102", nowStr, "", "", "", "", "", "PIN Contoh Pasien Terdaftar"],
+      ["'746193", "AKTIF", "Pasien Poliklinik", "Rawat Jalan / Poliklinik", "Poli Penyakit Dalam", nowStr, "", "", "", "", "", "PIN Contoh Poli"],
+      ["'391824", "AKTIF", "Pasien Gawat Darurat", "IGD 24 Jam", "Bed 03", nowStr, "", "", "", "", "", "PIN Contoh IGD"],
+      ["'829104", "AKTIF", "Ibu & Anak", "Kebidanan & Kandungan (VK)", "Kamar Bersalin", nowStr, "", "", "", "", "", "PIN Contoh VK"],
+      ["'615284", "AKTIF", "Pasien Umum", "Pelayanan RSUD Aeramo", "-", nowStr, "", "", "", "", "", "PIN Bawaan Sistem RSUD Aeramo"]
+    ];
+    pinSheet.getRange(2, 1, initialSamples.length, 12).setValues(initialSamples);
+  }
+  return pinSheet;
+}
+
+/**
+ * Menu Buat 10 PIN Otomatis di Google Sheet
+ */
+function generate10PinsMenu() {
+  generatePinsInSheet(10, "PIN Cetak Loket / Pendaftaran");
+  SpreadsheetApp.getUi().alert("✓ Berhasil membuat 10 PIN Pasien Baru di tab 'PIN_PASIEN'!");
+}
+
+/**
+ * Menu Buat 50 PIN Otomatis di Google Sheet
+ */
+function generate50PinsMenu() {
+  generatePinsInSheet(50, "PIN Batch Mingguan");
+  SpreadsheetApp.getUi().alert("✓ Berhasil membuat 50 PIN Pasien Baru di tab 'PIN_PASIEN'!");
+}
+
+function generatePinsInSheet(count, defaultLabel) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ensurePinSheetExists(ss);
+  
+  const existingValues = sheet.getLastRow() > 1 
+    ? sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues().map(function(r) { return String(r[0]).replace(/\D/g, ""); })
+    : [];
+  const existingSet = {};
+  existingValues.forEach(function(p) { existingSet[p] = true; });
+
+  const rows = [];
+  const nowStr = Utilities.formatDate(new Date(), "Asia/Makassar", "yyyy-MM-dd HH:mm:ss 'WITA'");
+
+  for (let i = 0; i < count; i++) {
+    let pinCode = String(Math.floor(100000 + Math.random() * 900000));
+    while (existingSet[pinCode]) {
+      pinCode = String(Math.floor(100000 + Math.random() * 900000));
+    }
+    existingSet[pinCode] = true;
+    rows.push(["'" + pinCode, "AKTIF", "", "Rawat Inap", "", nowStr, "", "", "", "", "", defaultLabel || "Dibuat via Menu Google Sheet"]);
+  }
+
+  if (rows.length > 0) {
+    sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, 12).setValues(rows);
+  }
 }
 
 /**
@@ -114,10 +231,41 @@ function refreshDashboardManually() {
 }
 
 /**
- * Melayani Tampilan Halaman Dashboard Admin via Web App URL
+ * Melayani Permintaan GET:
+ * 1. Validasi PIN Pasien dari Seluruh HP / Perangkat (?action=validate_pin&pin=123456)
+ * 2. Mengambil Semua PIN Aktif (?action=get_pins)
+ * 3. Healthcheck / Ping Koneksi (?action=ping)
+ * 4. Tampilan Web App Dashboard Admin Eksekutif
  */
 function doGet(e) {
-  if (e && e.parameter && e.parameter.api === "true") {
+  const params = (e && e.parameter) ? e.parameter : {};
+  const action = params.action || "";
+
+  // 1. Validasi PIN Pasien dari HP/Perangkat Mana Pun
+  if (action === "validate_pin" || params.pin) {
+    const rawPin = String(params.pin || "").trim().replace(/\D/g, "");
+    return ContentService.createTextOutput(JSON.stringify(validatePatientPinInSheet(rawPin)))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  // 2. Mengambil Semua Daftar PIN dari Tab PIN_PASIEN
+  if (action === "get_pins") {
+    return ContentService.createTextOutput(JSON.stringify(getAllPinsFromSheet()))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  // 3. Ping Uji Koneksi
+  if (action === "ping" || params.ping === "true") {
+    return ContentService.createTextOutput(JSON.stringify({
+      success: true,
+      mode: "online",
+      message: "Google Apps Script RSUD Aeramo Online & Terhubung!",
+      timestamp: new Date().toISOString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  // 4. API Data JSON Dashboard
+  if (params.api === "true") {
     return ContentService.createTextOutput(JSON.stringify(getDashboardData()))
       .setMimeType(ContentService.MimeType.JSON);
   }
@@ -137,7 +285,142 @@ function doGet(e) {
 }
 
 /**
- * Menerima kiriman data survei baru (Dengan proteksi Anti-Spam & Kunci Satu Kali Isi)
+ * Logika Validasi PIN di Tab Sheet PIN_PASIEN
+ */
+function validatePatientPinInSheet(rawPin) {
+  if (!rawPin || rawPin.length < 4) {
+    return {
+      valid: false,
+      status: "invalid_format",
+      message: "Format PIN tidak valid. Masukkan 6 digit angka."
+    };
+  }
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ensurePinSheetExists(ss);
+  
+  if (sheet.getLastRow() <= 1) {
+    return {
+      valid: false,
+      status: "not_found",
+      message: "Belum ada PIN yang terdaftar di Google Sheet. Hubungi petugas RSUD Aeramo."
+    };
+  }
+
+  const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, 12).getValues();
+  for (let i = 0; i < values.length; i++) {
+    const row = values[i];
+    const pinInCell = String(row[0]).replace(/\D/g, "");
+    if (pinInCell === rawPin) {
+      const status = String(row[1] || "").toUpperCase().trim();
+      const regPatientName = String(row[2] || "").trim();
+      const regService = String(row[3] || "").trim() || "Rawat Inap";
+      const regRoom = String(row[4] || "").trim();
+      const createdAt = String(row[5] || "");
+      const usedAt = String(row[6] || "");
+      const usedBy = String(row[7] || "");
+
+      if (status === "TERPAKAI" || status === "USED") {
+        return {
+          valid: false,
+          status: "used",
+          pin: rawPin,
+          registeredPatientName: regPatientName,
+          registeredService: regService,
+          registeredRoom: regRoom,
+          label: regPatientName ? "Pasien: " + regPatientName : regService,
+          usedAt: usedAt,
+          usedBy: usedBy,
+          message: "PIN ini sudah pernah digunakan pada " + (usedAt || "sebelumnya") + (usedBy ? " oleh " + usedBy : "") + ". Sistem membatasi 1x pengisian per PIN demi keaslian data."
+        };
+      }
+
+      if (status === "NONAKTIF" || status === "REVOKED") {
+        return {
+          valid: false,
+          status: "revoked",
+          pin: rawPin,
+          message: "PIN ini telah dinonaktifkan oleh petugas RSUD Aeramo."
+        };
+      }
+
+      // Status AKTIF
+      return {
+        valid: true,
+        status: "active",
+        pin: rawPin,
+        registeredPatientName: regPatientName,
+        registeredService: regService,
+        registeredRoom: regRoom,
+        label: regPatientName ? "Pasien: " + regPatientName : (regRoom ? regService + " (" + regRoom + ")" : regService),
+        createdAt: createdAt,
+        token: {
+          id: "pin_sheet_" + (i + 2),
+          pin: rawPin,
+          status: "active",
+          registeredPatientName: regPatientName,
+          registeredService: regService,
+          registeredRoom: regRoom,
+          createdAt: createdAt,
+          label: regPatientName ? "Pasien: " + regPatientName : regService
+        },
+        message: "PIN valid untuk pasien " + (regPatientName || "RSUD Aeramo") + "!"
+      };
+    }
+  }
+
+  return {
+    valid: false,
+    status: "not_found",
+    message: "PIN tidak ditemukan di Google Sheet RSUD Aeramo. Pastikan nomor PIN benar sesuai yang diberikan petugas."
+  };
+}
+
+/**
+ * Mengambil Seluruh PIN dari Tab PIN_PASIEN dalam Format JSON
+ */
+function getAllPinsFromSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ensurePinSheetExists(ss);
+  if (sheet.getLastRow() <= 1) {
+    return { success: true, pins: [] };
+  }
+
+  const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, 12).getValues();
+  const pins = [];
+  for (let i = 0; i < values.length; i++) {
+    const row = values[i];
+    const cleanPin = String(row[0]).replace(/\D/g, "");
+    if (cleanPin) {
+      const regName = String(row[2] || "").trim();
+      const regSvc = String(row[3] || "").trim();
+      const regRoom = String(row[4] || "").trim();
+      pins.push({
+        id: "pin_sheet_" + (i + 2),
+        pin: cleanPin,
+        status: String(row[1] || "").toUpperCase() === "TERPAKAI" ? "used" : (String(row[1] || "").toUpperCase() === "NONAKTIF" ? "revoked" : "active"),
+        registeredPatientName: regName,
+        registeredService: regSvc,
+        registeredRoom: regRoom,
+        label: regName ? "Pasien: " + regName : (regRoom ? regSvc + " (" + regRoom + ")" : (regSvc || "Google Sheet")),
+        createdAt: String(row[5] || ""),
+        usedAt: String(row[6] || ""),
+        usedBy: row[7] ? {
+          namaPasien: String(row[7] || ""),
+          jenisLayanan: String(row[8] || ""),
+          ikmScore: Number(row[9]) || undefined,
+          submissionId: String(row[10] || "")
+        } : undefined,
+        notes: String(row[11] || "")
+      });
+    }
+  }
+
+  return { success: true, pins: pins };
+}
+
+/**
+ * Menerima kiriman data (Survei Baru, Pembuatan PIN, atau Validasi PIN)
  */
 function doPost(e) {
   try {
@@ -145,14 +428,6 @@ function doPost(e) {
     lock.waitLock(30000); // Mencegah tabrakan penginputan serentak
 
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    let sheet = ss.getSheetByName(SHEET_NAME_RESPONSES);
-
-    if (!sheet) {
-      sheet = ss.insertSheet(SHEET_NAME_RESPONSES);
-      setupHeaders(sheet, false);
-    } else {
-      checkAndUpgradeHeaders(sheet);
-    }
 
     let data;
     if (e.postData && e.postData.contents) {
@@ -163,7 +438,55 @@ function doPost(e) {
       throw new Error("Tidak ada payload data yang diterima.");
     }
 
-    // Tangani ping uji koneksi
+    const action = data.action || "";
+
+    // A. Validasi PIN via POST
+    if (action === "validate_pin") {
+      lock.releaseLock();
+      const cleanPin = String(data.pin || "").replace(/\D/g, "");
+      return ContentService.createTextOutput(JSON.stringify(validatePatientPinInSheet(cleanPin)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // B. Tambahkan PIN Baru ke Sheet dari Admin Portal
+    if (action === "create_pins" && Array.isArray(data.pins)) {
+      const pinSheet = ensurePinSheetExists(ss);
+      const rowsToAdd = [];
+      const nowStr = Utilities.formatDate(new Date(), "Asia/Makassar", "yyyy-MM-dd HH:mm:ss 'WITA'");
+      
+      data.pins.forEach(function(p) {
+        const pinCode = String(p.pin || p).replace(/\D/g, "");
+        if (pinCode) {
+          rowsToAdd.push([
+            "'" + pinCode,
+            "AKTIF",
+            p.registeredPatientName || "",
+            p.registeredService || "Rawat Inap",
+            p.registeredRoom || "",
+            p.createdAt || nowStr,
+            "",
+            "",
+            "",
+            "",
+            "",
+            p.notes || "Dibuat dari Admin Portal"
+          ]);
+        }
+      });
+
+      if (rowsToAdd.length > 0) {
+        pinSheet.getRange(pinSheet.getLastRow() + 1, 1, rowsToAdd.length, 12).setValues(rowsToAdd);
+      }
+
+      lock.releaseLock();
+      return ContentService.createTextOutput(JSON.stringify({
+        success: true,
+        message: "Berhasil menambahkan " + rowsToAdd.length + " PIN ke Google Sheet!",
+        count: rowsToAdd.length
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // C. Tangani ping uji koneksi
     if (data.test === true || data.namaPasien === "UJI_KONEKSI_SISTEM" || data.namaPasien === "DIAGNOSTIC_PING") {
       lock.releaseLock();
       return ContentService.createTextOutput(JSON.stringify({
@@ -171,6 +494,15 @@ function doPost(e) {
         mode: "online",
         message: "Koneksi Google Apps Script RSUD Aeramo aktif & siap menerima data survei."
       })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // D. Simpan Hasil Survei Pasien
+    let sheet = ss.getSheetByName(SHEET_NAME_RESPONSES);
+    if (!sheet) {
+      sheet = ss.insertSheet(SHEET_NAME_RESPONSES);
+      setupHeaders(sheet, false);
+    } else {
+      checkAndUpgradeHeaders(sheet);
     }
 
     const answers = data.answers || {};
@@ -238,17 +570,22 @@ function doPost(e) {
       }
     }
 
+    const patientPinUsed = String(data.patientPin || data.pin || "").replace(/\D/g, "");
+    const submissionId = data.id || Utilities.getUuid();
+    const namaPasien = data.namaPasien || "(Anonim / Tidak Diisi)";
+    const jenisLayanan = data.jenisLayanan || "Rawat Inap";
+
     const row = [
       new Date(), // 0: Timestamp Google
-      data.id || Utilities.getUuid(), // 1: ID Survei (Unik)
+      submissionId, // 1: ID Survei (Unik)
       data.tanggalSurvei || Utilities.formatDate(new Date(), "Asia/Makassar", "yyyy-MM-dd"), // 2: Tgl
       data.jamSurvei || "08.00 – 14.00 WITA", // 3: Jam
-      data.namaPasien || "(Anonim / Tidak Diisi)", // 4: Nama
+      namaPasien, // 4: Nama
       data.jenisKelamin || "-", // 5: JK
       data.pendidikan || "-", // 6: Pendidikan
       data.usia ? Number(data.usia) : "-", // 7: Usia
       data.pekerjaan === "LAINNYA" && data.pekerjaanLainnya ? "LAINNYA: " + data.pekerjaanLainnya : (data.pekerjaan || "-"), // 8: Pekerjaan
-      data.jenisLayanan || "Rawat Inap", // 9: Layanan
+      jenisLayanan, // 9: Layanan
       q1 || "-", // 10: Q1 Kamar
       q2 || "-", // 11: Q2 Bersih
       q3 || "-", // 12: Q3 Fasilitas
@@ -261,10 +598,21 @@ function doPost(e) {
       mutuLayanan, // 19: Mutu
       data.saran || "-", // 20: Saran
       rincianAspekText, // 21: Rincian Lengkap
-      data.devicePlatform || "Android / Web" // 22: Perangkat
+      data.devicePlatform || (patientPinUsed ? "Web/HP (PIN: " + patientPinUsed + ")" : "Android / Web") // 22: Perangkat
     ];
 
     sheet.appendRow(row);
+
+    // OTOMATIS TANDAI PIN SEBAGAI TERPAKAI DI TAB PIN_PASIEN GOOGLE SHEET!
+    if (patientPinUsed) {
+      markPinUsedInSheet(ss, patientPinUsed, {
+        submissionId: submissionId,
+        namaPasien: namaPasien,
+        jenisLayanan: jenisLayanan,
+        ikmScore: Number(ikm100.toFixed(2))
+      });
+    }
+
     updateDashboardSheet(ss);
 
     lock.releaseLock();
@@ -272,7 +620,8 @@ function doPost(e) {
     return ContentService.createTextOutput(JSON.stringify({
       status: "success",
       message: "Terima kasih! Survei kepuasan Anda berhasil dicatat ke Google Sheet RSUD Aeramo.",
-      surveyId: data.id,
+      surveyId: submissionId,
+      patientPin: patientPinUsed,
       timestamp: new Date().toISOString()
     })).setMimeType(ContentService.MimeType.JSON);
 
@@ -281,6 +630,35 @@ function doPost(e) {
       status: "error",
       message: error.toString()
     })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+/**
+ * Tandai Baris PIN di Tab PIN_PASIEN sebagai TERPAKAI
+ */
+function markPinUsedInSheet(ss, cleanPin, info) {
+  try {
+    const pinSheet = ensurePinSheetExists(ss);
+    if (pinSheet.getLastRow() <= 1) return;
+
+    const values = pinSheet.getRange(2, 1, pinSheet.getLastRow() - 1, 1).getValues();
+    const nowStr = Utilities.formatDate(new Date(), "Asia/Makassar", "yyyy-MM-dd HH:mm:ss 'WITA'");
+
+    for (let i = 0; i < values.length; i++) {
+      const pinInCell = String(values[i][0]).replace(/\D/g, "");
+      if (pinInCell === cleanPin) {
+        const rowIdx = i + 2;
+        pinSheet.getRange(rowIdx, 2).setValue("TERPAKAI"); // Kolom 2: STATUS
+        pinSheet.getRange(rowIdx, 7).setValue(nowStr); // Kolom 7: DIGUNAKAN_PADA
+        pinSheet.getRange(rowIdx, 8).setValue(info.namaPasien || "-"); // Kolom 8: NAMA_RESPONDEN_SURVEI
+        pinSheet.getRange(rowIdx, 9).setValue(info.jenisLayanan || "-"); // Kolom 9: LAYANAN_SURVEI
+        pinSheet.getRange(rowIdx, 10).setValue(info.ikmScore || ""); // Kolom 10: SKOR_IKM
+        pinSheet.getRange(rowIdx, 11).setValue(info.submissionId || ""); // Kolom 11: SUBMISSION_ID
+        break;
+      }
+    }
+  } catch (err) {
+    Logger.log("Error marking PIN used in sheet: " + err);
   }
 }
 

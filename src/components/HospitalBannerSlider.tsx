@@ -99,7 +99,7 @@ export const BANNER_SLIDES: BannerSlide[] = [
     subtitle: 'Fasilitas rontgen dan radiodiagnostik modern untuk penegakan diagnosis yang presisi',
     category: 'Radiologi',
     tag: 'Pencitraan Medis',
-    imageUrl: 'https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=1600&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1559757175-5700dde675bc?auto=format&fit=crop&w=1600&q=80',
     icon: <Scan className="w-4 h-4" />
   },
   {

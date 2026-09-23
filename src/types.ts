@@ -83,6 +83,9 @@ export interface PatientPinToken {
   pin: string; // 6 digit unik, misal: '849102'
   status: 'active' | 'used' | 'revoked';
   createdAt: string;
+  registeredPatientName?: string; // Nama pasien terdaftar, misal: 'CHATRINA HERLOFINA PANIE'
+  registeredService?: string; // Layanan terdaftar, misal: 'Rawat Inap', 'IGD 24 Jam', 'Poli Gigi'
+  registeredRoom?: string; // Kamar/Ruang, misal: 'Kamar Mawar 102'
   usedAt?: string;
   usedBy?: {
     namaPasien?: string;

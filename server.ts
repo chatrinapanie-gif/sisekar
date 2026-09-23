@@ -23,6 +23,9 @@ interface ServerPatientPin {
   pin: string; // 6 digit unik
   status: 'active' | 'used' | 'revoked';
   createdAt: string;
+  registeredPatientName?: string; // Nama pasien terdaftar, misal: 'CHATRINA HERLOFINA PANIE'
+  registeredService?: string; // Layanan terdaftar, misal: 'Rawat Inap'
+  registeredRoom?: string; // Kamar/Bangsal, misal: 'Kamar Mawar 102'
   usedAt?: string;
   usedBy?: {
     namaPasien?: string;
@@ -448,9 +451,17 @@ app.get('/api/patient-pins', (req: Request, res: Response) => {
 });
 
 // 6b. Generate Batch / Single PIN Akses Pasien
-app.post('/api/patient-pins/generate', (req: Request, res: Response) => {
+app.post('/api/patient-pins/generate', async (req: Request, res: Response) => {
   try {
-    const { count = 1, label = '', notes = '', customPin = '' } = req.body;
+    const { 
+      count = 1, 
+      label = '', 
+      notes = '', 
+      customPin = '',
+      registeredPatientName = '',
+      registeredService = '',
+      registeredRoom = ''
+    } = req.body;
     const existing = loadPatientPins();
     const existingSet = new Set(existing.map(p => p.pin));
     const generated: ServerPatientPin[] = [];
@@ -467,11 +478,23 @@ app.post('/api/patient-pins/generate', (req: Request, res: Response) => {
           pin: cleanCustom,
           status: 'active',
           createdAt: new Date().toISOString(),
-          label: label.trim() || undefined,
+          registeredPatientName: registeredPatientName.trim() || undefined,
+          registeredService: registeredService.trim() || undefined,
+          registeredRoom: registeredRoom.trim() || undefined,
+          label: label.trim() || (registeredPatientName.trim() ? `Pasien: ${registeredPatientName.trim()}` : undefined),
           notes: notes.trim() || undefined,
         };
         existing.unshift(newPin);
         savePatientPins(existing);
+
+        if (RUNTIME_APPS_SCRIPT_URL) {
+          fetch(RUNTIME_APPS_SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'create_pins', pins: [newPin] }),
+          }).catch(e => console.warn('[PIN Sync] Warning pushing custom PIN to Google Sheet:', e));
+        }
+
         return res.json({ success: true, pins: [newPin], count: 1 });
       }
     }
@@ -484,7 +507,12 @@ app.post('/api/patient-pins/generate', (req: Request, res: Response) => {
         pin: pinCode,
         status: 'active',
         createdAt: new Date().toISOString(),
-        label: numToGenerate === 1 && label.trim() ? label.trim() : (label.trim() ? `${label.trim()} (#${i + 1})` : undefined),
+        registeredPatientName: numToGenerate === 1 ? (registeredPatientName.trim() || undefined) : undefined,
+        registeredService: registeredService.trim() || undefined,
+        registeredRoom: registeredRoom.trim() || undefined,
+        label: numToGenerate === 1 && registeredPatientName.trim() 
+          ? `Pasien: ${registeredPatientName.trim()}`
+          : (numToGenerate === 1 && label.trim() ? label.trim() : (label.trim() ? `${label.trim()} (#${i + 1})` : undefined)),
         notes: notes.trim() || undefined,
       };
       generated.push(newPin);
@@ -492,6 +520,14 @@ app.post('/api/patient-pins/generate', (req: Request, res: Response) => {
 
     const updated = [...generated, ...existing];
     savePatientPins(updated);
+
+    if (RUNTIME_APPS_SCRIPT_URL) {
+      fetch(RUNTIME_APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'create_pins', pins: generated }),
+      }).catch(e => console.warn('[PIN Sync] Warning pushing generated PINs to Google Sheet:', e));
+    }
 
     return res.json({
       success: true,
@@ -504,14 +540,71 @@ app.post('/api/patient-pins/generate', (req: Request, res: Response) => {
   }
 });
 
-// 6c. Validasi PIN Pasien saat Membuka Form Survei
-app.post('/api/patient-pins/validate', (req: Request, res: Response) => {
+// 6c. Validasi PIN Pasien saat Membuka Form Survei (Cek Google Sheet Terlebih Dahulu)
+app.post('/api/patient-pins/validate', async (req: Request, res: Response) => {
   const { pin } = req.body;
   if (!pin || typeof pin !== 'string') {
     return res.status(400).json({ valid: false, status: 'invalid_format', message: 'Format PIN tidak valid.' });
   }
 
   const cleanPin = pin.trim().replace(/\D/g, '');
+
+  // 1. Cek Google Sheet via Apps Script jika URL aktif
+  if (RUNTIME_APPS_SCRIPT_URL) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      const sheetCheckUrl = `${RUNTIME_APPS_SCRIPT_URL}${RUNTIME_APPS_SCRIPT_URL.includes('?') ? '&' : '?'}action=validate_pin&pin=${cleanPin}`;
+      
+      const sheetRes = await fetch(sheetCheckUrl, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      if (sheetRes.ok) {
+        const sheetData = await sheetRes.json();
+        if (sheetData && typeof sheetData.valid === 'boolean') {
+          const existing = loadPatientPins();
+          const idx = existing.findIndex(p => p.pin === cleanPin);
+          if (sheetData.valid && sheetData.status === 'active') {
+            if (idx === -1) {
+              existing.unshift({
+                id: 'pin_sheet_' + Date.now(),
+                pin: cleanPin,
+                status: 'active',
+                createdAt: sheetData.createdAt || new Date().toISOString(),
+                registeredPatientName: sheetData.registeredPatientName || sheetData.token?.registeredPatientName,
+                registeredService: sheetData.registeredService || sheetData.token?.registeredService,
+                registeredRoom: sheetData.registeredRoom || sheetData.token?.registeredRoom,
+                label: sheetData.label || 'Dari Google Sheet'
+              });
+              savePatientPins(existing);
+            } else {
+              if (sheetData.registeredPatientName) existing[idx].registeredPatientName = sheetData.registeredPatientName;
+              if (sheetData.registeredService) existing[idx].registeredService = sheetData.registeredService;
+              if (sheetData.registeredRoom) existing[idx].registeredRoom = sheetData.registeredRoom;
+              savePatientPins(existing);
+            }
+          } else if (sheetData.status === 'used' && idx !== -1) {
+            existing[idx].status = 'used';
+            existing[idx].usedAt = sheetData.usedAt || new Date().toISOString();
+            savePatientPins(existing);
+          }
+
+          if (!sheetData.valid) {
+            return res.status(sheetData.status === 'not_found' ? 404 : 403).json(sheetData);
+          }
+          return res.json(sheetData);
+        }
+      }
+    } catch (err) {
+      console.warn('[PIN Validation] Google Apps Script query failed, falling back to local server storage:', err);
+    }
+  }
+
+  // 2. Fallback Database Lokal Server
   const existing = loadPatientPins();
   const found = existing.find(p => p.pin === cleanPin);
 
@@ -560,32 +653,91 @@ app.post('/api/patient-pins/consume', (req: Request, res: Response) => {
   const existing = loadPatientPins();
   const index = existing.findIndex(p => p.pin === cleanPin);
 
-  if (index === -1) {
-    return res.status(404).json({ error: 'PIN tidak ditemukan.' });
+  if (index !== -1) {
+    existing[index] = {
+      ...existing[index],
+      status: 'used',
+      usedAt: new Date().toISOString(),
+      usedBy: {
+        submissionId: submissionId || undefined,
+        namaPasien: namaPasien || 'Pasien Anonim',
+        jenisLayanan: jenisLayanan || 'Pelayanan RSUD Aeramo',
+        ikmScore: typeof ikmScore === 'number' ? ikmScore : undefined,
+      },
+    };
+    savePatientPins(existing);
   }
 
-  existing[index] = {
-    ...existing[index],
-    status: 'used',
-    usedAt: new Date().toISOString(),
-    usedBy: {
-      submissionId: submissionId || undefined,
-      namaPasien: namaPasien || 'Pasien Anonim',
-      jenisLayanan: jenisLayanan || 'Pelayanan RSUD Aeramo',
-      ikmScore: typeof ikmScore === 'number' ? ikmScore : undefined,
-    },
-  };
-
-  savePatientPins(existing);
-
-  return res.json({
-    success: true,
-    token: existing[index],
-    message: 'PIN berhasil dikunci (sudah digunakan).',
-  });
+  return res.json({ success: true, message: 'PIN berhasil ditandai sebagai terpakai.' });
 });
 
-// 6e. Cabut / Hapus PIN Pasien (Oleh Petugas)
+// 6e. Sinkronisasi Dua Arah PIN dengan Google Sheet (Tab PIN_PASIEN)
+app.post('/api/patient-pins/sync-sheet', async (req: Request, res: Response) => {
+  if (!RUNTIME_APPS_SCRIPT_URL) {
+    return res.status(400).json({ error: 'URL Google Apps Script belum dikonfigurasi.' });
+  }
+
+  try {
+    const fetchUrl = `${RUNTIME_APPS_SCRIPT_URL}${RUNTIME_APPS_SCRIPT_URL.includes('?') ? '&' : '?'}action=get_pins`;
+    const response = await fetch(fetchUrl);
+    if (!response.ok) {
+      throw new Error(`Google Apps Script merespons status ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (data && Array.isArray(data.pins)) {
+      const serverPins = loadPatientPins();
+      const serverMap = new Map(serverPins.map(p => [p.pin, p]));
+
+      data.pins.forEach((sheetPin: any) => {
+        const cleanP = String(sheetPin.pin).replace(/\D/g, '');
+        if (cleanP) {
+          const existing = serverMap.get(cleanP);
+          if (existing) {
+            if (sheetPin.status === 'used') {
+              existing.status = 'used';
+              existing.usedAt = sheetPin.usedAt || existing.usedAt;
+              if (sheetPin.usedBy) existing.usedBy = sheetPin.usedBy;
+            }
+            if (sheetPin.registeredPatientName) existing.registeredPatientName = sheetPin.registeredPatientName;
+            if (sheetPin.registeredService) existing.registeredService = sheetPin.registeredService;
+            if (sheetPin.registeredRoom) existing.registeredRoom = sheetPin.registeredRoom;
+          } else {
+            serverMap.set(cleanP, {
+              id: sheetPin.id || 'pin_' + cleanP,
+              pin: cleanP,
+              status: sheetPin.status === 'used' ? 'used' : (sheetPin.status === 'revoked' ? 'revoked' : 'active'),
+              createdAt: sheetPin.createdAt || new Date().toISOString(),
+              registeredPatientName: sheetPin.registeredPatientName,
+              registeredService: sheetPin.registeredService,
+              registeredRoom: sheetPin.registeredRoom,
+              usedAt: sheetPin.usedAt,
+              usedBy: sheetPin.usedBy,
+              label: sheetPin.label || 'Google Sheet',
+              notes: sheetPin.notes
+            });
+          }
+        }
+      });
+
+      const mergedList = Array.from(serverMap.values());
+      savePatientPins(mergedList);
+
+      return res.json({
+        success: true,
+        pins: mergedList,
+        count: mergedList.length,
+        message: `Berhasil mensinkronkan ${data.pins.length} PIN dari Tab PIN_PASIEN di Google Sheet!`
+      });
+    }
+
+    return res.json({ success: true, pins: loadPatientPins(), message: 'Sinkronisasi selesai.' });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Gagal mensinkronkan PIN dengan Google Sheet: ' + err?.message });
+  }
+});
+
+// 6f. Cabut / Hapus PIN Pasien (Oleh Petugas)
 app.post('/api/patient-pins/revoke', checkAdminAuth, (req: Request, res: Response) => {
   const { id, pin } = req.body;
   const existing = loadPatientPins();

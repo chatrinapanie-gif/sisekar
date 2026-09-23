@@ -43,7 +43,8 @@ import {
   Pekerjaan, 
   SkalaKepuasan, 
   SurveySubmission, 
-  AppConfig 
+  AppConfig,
+  PatientPinToken
 } from '../types';
 import { sendSurveyToGoogleSheet, saveOneTimeLock, consumePatientPin } from '../services/sheetsService';
 
@@ -53,7 +54,21 @@ interface SurveyFormProps {
   onSubmissionSuccess: (submission: SurveySubmission) => void;
   onOpenGuide: () => void;
   patientPin?: string;
+  patientPinToken?: PatientPinToken;
 }
+
+const mapServiceTextToKey = (text?: string): ServiceKey => {
+  if (!text) return 'rawat_inap';
+  const lower = text.toLowerCase();
+  if (lower.includes('jalan') || lower.includes('poli')) return 'rawat_jalan';
+  if (lower.includes('igd') || lower.includes('darurat')) return 'igd';
+  if (lower.includes('vk') || lower.includes('bidan') || lower.includes('kandungan') || lower.includes('kia')) return 'kebidanan';
+  if (lower.includes('farmasi') || lower.includes('obat') || lower.includes('apotek')) return 'farmasi';
+  if (lower.includes('radiologi') || lower.includes('rontgen')) return 'radiologi';
+  if (lower.includes('lab')) return 'laboratorium';
+  if (lower.includes('inap') || lower.includes('bangsal') || lower.includes('kamar')) return 'rawat_inap';
+  return 'rawat_inap';
+};
 
 const getOptionColors = (val: 1 | 2 | 3 | 4, isSelected: boolean) => {
   switch (val) {
@@ -102,20 +117,53 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
   onSubmissionSuccess,
   onOpenGuide,
   patientPin,
+  patientPinToken,
 }) => {
   // Profil Responden (Gambar 2)
   const todayStr = new Date().toISOString().slice(0, 10);
   const [tanggalSurvei, setTanggalSurvei] = useState<string>(todayStr);
   const [jamSurvei, setJamSurvei] = useState<JamSurvei>('08.00 – 14.00 WITA');
-  const [namaPasien, setNamaPasien] = useState<string>('');
+  const [namaPasien, setNamaPasien] = useState<string>(patientPinToken?.registeredPatientName || '');
   const [jenisKelamin, setJenisKelamin] = useState<JenisKelamin>('L');
   const [pendidikan, setPendidikan] = useState<Pendidikan>('SMA');
   const [usia, setUsia] = useState<string>('32');
   const [pekerjaan, setPekerjaan] = useState<Pekerjaan>('SWASTA');
   const [pekerjaanLainnya, setPekerjaanLainnya] = useState<string>('');
-  const [selectedServiceKey, setSelectedServiceKey] = useState<ServiceKey>('rawat_inap');
+  const [selectedServiceKey, setSelectedServiceKey] = useState<ServiceKey>(() => {
+    return patientPinToken?.registeredService 
+      ? mapServiceTextToKey(patientPinToken.registeredService)
+      : 'rawat_inap';
+  });
   const [customLayananText, setCustomLayananText] = useState<string>('');
-  const [jenisLayanan, setJenisLayanan] = useState<string>('Rawat Inap');
+  const [jenisLayanan, setJenisLayanan] = useState<string>(patientPinToken?.registeredService || 'Rawat Inap');
+
+  // Modal Pop-Up Setelah Pengisian Berhasil
+  const [submittedModalData, setSubmittedModalData] = useState<SurveySubmission | null>(null);
+
+  // Otomatis isi data pasien dari token PIN jika ada pembaruan
+  useEffect(() => {
+    if (patientPinToken) {
+      if (patientPinToken.registeredPatientName) {
+        setNamaPasien(patientPinToken.registeredPatientName);
+      }
+      if (patientPinToken.registeredService) {
+        const matchedKey = mapServiceTextToKey(patientPinToken.registeredService);
+        setSelectedServiceKey(matchedKey);
+        setJenisLayanan(patientPinToken.registeredService);
+        const newSecs = getQuestionsForService(matchedKey);
+        const newQs = newSecs.flatMap(s => s.questions);
+        setAnswers(prev => {
+          const updated = { ...prev };
+          newQs.forEach((q, idx) => {
+            if (updated[q.id] === undefined) {
+              updated[q.id] = (idx % 2 === 0 ? 4 : 3) as SkalaKepuasan;
+            }
+          });
+          return updated;
+        });
+      }
+    }
+  }, [patientPinToken]);
 
   // Dapatkan metadata layanan yang sedang aktif (judul, deskripsi)
   const activeServiceOption = useMemo(() => {
@@ -317,7 +365,15 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
     saveOneTimeLock(submission);
 
     setIsSubmitting(false);
-    onSubmissionSuccess(submission);
+    // Tampilkan Modal Konfirmasi Hasil Pengisian Survei
+    setSubmittedModalData(submission);
+  };
+
+  const handleFinishAndLock = () => {
+    if (submittedModalData) {
+      onSubmissionSuccess(submittedModalData);
+      setSubmittedModalData(null);
+    }
   };
 
   const handlePrint = () => {
@@ -389,11 +445,14 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
       
       {/* Top Utility Bar (Panduan Pengisian & Cetak Fisik) */}
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4 print:hidden">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {patientPin ? (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-900 text-xs font-bold shadow-xs">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
-              <span>PIN Akses: <strong className="font-mono">{patientPin}</strong> (1x Pakai)</span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-bold shadow-2xs">
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <span>PIN Pasien: <strong className="font-mono bg-emerald-200/70 px-1.5 py-0.5 rounded text-emerald-950">{patientPin}</strong></span>
+              {patientPinToken?.registeredPatientName && (
+                <span className="text-emerald-700 ml-1 font-semibold">• Pasien: {patientPinToken.registeredPatientName}</span>
+              )}
             </span>
           ) : (
             <span className="text-xs text-slate-500 font-medium flex items-center gap-1.5">
@@ -1248,7 +1307,103 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
 
       </form>
 
-      
+      {/* MODAL POP-UP KONFIRMASI SETELAH SURVEI DIINPUT / DISUBMIT */}
+      {submittedModalData && (
+        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-5 shadow-2xl border border-slate-200 text-center animate-in fade-in zoom-in-95 duration-200 relative overflow-hidden">
+            
+            {/* Latar Belakang Mawar Cantik */}
+            <div className="absolute -top-12 -right-12 opacity-[0.08] pointer-events-none transform -rotate-12">
+              <RoseWatermarkIcon className="w-56 h-56" />
+            </div>
+
+            {/* Header Icon Status Berhasil */}
+            <div className="relative z-10 flex flex-col items-center">
+              <div className="w-16 h-16 rounded-2xl bg-emerald-100 border-2 border-emerald-300 text-emerald-700 flex items-center justify-center shadow-lg mb-3 ring-4 ring-emerald-50">
+                <CheckCircle2 className="w-9 h-9 text-emerald-600 animate-bounce" />
+              </div>
+
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-800 text-[11px] font-bold uppercase tracking-wider mb-2">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Survei Berhasil Dikirim &amp; Disimpan</span>
+              </div>
+
+              <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+                Terima Kasih atas Penilaian Anda!
+              </h2>
+              <p className="text-xs text-slate-500 mt-1 max-w-sm">
+                RSUD Aeramo • Pemerintah Kabupaten Nagekeo
+              </p>
+            </div>
+
+            {/* Kartu Ringkasan Hasil Pengisian Pasien */}
+            <div className="relative z-10 bg-gradient-to-br from-slate-50 via-blue-50/50 to-emerald-50/50 p-4 sm:p-5 rounded-2xl border border-slate-200/90 text-left space-y-2.5 text-xs">
+              
+              <div className="flex justify-between items-center border-b border-slate-200/70 pb-2">
+                <span className="text-slate-500 font-medium">Nomor Registrasi Responden:</span>
+                <span className="font-mono font-bold text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-200 shadow-2xs">
+                  {submittedModalData.id}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500 font-medium">Nama Pasien:</span>
+                <span className="font-bold text-slate-900 uppercase">
+                  {submittedModalData.namaPasien || '(Anonim)'}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500 font-medium">Unit Layanan Dinilai:</span>
+                <span className="font-semibold text-slate-800">
+                  {submittedModalData.jenisLayanan}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center pt-2 border-t border-slate-200/70">
+                <span className="text-slate-600 font-bold">Indeks Kepuasan (IKM):</span>
+                <span className="font-black text-blue-900 bg-blue-100/90 px-2.5 py-1 rounded-lg border border-blue-200">
+                  {submittedModalData.ikmScore}% • {submittedModalData.mutuLayanan}
+                </span>
+              </div>
+
+              {submittedModalData.patientPin && (
+                <div className="flex justify-between items-center text-[11px] text-emerald-800 bg-emerald-50/80 p-2 rounded-lg border border-emerald-200">
+                  <span className="font-medium">Status PIN Pasien:</span>
+                  <span className="font-bold">✓ Terpakai &amp; Terkunci Otomatis</span>
+                </div>
+              )}
+            </div>
+
+            {/* Pesan Apresiasi Direksi RSUD Aeramo */}
+            <p className="relative z-10 text-xs text-slate-600 leading-relaxed max-w-md mx-auto">
+              Setiap kritik, saran, dan nilai yang Anda berikan menjadi amanah berharga bagi perbaikan sarana, keramahan petugas, dan mutu pelayanan kesehatan RSUD Aeramo ke depannya.
+            </p>
+
+            {/* Tombol Aksi */}
+            <div className="relative z-10 pt-2 flex flex-col sm:flex-row items-center gap-2.5">
+              <button
+                type="button"
+                onClick={handlePrint}
+                className="w-full sm:w-auto px-4 py-3 rounded-2xl border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Cetak Bukti</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleFinishAndLock}
+                className="w-full flex-1 py-3 px-6 rounded-2xl bg-gradient-to-r from-blue-700 via-blue-800 to-indigo-900 hover:from-blue-800 hover:to-indigo-950 active:scale-98 text-white font-bold text-xs sm:text-sm shadow-lg shadow-blue-900/20 flex items-center justify-center gap-2 transition"
+              >
+                <span>Selesai &amp; Kunci Akses Formulir</span>
+                <CheckCircle2 className="w-4 h-4" />
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
 
     </div>
   );

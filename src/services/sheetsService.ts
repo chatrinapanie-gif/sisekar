@@ -57,9 +57,23 @@ export function saveLocalPatientPins(pins: PatientPinToken[]): void {
 }
 
 /**
- * Mengambil daftar seluruh PIN Pasien dari server atau fallback lokal
+ * Mengambil daftar seluruh PIN Pasien dari server atau sync dari Google Sheet
  */
 export async function fetchPatientPins(): Promise<PatientPinToken[]> {
+  // 1. Coba ambil dari endpoint sinkronisasi server
+  try {
+    const res = await fetch('/api/patient-pins/sync-sheet', { method: 'POST' });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && Array.isArray(data.pins)) {
+        saveLocalPatientPins(data.pins);
+        return data.pins;
+      }
+    }
+  } catch {
+    // Ignore and try basic endpoint
+  }
+
   try {
     const res = await fetch('/api/patient-pins');
     if (res.ok) {
@@ -72,11 +86,76 @@ export async function fetchPatientPins(): Promise<PatientPinToken[]> {
   } catch (err) {
     console.warn('Server fetch patient pins error, fallback to local:', err);
   }
+
+  // 2. Jika offline/server error tapi ada appsScriptUrl, coba panggil langsung ke Apps Script
+  const cfg = loadAppConfig();
+  if (cfg.appsScriptUrl) {
+    try {
+      const directUrl = `${cfg.appsScriptUrl}${cfg.appsScriptUrl.includes('?') ? '&' : '?'}action=get_pins`;
+      const directRes = await fetch(directUrl);
+      if (directRes.ok) {
+        const directData = await directRes.json();
+        if (directData && Array.isArray(directData.pins)) {
+          saveLocalPatientPins(directData.pins);
+          return directData.pins;
+        }
+      }
+    } catch (e) {
+      console.warn('Direct Apps Script get_pins error:', e);
+    }
+  }
+
   return loadLocalPatientPins();
 }
 
 /**
- * Validasi 6-digit PIN Pasien (Server-Side + Local Offline Fallback)
+ * Sinkronisasi Manual PIN dari/ke Google Sheet (Tab PIN_PASIEN)
+ */
+export async function syncPinsWithGoogleSheet(): Promise<{ success: boolean; count: number; message: string }> {
+  try {
+    const res = await fetch('/api/patient-pins/sync-sheet', { method: 'POST' });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && Array.isArray(data.pins)) {
+        saveLocalPatientPins(data.pins);
+        return {
+          success: true,
+          count: data.pins.length,
+          message: data.message || `Berhasil mensinkronkan ${data.pins.length} PIN dengan Google Sheet!`
+        };
+      }
+    }
+  } catch (err: any) {
+    console.warn('Sync sheet via server failed:', err);
+  }
+
+  // Fallback direct Apps Script fetch
+  const cfg = loadAppConfig();
+  if (cfg.appsScriptUrl) {
+    try {
+      const directUrl = `${cfg.appsScriptUrl}${cfg.appsScriptUrl.includes('?') ? '&' : '?'}action=get_pins`;
+      const directRes = await fetch(directUrl);
+      if (directRes.ok) {
+        const directData = await directRes.json();
+        if (directData && Array.isArray(directData.pins)) {
+          saveLocalPatientPins(directData.pins);
+          return {
+            success: true,
+            count: directData.pins.length,
+            message: `Berhasil mengambil ${directData.pins.length} PIN langsung dari Google Sheet!`
+          };
+        }
+      }
+    } catch (err: any) {
+      return { success: false, count: 0, message: 'Gagal terhubung ke Google Sheet: ' + err.message };
+    }
+  }
+
+  return { success: false, count: 0, message: 'Gagal melakukan sinkronisasi dengan Google Sheet.' };
+}
+
+/**
+ * Validasi 6-digit PIN Pasien (Google Sheet Real-Time + Server-Side + Local Offline Fallback)
  */
 export async function validatePatientPin(pin: string): Promise<{
   valid: boolean;
@@ -93,7 +172,7 @@ export async function validatePatientPin(pin: string): Promise<{
     };
   }
 
-  // Coba validasi via Server
+  // 1. Coba validasi via Server (Server akan query Google Sheet terlebih dahulu)
   try {
     const res = await fetch('/api/patient-pins/validate', {
       method: 'POST',
@@ -103,11 +182,21 @@ export async function validatePatientPin(pin: string): Promise<{
 
     const data = await res.json();
     if (res.ok && data.valid) {
+      const token: PatientPinToken = data.token || {
+        id: 'pin_' + cleanPin,
+        pin: cleanPin,
+        status: 'active',
+        registeredPatientName: data.registeredPatientName,
+        registeredService: data.registeredService,
+        registeredRoom: data.registeredRoom,
+        createdAt: data.createdAt || new Date().toISOString(),
+        label: data.label
+      };
       return {
         valid: true,
         status: 'active',
-        token: data.token,
-        message: data.message || 'PIN valid.',
+        token,
+        message: data.message || 'PIN valid dari Google Sheet RSUD Aeramo.',
       };
     } else if (data.status) {
       return {
@@ -118,17 +207,58 @@ export async function validatePatientPin(pin: string): Promise<{
       };
     }
   } catch (err) {
-    console.warn('Network error while validating PIN on server, using local fallback:', err);
+    console.warn('Network error while validating PIN on server, attempting direct Apps Script check:', err);
   }
 
-  // Fallback Local Storage jika server offline
+  // 2. Direct Apps Script check jika server offline tapi user terkoneksi internet
+  const cfg = loadAppConfig();
+  if (cfg.appsScriptUrl) {
+    try {
+      const directUrl = `${cfg.appsScriptUrl}${cfg.appsScriptUrl.includes('?') ? '&' : '?'}action=validate_pin&pin=${cleanPin}`;
+      const directRes = await fetch(directUrl);
+      if (directRes.ok) {
+        const directData = await directRes.json();
+        if (directData && typeof directData.valid === 'boolean') {
+          if (directData.valid) {
+            const token: PatientPinToken = directData.token || {
+              id: 'pin_' + cleanPin,
+              pin: cleanPin,
+              status: 'active',
+              registeredPatientName: directData.registeredPatientName,
+              registeredService: directData.registeredService,
+              registeredRoom: directData.registeredRoom,
+              createdAt: directData.createdAt || new Date().toISOString(),
+              label: directData.label
+            };
+            return {
+              valid: true,
+              status: 'active',
+              token,
+              message: directData.message || 'PIN valid dari Google Sheet!'
+            };
+          } else {
+            return {
+              valid: false,
+              status: directData.status || 'not_found',
+              token: directData.token,
+              message: directData.message || 'PIN tidak dapat digunakan.'
+            };
+          }
+        }
+      }
+    } catch (directErr) {
+      console.warn('Direct Apps Script validation failed:', directErr);
+    }
+  }
+
+  // 3. Fallback Local Storage jika seluruh koneksi internet/server offline
   const localList = loadLocalPatientPins();
   const found = localList.find(p => p.pin === cleanPin);
   if (!found) {
     return {
       valid: false,
       status: 'not_found',
-      message: 'PIN tidak ditemukan. Pastikan nomor PIN benar sesuai yang diberikan petugas RSUD Aeramo.',
+      message: 'PIN tidak ditemukan. Pastikan nomor PIN benar sesuai yang diberikan petugas RSUD Aeramo atau pastikan koneksi internet aktif.',
     };
   }
 
@@ -166,6 +296,9 @@ export async function generatePatientPins(params: {
   label?: string;
   notes?: string;
   customPin?: string;
+  registeredPatientName?: string;
+  registeredService?: string;
+  registeredRoom?: string;
   adminToken?: string;
 }): Promise<PatientPinToken[]> {
   try {
@@ -208,7 +341,10 @@ export async function generatePatientPins(params: {
       pin: pinCode,
       status: 'active',
       createdAt: new Date().toISOString(),
-      label: params.label || undefined,
+      registeredPatientName: num === 1 ? (params.registeredPatientName?.trim() || undefined) : undefined,
+      registeredService: params.registeredService?.trim() || undefined,
+      registeredRoom: params.registeredRoom?.trim() || undefined,
+      label: num === 1 && params.registeredPatientName ? `Pasien: ${params.registeredPatientName.trim()}` : (params.label || undefined),
       notes: params.notes || undefined,
     });
   }

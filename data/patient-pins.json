@@ -1,5 +1,15 @@
 [
   {
+    "id": "pin_896418",
+    "pin": "896418",
+    "status": "active",
+    "createdAt": "2026-09-23T14:20:00.000Z",
+    "registeredPatientName": "Pasien RSUD Aeramo",
+    "registeredService": "Rawat Inap",
+    "registeredRoom": "-",
+    "label": "Pasien Terdaftar"
+  },
+  {
     "id": "pin_255966",
     "pin": "255966",
     "status": "active",

@@ -8,24 +8,21 @@
 
 export const GOOGLE_APPS_SCRIPT_CODE = `/**
  * ==============================================================================
- * KUESIONER SURVEI KEPUASAN PASIEN & DASHBOARD ADMIN EKSEKUTIF
+ * KUESIONER SURVEI KEPUASAN PASIEN & BACKEND API SINKRONISASI PIN
  * RUMAH SAKIT UMUM DAERAH (RSUD) AERAMO - KABUPATEN NAGEKEO
- * FILE: Code.gs (Google Apps Script Backend + Auto Weekly Archiver)
+ * FILE TUNGGAL: Code.gs (Hanya butuh 1 file ini saja di Apps Script!)
  * ==============================================================================
- * Petunjuk Pemasangan di Google Apps Script:
+ * Petunjuk Pemasangan Cepat:
  * 1. Buka Google Sheet Anda di Google Drive.
  * 2. Klik menu "Ekstensi" (Extensions) > "Apps Script".
- * 3. Di file default "Code.gs", hapus isinya dan tempel seluruh kode ini.
- * 4. Buat file HTML baru:
- *    - Klik tanda tambah (+) di samping Files > pilih "HTML".
- *    - Beri nama: index (otomatis menjadi index.html).
- *    - Tempelkan kode dari tab "index.html (Dashboard)" ke file tersebut.
+ * 3. Jika ada file "index.html" lama, Anda boleh MENGHAPUSNYA (Hanya butuh Code.gs).
+ * 4. Di file "Code.gs", hapus seluruh isinya dan tempel kode ini.
  * 5. Klik ikon Save (Disket).
- * 6. Klik tombol "Terapkan" (Deploy) > "Penerapan baru" (New deployment):
- *    - Jenis: "Aplikasi web" (Web app).
- *    - Jalankan sebagai: "Saya" (Me / email Anda).
- *    - Siapa yang memiliki akses: "Siapa saja" (Anyone)  <--- WAJIB!
- * 7. Klik "Deploy", izinkan otorisasi akun Google.
+ * 6. Klik tombol "Terapkan" (Deploy) > "Kelola Penerapan" (Manage Deployments):
+ *    - Klik ikon Pensil (Edit).
+ *    - Versi: Pilih "Versi baru" (New version).
+ *    - Siapa yang memiliki akses: Pilih "Siapa saja" (Anyone)  <--- WAJIB!
+ *    - Klik "Deploy".
  * ==============================================================================
  */
 
@@ -432,17 +429,33 @@ function doGet(e) {
       .setMimeType(ContentService.MimeType.JSON);
   }
 
+  // 5. Tampilan Halaman Dashboard Admin Eksekutif (Web App)
   try {
-    const template = HtmlService.createTemplateFromFile("index");
-    return template.evaluate()
+    return HtmlService.createHtmlOutputFromFile("index")
       .setTitle("Dashboard Admin & Penerbitan PIN - RSUD Aeramo")
       .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   } catch (err) {
-    return ContentService.createTextOutput(
-      "Error memuat template index.html: " + err.message +
-      ".\n\nLangkah: Buka Google Apps Script > Klik tanda '+' di samping Files > Pilih 'HTML' > Beri nama 'index' > Tempelkan kode file index.html yang disediakan."
-    );
+    // Fallback cerdas jika file index.html belum dibuat / dihapus di Apps Script
+    const fallbackHtml = '<!DOCTYPE html>' +
+      '<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">' +
+      '<title>Dashboard Admin - RSUD Aeramo</title>' +
+      '<style>body{font-family:system-ui,-apple-system,sans-serif;background:#0f172a;color:#f8fafc;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:20px;}' +
+      '.card{background:#1e293b;border:1px solid #334155;border-radius:24px;padding:32px;max-width:540px;text-align:center;box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);}' +
+      '.badge{background:#065f46;color:#34d399;font-weight:bold;font-size:12px;padding:6px 14px;border-radius:9999px;display:inline-block;margin-bottom:16px;}' +
+      'h1{font-size:20px;margin:0 0 8px 0;color:#38bdf8;}p{font-size:13px;color:#94a3b8;line-height:1.6;margin:0 0 20px 0;}' +
+      '.box{background:#0f172a;border:1px solid #334155;border-radius:16px;padding:16px;font-size:12px;text-align:left;color:#cbd5e1;line-height:1.7;}' +
+      '</style></head><body><div class="card">' +
+      '<div class="badge">&#10003; SISTEM SINKRONISASI ONLINE</div>' +
+      '<h1>Backend Google Apps Script RSUD Aeramo</h1>' +
+      '<p>Sistem API &amp; Sinkronisasi PIN Pasien aktif. Untuk mengaktifkan tampilan Dashboard Visual Eksekutif penuh di sini:</p>' +
+      '<div class="box"><b>Langkah Pasang File index.html (Opsional untuk Dashboard):</b><br>1. Di editor Apps Script, klik tanda <b>+</b> di samping Files &gt; pilih <b>HTML</b>.<br>2. Beri nama: <b>index</b> (otomatis menjadi <code>index.html</code>).<br>3. Buka portal survei &gt; tab Panduan Script &gt; salin kode <b>index.html</b> &gt; paste ke file index.<br>4. Deploy ulang sebagai Versi Baru.</div>' +
+      '</div></body></html>';
+
+    return HtmlService.createHtmlOutput(fallbackHtml)
+      .setTitle("Dashboard Admin - RSUD Aeramo")
+      .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
 }
 

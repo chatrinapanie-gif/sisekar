@@ -274,33 +274,17 @@ function doGet(e) {
   }
 
   // 2b. Buat / Tambah PIN Pasien Baru Langsung dari Web Dashboard (Tanpa Perlu Buka Sheet / onOpen)
-  if (action === "create_pin" || action === "add_pin") {
-    const rawPin = String(params.pin || "").trim().replace(/\D/g, "");
-    if (rawPin) {
-      const ss = SpreadsheetApp.getActiveSpreadsheet();
-      const pinSheet = ensurePinSheetExists(ss);
-      const nowStr = Utilities.formatDate(new Date(), "Asia/Makassar", "yyyy-MM-dd HH:mm:ss 'WITA'");
-      const newRow = [
-        "'" + rawPin,
-        "AKTIF",
-        params.name || params.namaPasien || "",
-        params.service || params.layanan || "Rawat Inap",
-        params.room || params.kamar || "",
-        nowStr,
-        "",
-        "",
-        "",
-        "",
-        "",
-        params.notes || "Dibuat dari Dashboard Web SISEKAR"
-      ];
-      pinSheet.appendRow(newRow);
-      return ContentService.createTextOutput(JSON.stringify({
-        success: true,
-        message: "PIN " + rawPin + " berhasil dicatat ke Google Sheet!",
-        pin: rawPin
-      })).setMimeType(ContentService.MimeType.JSON);
-    }
+  if (action === "create_pin" || action === "add_pin" || action === "generate_pin") {
+    const res = generatePinFromDashboard({
+      count: Number(params.count) || 1,
+      customPin: params.pin || params.customPin || "",
+      registeredPatientName: params.name || params.namaPasien || params.registeredPatientName || "",
+      registeredService: params.service || params.layanan || params.registeredService || "Rawat Inap",
+      registeredRoom: params.room || params.kamar || params.registeredRoom || "",
+      notes: params.notes || "Diterbitkan dari Dashboard Web SISEKAR"
+    });
+    return ContentService.createTextOutput(JSON.stringify(res))
+      .setMimeType(ContentService.MimeType.JSON);
   }
 
   // 3. Ping Uji Koneksi
@@ -342,11 +326,19 @@ function doGet(e) {
 
 function generatePinFromDashboard(params) {
   try {
+    if (typeof params === "string") {
+      try { params = JSON.parse(params); } catch(e) {}
+    }
     params = params || {};
     const count = Math.min(Math.max(1, Number(params.count) || 1), 50);
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ensurePinSheetExists(ss);
     
+    // Pastikan sheet memiliki minimal 12 kolom
+    if (sheet.getMaxColumns() < 12) {
+      sheet.insertColumnsAfter(sheet.getMaxColumns(), 12 - sheet.getMaxColumns());
+    }
+
     const existingValues = sheet.getLastRow() > 1 
       ? sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues().map(function(r) { return String(r[0]).replace(/\D/g, ""); })
       : [];
@@ -380,8 +372,10 @@ function generatePinFromDashboard(params) {
     } else {
       for (let i = 0; i < count; i++) {
         let pinCode = String(Math.floor(100000 + Math.random() * 900000));
-        while (existingSet[pinCode]) {
+        let attempts = 0;
+        while (existingSet[pinCode] && attempts < 100) {
           pinCode = String(Math.floor(100000 + Math.random() * 900000));
+          attempts++;
         }
         existingSet[pinCode] = true;
         const pName = count === 1 ? (params.registeredPatientName || "") : "";
@@ -407,9 +401,13 @@ function generatePinFromDashboard(params) {
       }
     }
 
-    if (rows.length > 0) {
-      sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, 12).setValues(rows);
+    // Gunakan appendRow untuk setiap baris agar aman dari pembatasan dimensi sheet
+    for (let r = 0; r < rows.length; r++) {
+      sheet.appendRow(rows[r]);
     }
+
+    // Tulis seketika ke Google Sheet tanpa menunggu antrean background
+    SpreadsheetApp.flush();
 
     return {
       success: true,
@@ -417,7 +415,8 @@ function generatePinFromDashboard(params) {
       pins: generatedPins
     };
   } catch (err) {
-    return { success: false, message: "Gagal membuat PIN: " + err.message };
+    Logger.log("Error generatePinFromDashboard: " + err);
+    return { success: false, message: "Gagal membuat PIN: " + (err.message || String(err)) };
   }
 }
 
@@ -642,6 +641,14 @@ function doPost(e) {
         success: true,
         message: "PIN " + cleanPin + " berhasil ditandai sebagai TERPAKAI di Google Sheet."
       })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // B1. Terbitkan PIN dari Dashboard Web via POST
+    if (action === "create_pin" || action === "generate_pin" || action === "generatePinFromDashboard") {
+      lock.releaseLock();
+      const res = generatePinFromDashboard(data);
+      return ContentService.createTextOutput(JSON.stringify(res))
+        .setMimeType(ContentService.MimeType.JSON);
     }
 
     // B. Tambahkan PIN Baru ke Sheet dari Admin Portal

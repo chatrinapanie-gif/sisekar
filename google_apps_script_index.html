@@ -1515,10 +1515,23 @@
               renderPinTable();
               var activeCount = allPins.filter(function(p) { return p.status === 'active'; }).length;
               document.getElementById('badgeActivePins').innerText = activeCount + ' Aktif';
+              syncPinsToCloud(allPins);
             }
           })
           .getAllPinsFromSheet();
       }
+    }
+
+    // Sinkronisasi Data PIN dari Google Sheet ke Cloud SISEKAR
+    function syncPinsToCloud(pins) {
+      if (!patientAppBaseUrl || !Array.isArray(pins) || pins.length === 0) return;
+      fetch(patientAppBaseUrl + '/api/patient-pins/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pins: pins })
+      }).catch(function(err) {
+        console.warn('Sync PINs to cloud background notice:', err);
+      });
     }
 
     // Render Tabel PIN
@@ -1574,57 +1587,151 @@
 
     // Tangani Submit Buat PIN Pasien
     function handleFormGeneratePin(e) {
-      e.preventDefault();
+      if (e && e.preventDefault) e.preventDefault();
       var btn = document.getElementById('btnSubmitGenerate');
+      if (!btn) return;
       btn.disabled = true;
       btn.innerText = "Menerbitkan PIN...";
 
+      var patientName = (document.getElementById('inputPatientName').value || '').trim();
+      var serviceName = document.getElementById('inputService').value || 'Rawat Inap';
+      var roomName = (document.getElementById('inputRoom').value || '').trim();
+      var countNum = Number(document.getElementById('inputCount').value) || 1;
+      var customPinVal = (document.getElementById('inputCustomPin').value || '').trim();
+
       var payload = {
-        registeredPatientName: document.getElementById('inputPatientName').value.trim(),
-        registeredService: document.getElementById('inputService').value,
-        registeredRoom: document.getElementById('inputRoom').value.trim(),
-        count: Number(document.getElementById('inputCount').value) || 1,
-        customPin: document.getElementById('inputCustomPin').value.trim()
+        registeredPatientName: patientName,
+        registeredService: serviceName,
+        registeredRoom: roomName,
+        count: countNum,
+        customPin: customPinVal
       };
 
+      var isFinished = false;
+
+      function finishSubmit(success, msg, pins) {
+        if (isFinished) return;
+        isFinished = true;
+        btn.disabled = false;
+        btn.innerText = "Terbitkan PIN Pasien";
+        if (success) {
+          showToast(msg || "PIN Pasien berhasil diterbitkan ke tab PIN_PASIEN!");
+          document.getElementById('inputPatientName').value = '';
+          document.getElementById('inputRoom').value = '';
+          document.getElementById('inputCustomPin').value = '';
+          if (pins && pins.length > 0) showNewlyGeneratedCard(pins[0]);
+          loadPinsFromSheet();
+        } else {
+          showToast(msg || "Gagal membuat PIN. Silakan deploy ulang Google Apps Script.", true);
+        }
+      }
+
+      // Timer Timeout Failsafe (Maksimal 6 Detik agar tombol tidak macet di loading)
+      var timeoutFailsafe = setTimeout(function() {
+        if (!isFinished) {
+          console.warn("Waktu tunggu google.script.run habis, beralih ke jalur fallback HTTP...");
+          fallbackGenerateViaHttp(payload, finishSubmit);
+        }
+      }, 5500);
+
+      // 1. Eksekusi Utama melalui google.script.run
       if (typeof google !== 'undefined' && google.script && google.script.run) {
-        google.script.run
-          .withSuccessHandler(function(res) {
-            btn.disabled = false;
-            btn.innerText = "Terbitkan PIN Pasien";
-            if (res && res.success) {
-              showToast(res.message || "PIN berhasil dibuat!");
-              document.getElementById('inputPatientName').value = '';
-              document.getElementById('inputRoom').value = '';
-              document.getElementById('inputCustomPin').value = '';
-              if (res.pins && res.pins.length > 0) showNewlyGeneratedCard(res.pins[0]);
-              loadPinsFromSheet();
-            } else {
-              showToast(res.message || "Gagal membuat PIN.", true);
-            }
-          })
-          .withFailureHandler(function(err) {
-            btn.disabled = false;
-            btn.innerText = "Terbitkan PIN Pasien";
-            showToast("Error: " + err, true);
-          })
-          .generatePinFromDashboard(payload);
+        try {
+          google.script.run
+            .withSuccessHandler(function(res) {
+              clearTimeout(timeoutFailsafe);
+              if (res && res.success) {
+                finishSubmit(true, res.message, res.pins);
+              } else {
+                // Jika respons gagal, coba jalur fallback HTTP
+                fallbackGenerateViaHttp(payload, finishSubmit);
+              }
+            })
+            .withFailureHandler(function(err) {
+              clearTimeout(timeoutFailsafe);
+              console.warn("google.script.run gagal:", err);
+              // Jalur cadangan otomatis jika function belum ter-deploy di Code.gs
+              fallbackGenerateViaHttp(payload, finishSubmit);
+            })
+            .generatePinFromDashboard(payload);
+        } catch (callErr) {
+          clearTimeout(timeoutFailsafe);
+          console.warn("Exception saat panggil google.script.run:", callErr);
+          fallbackGenerateViaHttp(payload, finishSubmit);
+        }
+      } else {
+        clearTimeout(timeoutFailsafe);
+        fallbackGenerateViaHttp(payload, finishSubmit);
+      }
+    }
+
+    // Jalur Cadangan (Fallback) jika google.script.run macet atau belum di-Deploy versi baru
+    function fallbackGenerateViaHttp(payload, callback) {
+      if (patientAppBaseUrl) {
+        fetch(patientAppBaseUrl + '/api/patient-pins/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          if (data && data.success) {
+            callback(true, "PIN berhasil diterbitkan & disinkronkan ke Google Sheet!", data.pins);
+          } else {
+            callback(false, (data && data.message) || "Gagal menerbitkan PIN. Pastikan Google Apps Script di-deploy ke versi terbaru.");
+          }
+        })
+        .catch(function(err) {
+          callback(false, "Proses selesai dengan kendala jaringan. Pastikan klik 'Deploy > New deployment' di Google Apps Script.");
+        });
+      } else {
+        callback(false, "Gagal terhubung. Pastikan kode Code.gs sudah diperbarui dan di-Deploy ulang.");
       }
     }
 
     // Tombol Cepat Buat PIN (+1, +5, +10)
     function quickGeneratePins(count) {
       showToast("Menerbitkan " + count + " PIN cepat ke sheet...", false);
+      var payload = { count: count, registeredService: "Rawat Inap (Kamar Mawar)" };
+      
+      var isDone = false;
+      var timer = setTimeout(function() {
+        if (!isDone) {
+          isDone = true;
+          loadPinsFromSheet();
+        }
+      }, 5500);
+
       if (typeof google !== 'undefined' && google.script && google.script.run) {
         google.script.run
           .withSuccessHandler(function(res) {
+            clearTimeout(timer);
+            isDone = true;
             if (res && res.success) {
               showToast(res.message);
               if (res.pins && res.pins.length > 0) showNewlyGeneratedCard(res.pins[0]);
               loadPinsFromSheet();
+            } else {
+              fallbackGenerateViaHttp(payload, function(s, m, p) {
+                if (s) { showToast(m); if (p && p.length > 0) showNewlyGeneratedCard(p[0]); loadPinsFromSheet(); }
+                else { showToast(m, true); }
+              });
             }
           })
-          .generatePinFromDashboard({ count: count, registeredService: "Rawat Inap (Kamar Mawar)" });
+          .withFailureHandler(function(err) {
+            clearTimeout(timer);
+            isDone = true;
+            fallbackGenerateViaHttp(payload, function(s, m, p) {
+              if (s) { showToast(m); if (p && p.length > 0) showNewlyGeneratedCard(p[0]); loadPinsFromSheet(); }
+              else { showToast("Gagal menerbitkan PIN: " + err, true); }
+            });
+          })
+          .generatePinFromDashboard(payload);
+      } else {
+        fallbackGenerateViaHttp(payload, function(s, m, p) {
+          if (s) { showToast(m); if (p && p.length > 0) showNewlyGeneratedCard(p[0]); loadPinsFromSheet(); }
+          else { showToast(m, true); }
+        });
       }
     }
 

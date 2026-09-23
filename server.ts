@@ -7,6 +7,17 @@ import { createServer as createViteServer } from 'vite';
 const app = express();
 const PORT = 3000;
 
+// Universal CORS Middleware untuk komunikasi aman dari Google Apps Script Web App / external dashboard
+app.use((req: Request, res: Response, next: NextFunction) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
 app.use(express.json({ limit: '1mb' }));
 
 // =============================================================================
@@ -642,6 +653,54 @@ app.get('/api/patient-pins', (req: Request, res: Response) => {
   });
 });
 
+// 6a-2. Sinkronisasi Massal PIN dari Google Sheet / Dashboard Apps Script
+app.post('/api/patient-pins/sync', (req: Request, res: Response) => {
+  try {
+    const { pins } = req.body;
+    if (!Array.isArray(pins)) {
+      return res.status(400).json({ error: 'Array pins diperlukan.' });
+    }
+    const existing = loadPatientPins();
+    const existingMap = new Map(existing.map(p => [p.pin, p]));
+
+    for (const p of pins) {
+      const pinCode = String(p.pin || p).trim().replace(/\D/g, '');
+      if (!pinCode) continue;
+
+      const current = existingMap.get(pinCode);
+      if (!current) {
+        const newPin: ServerPatientPin = {
+          id: p.id || ('pin_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6)),
+          pin: pinCode,
+          status: p.status === 'used' ? 'used' : (p.status === 'revoked' ? 'revoked' : 'active'),
+          createdAt: p.createdAt || new Date().toISOString(),
+          registeredPatientName: p.registeredPatientName || undefined,
+          registeredService: p.registeredService || undefined,
+          registeredRoom: p.registeredRoom || undefined,
+          label: p.label || (p.registeredPatientName ? `Pasien: ${p.registeredPatientName}` : undefined),
+          usedAt: p.usedAt || undefined,
+        };
+        existing.unshift(newPin);
+        existingMap.set(pinCode, newPin);
+      } else {
+        if (current.status !== 'used') {
+          if (p.registeredPatientName) current.registeredPatientName = p.registeredPatientName;
+          if (p.registeredService) current.registeredService = p.registeredService;
+          if (p.registeredRoom) current.registeredRoom = p.registeredRoom;
+          if (p.status === 'used') {
+            current.status = 'used';
+            current.usedAt = p.usedAt || new Date().toISOString();
+          }
+        }
+      }
+    }
+    savePatientPins(existing);
+    return res.json({ success: true, count: existing.length });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Gagal sinkronisasi PIN: ' + err.message });
+  }
+});
+
 // 6b. Generate Batch / Single PIN Akses Pasien
 app.post('/api/patient-pins/generate', async (req: Request, res: Response) => {
   try {
@@ -786,11 +845,26 @@ app.post('/api/patient-pins/validate', async (req: Request, res: Response) => {
     });
   }
 
-  // 1. Cek Google Sheet via Apps Script jika URL aktif
+  // Jika PIN ditemukan di server lokal dan berstatus aktif, langsung izinkan (instan tanpa delay)
+  if (localFound && localFound.status === 'active') {
+    return res.json({
+      valid: true,
+      status: 'active',
+      token: localFound,
+      registeredPatientName: localFound.registeredPatientName,
+      registeredService: localFound.registeredService,
+      registeredRoom: localFound.registeredRoom,
+      label: localFound.label,
+      createdAt: localFound.createdAt,
+      message: 'PIN valid dan siap digunakan.',
+    });
+  }
+
+  // 1. Cek Google Sheet via Apps Script jika URL aktif (untuk PIN yang baru dibuat di sheet tapi belum disinkronkan)
   if (RUNTIME_APPS_SCRIPT_URL) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      const timeoutId = setTimeout(() => controller.abort(), 2500);
       const sheetCheckUrl = `${RUNTIME_APPS_SCRIPT_URL}${RUNTIME_APPS_SCRIPT_URL.includes('?') ? '&' : '?'}action=validate_pin&pin=${cleanPin}`;
       
       const sheetRes = await fetch(sheetCheckUrl, {

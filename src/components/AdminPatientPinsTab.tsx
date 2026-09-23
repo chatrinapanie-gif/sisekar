@@ -35,7 +35,7 @@ import {
   syncPinsWithGoogleSheet,
   importPinsFromSheetText
 } from '../services/sheetsService';
-import { GOOGLE_APPS_SCRIPT_CODE } from '../services/appsScriptCode';
+import { GOOGLE_APPS_SCRIPT_CODE, GOOGLE_APPS_SCRIPT_INDEX_HTML } from '../services/appsScriptCode';
 
 interface AdminPatientPinsTabProps {
   pins: PatientPinToken[];
@@ -67,6 +67,7 @@ export const AdminPatientPinsTab: React.FC<AdminPatientPinsTabProps> = ({
   const [showPrintModal, setShowPrintModal] = useState<boolean>(false);
   const [selectedPinForPrint, setSelectedPinForPrint] = useState<PatientPinToken | null>(null);
   const [copiedScriptCode, setCopiedScriptCode] = useState<boolean>(false);
+  const [copiedHtmlCode, setCopiedHtmlCode] = useState<boolean>(false);
   const [showDeploymentGuide, setShowDeploymentGuide] = useState<boolean>(false);
   const [showImportModal, setShowImportModal] = useState<boolean>(false);
   const [importText, setImportText] = useState<string>('');
@@ -75,8 +76,15 @@ export const AdminPatientPinsTab: React.FC<AdminPatientPinsTabProps> = ({
   const handleCopyScriptCode = () => {
     navigator.clipboard.writeText(GOOGLE_APPS_SCRIPT_CODE);
     setCopiedScriptCode(true);
-    setTimeout(() => setCopiedScriptCode(null as any), 3000);
+    setTimeout(() => setCopiedScriptCode(false), 3000);
     onToast('success', 'Kode Code.gs terbaru berhasil disalin ke clipboard!');
+  };
+
+  const handleCopyIndexHtml = () => {
+    navigator.clipboard.writeText(GOOGLE_APPS_SCRIPT_INDEX_HTML);
+    setCopiedHtmlCode(true);
+    setTimeout(() => setCopiedHtmlCode(false), 3000);
+    onToast('success', 'Kode index.html (Dashboard Admin) berhasil disalin ke clipboard!');
   };
 
   const handleImportSheetText = async () => {
@@ -389,22 +397,30 @@ export const AdminPatientPinsTab: React.FC<AdminPatientPinsTabProps> = ({
         {showDeploymentGuide && (
           <div className="pt-3 border-t border-amber-200/80 space-y-3 text-xs text-amber-950 animate-in fade-in duration-200">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              <div className="p-3 rounded-xl bg-white/80 border border-amber-200 space-y-1">
+              <div className="p-3 rounded-xl bg-white/80 border border-amber-200 space-y-2">
                 <span className="font-bold text-slate-900 flex items-center gap-1.5">
                   <span className="w-4 h-4 rounded-full bg-blue-700 text-white flex items-center justify-center text-[10px]">1</span>
-                  <span>Salin Kode Code.gs Terbaru</span>
+                  <span>Salin File Script (Code.gs &amp; index.html)</span>
                 </span>
                 <p className="text-[11px] text-slate-600">
-                  Kode Code.gs terbaru sudah mencakup fitur tab <strong>PIN_PASIEN</strong> dan validasi multi-perangkat.
+                  Salin kedua file ini ke editor Google Apps Script:
                 </p>
-                <div className="pt-1">
+                <div className="flex flex-wrap items-center gap-2 pt-1">
                   <button
                     type="button"
                     onClick={handleCopyScriptCode}
                     className="px-3 py-1.5 rounded-lg bg-blue-700 hover:bg-blue-800 text-white font-bold text-[11px] flex items-center gap-1.5 transition shadow-xs"
                   >
                     {copiedScriptCode ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{copiedScriptCode ? 'Kode Code.gs Tersalin!' : 'Salin Kode Code.gs'}</span>
+                    <span>{copiedScriptCode ? 'Code.gs Tersalin!' : 'Salin Code.gs'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCopyIndexHtml}
+                    className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-[11px] flex items-center gap-1.5 transition shadow-xs"
+                  >
+                    {copiedHtmlCode ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Sparkles className="w-3.5 h-3.5" />}
+                    <span>{copiedHtmlCode ? 'index.html Tersalin!' : 'Salin index.html (Dashboard)'}</span>
                   </button>
                 </div>
               </div>

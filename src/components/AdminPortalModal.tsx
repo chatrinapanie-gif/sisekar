@@ -24,12 +24,13 @@ import {
   Link2,
   Share2,
   QrCode,
-  Users
+  Users,
+  Sparkles
 } from 'lucide-react';
 import { AppConfig, SurveySubmission, PatientPinToken } from '../types';
 import { ADMIN_CONFIG } from '../surveyConfig';
 import { exportToCSV, testAppsScriptConnection, fetchPatientPins } from '../services/sheetsService';
-import { GOOGLE_APPS_SCRIPT_CODE } from '../services/appsScriptCode';
+import { GOOGLE_APPS_SCRIPT_CODE, GOOGLE_APPS_SCRIPT_INDEX_HTML } from '../services/appsScriptCode';
 import { AdminPatientPinsTab } from './AdminPatientPinsTab';
 import { 
   getSecurityStatus, 
@@ -78,6 +79,8 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
   const [activeAdminTab, setActiveAdminTab] = useState<'patient_pins' | 'history' | 'url_config' | 'script'>('patient_pins');
   const [patientPins, setPatientPins] = useState<PatientPinToken[]>([]);
   const [copied, setCopied] = useState(false);
+  const [copiedHtml, setCopiedHtml] = useState(false);
+  const [scriptView, setScriptView] = useState<'code_gs' | 'index_html'>('code_gs');
   const [customUrl, setCustomUrl] = useState(config.appsScriptUrl || '');
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [isLoadingServerConfig, setIsLoadingServerConfig] = useState(false);
@@ -252,6 +255,12 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
     navigator.clipboard.writeText(GOOGLE_APPS_SCRIPT_CODE);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
+  };
+
+  const handleCopyHtml = () => {
+    navigator.clipboard.writeText(GOOGLE_APPS_SCRIPT_INDEX_HTML);
+    setCopiedHtml(true);
+    setTimeout(() => setCopiedHtml(false), 2500);
   };
 
   const handleSaveCustomUrl = async (e: React.FormEvent) => {
@@ -825,23 +834,74 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
               </div>
             )}
 
-            {/* TAB 3: SCRIPT CODE.GS */}
+            {/* TAB 3: SCRIPT APPS SCRIPT (CODE.GS & INDEX.HTML) */}
             {activeAdminTab === 'script' && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs text-slate-600">
-                    Salin script ini ke <strong>Extensions &gt; Apps Script</strong> pada Google Spreadsheet Anda:
-                  </p>
-                  <button
-                    onClick={handleCopyCode}
-                    className="px-3.5 py-1.5 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs flex items-center gap-1.5 transition"
-                  >
-                    {copied ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{copied ? 'Tersalin!' : 'Salin Kode'}</span>
-                  </button>
+              <div className="space-y-4">
+                {/* Selector File Code.gs vs index.html */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-slate-100 rounded-2xl border border-slate-200">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setScriptView('code_gs')}
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                        scriptView === 'code_gs'
+                          ? 'bg-blue-700 text-white shadow-xs'
+                          : 'bg-white text-slate-700 hover:bg-slate-200 border border-slate-300'
+                      }`}
+                    >
+                      <Code2 className="w-3.5 h-3.5" />
+                      <span>1. File: Code.gs (Backend & PIN)</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setScriptView('index_html')}
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                        scriptView === 'index_html'
+                          ? 'bg-emerald-700 text-white shadow-xs'
+                          : 'bg-white text-slate-700 hover:bg-slate-200 border border-slate-300'
+                      }`}
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>2. File: index.html (Dashboard Eksekutif)</span>
+                    </button>
+                  </div>
+
+                  {scriptView === 'code_gs' ? (
+                    <button
+                      type="button"
+                      onClick={handleCopyCode}
+                      className="px-4 py-1.5 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs flex items-center gap-1.5 transition shadow-xs"
+                    >
+                      {copied ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copied ? 'Tersalin ke Clipboard!' : 'Salin Code.gs'}</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleCopyHtml}
+                      className="px-4 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center gap-1.5 transition shadow-xs"
+                    >
+                      {copiedHtml ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedHtml ? 'Tersalin ke Clipboard!' : 'Salin index.html'}</span>
+                    </button>
+                  )}
                 </div>
-                <pre className="p-4 rounded-2xl bg-slate-900 text-slate-100 text-xs font-mono max-h-[350px] overflow-y-auto border border-slate-800 leading-relaxed">
-                  {GOOGLE_APPS_SCRIPT_CODE}
+
+                <div className="bg-blue-50/70 border border-blue-200 rounded-xl p-3 text-[11px] text-blue-950 leading-relaxed space-y-1">
+                  {scriptView === 'code_gs' ? (
+                    <p>
+                      <strong>Langkah Pasang Code.gs:</strong> Buka Apps Script &gt; buka file <code className="bg-white px-1 py-0.5 rounded border font-mono">Code.gs</code> &gt; hapus seluruh isinya &gt; paste kode di bawah &gt; klik ikon <strong>Save (Disket)</strong>.
+                    </p>
+                  ) : (
+                    <p>
+                      <strong>Langkah Pasang index.html:</strong> Di Apps Script klik <strong>+ (Tambah)</strong> &gt; pilih <strong>HTML</strong> &gt; beri nama <code className="bg-white px-1 py-0.5 rounded border font-mono font-bold">index</code> &gt; hapus isinya &gt; paste kode di bawah &gt; klik <strong>Save (Disket)</strong>.
+                    </p>
+                  )}
+                </div>
+
+                <pre className="p-4 rounded-2xl bg-slate-900 text-slate-100 text-xs font-mono max-h-[350px] overflow-y-auto border border-slate-800 leading-relaxed select-all">
+                  {scriptView === 'code_gs' ? GOOGLE_APPS_SCRIPT_CODE : GOOGLE_APPS_SCRIPT_INDEX_HTML}
                 </pre>
               </div>
             )}

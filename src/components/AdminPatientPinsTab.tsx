@@ -32,7 +32,8 @@ import {
   generatePatientPins, 
   revokePatientPin, 
   deletePatientPin,
-  syncPinsWithGoogleSheet
+  syncPinsWithGoogleSheet,
+  importPinsFromSheetText
 } from '../services/sheetsService';
 import { GOOGLE_APPS_SCRIPT_CODE } from '../services/appsScriptCode';
 
@@ -67,12 +68,38 @@ export const AdminPatientPinsTab: React.FC<AdminPatientPinsTabProps> = ({
   const [selectedPinForPrint, setSelectedPinForPrint] = useState<PatientPinToken | null>(null);
   const [copiedScriptCode, setCopiedScriptCode] = useState<boolean>(false);
   const [showDeploymentGuide, setShowDeploymentGuide] = useState<boolean>(false);
+  const [showImportModal, setShowImportModal] = useState<boolean>(false);
+  const [importText, setImportText] = useState<string>('');
+  const [isImporting, setIsImporting] = useState<boolean>(false);
 
   const handleCopyScriptCode = () => {
     navigator.clipboard.writeText(GOOGLE_APPS_SCRIPT_CODE);
     setCopiedScriptCode(true);
     setTimeout(() => setCopiedScriptCode(null as any), 3000);
     onToast('success', 'Kode Code.gs terbaru berhasil disalin ke clipboard!');
+  };
+
+  const handleImportSheetText = async () => {
+    if (!importText.trim()) {
+      onToast('error', 'Masukkan atau tempel teks dari Google Sheet terlebih dahulu.');
+      return;
+    }
+    setIsImporting(true);
+    try {
+      const res = await importPinsFromSheetText(importText, adminToken || undefined);
+      if (res.success) {
+        onToast('success', `✓ ${res.message}`);
+        setImportText('');
+        setShowImportModal(false);
+        onRefresh();
+      } else {
+        onToast('error', res.message || 'Gagal mengimpor PIN.');
+      }
+    } catch (err: any) {
+      onToast('error', err?.message || 'Terjadi kesalahan saat mengimpor.');
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   // Perhitungan statistik
@@ -307,16 +334,26 @@ export const AdminPatientPinsTab: React.FC<AdminPatientPinsTabProps> = ({
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={handleSyncSheet}
-          disabled={isSyncingSheet}
-          className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 active:scale-98 text-white font-bold text-xs shadow-xs flex items-center gap-2 transition shrink-0 disabled:opacity-50"
-          title="Tarik data PIN terbaru dari Google Sheet"
-        >
-          <FileSpreadsheet className={`w-4 h-4 ${isSyncingSheet ? 'animate-spin' : ''}`} />
-          <span>{isSyncingSheet ? 'Sinkronisasi Sheet...' : 'Sinkronkan Google Sheet'}</span>
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setShowImportModal(true)}
+            className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 font-bold text-xs shadow-xs flex items-center gap-1.5 transition active:scale-98"
+            title="Tempel baris atau nomor PIN yang disalin dari Google Sheet"
+          >
+            <span>📥 Tempel Data Sheet</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleSyncSheet}
+            disabled={isSyncingSheet}
+            className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 active:scale-98 text-white font-bold text-xs shadow-xs flex items-center gap-2 transition disabled:opacity-50"
+            title="Tarik data PIN terbaru dari Google Sheet"
+          >
+            <FileSpreadsheet className={`w-4 h-4 ${isSyncingSheet ? 'animate-spin' : ''}`} />
+            <span>{isSyncingSheet ? 'Sinkronisasi Sheet...' : 'Sinkronkan Google Sheet'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Banner Penting: Cara Memastikan PIN Terbuka di Email Pasien & Seluruh HP */}
@@ -892,6 +929,65 @@ export const AdminPatientPinsTab: React.FC<AdminPatientPinsTabProps> = ({
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* Modal Impor / Tempel Data PIN dari Google Sheet */}
+      {showImportModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+            <div className="border-b pb-3 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                  <span>📥 Impor / Tempel Data PIN dari Google Sheet</span>
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Salin (Copy) baris data dari Google Sheet dan tempel (Paste) di bawah ini:
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowImportModal(false)}
+                className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <div className="bg-blue-50/80 border border-blue-200 rounded-xl p-3 text-[11px] text-blue-900 space-y-1">
+                <p className="font-bold">💡 Format Mudah:</p>
+                <p>1. Di Google Sheet Anda, blok sel (misal Kolom PIN, Nama Pasien, Layanan) lalu tekan <strong>Ctrl + C</strong>.</p>
+                <p>2. Tempel di kotak di bawah lalu klik tombol <strong>"Proses Impor PIN"</strong>.</p>
+              </div>
+
+              <textarea
+                value={importText}
+                onChange={(e) => setImportText(e.target.value)}
+                placeholder="Contoh salinan baris dari Google Sheet:&#10;255966	AKTIF	Derni	Rawat Inap	-&#10;654356	AKTIF	Feni	Rawat Inap	R1"
+                rows={6}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-300 font-mono text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t">
+              <button
+                type="button"
+                onClick={() => setShowImportModal(false)}
+                className="px-4 py-2 rounded-xl border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-semibold"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleImportSheetText}
+                disabled={isImporting || !importText.trim()}
+                className="px-5 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 disabled:opacity-50 text-white font-bold text-xs shadow-md transition"
+              >
+                {isImporting ? 'Memproses...' : 'Proses Impor PIN'}
+              </button>
+            </div>
           </div>
         </div>
       )}

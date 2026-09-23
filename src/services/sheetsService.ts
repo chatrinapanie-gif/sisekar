@@ -148,62 +148,74 @@ export async function fetchPatientPins(): Promise<PatientPinToken[]> {
 export async function syncPinsWithGoogleSheet(): Promise<{ success: boolean; count: number; message: string }> {
   try {
     const res = await fetch('/api/patient-pins/sync-sheet', { method: 'POST' });
-    if (res.ok) {
-      const data = await res.json();
-      if (data.success && Array.isArray(data.pins)) {
-        const localList = loadLocalPatientPins();
-        const localMap = new Map(localList.map(p => [p.pin, p]));
-        const merged = data.pins.map((p: any) => {
-          const loc = localMap.get(p.pin);
-          if (loc && loc.status === 'used') {
-            return { ...p, status: 'used', usedAt: loc.usedAt || p.usedAt, usedBy: loc.usedBy || p.usedBy };
-          }
-          return p;
-        });
-        saveLocalPatientPins(merged);
-        return {
-          success: true,
-          count: merged.length,
-          message: data.message || `Berhasil mensinkronkan ${merged.length} PIN dengan Google Sheet!`
-        };
-      }
+    const data = await res.json().catch(() => null);
+
+    if (res.ok && data?.success && Array.isArray(data.pins)) {
+      const localList = loadLocalPatientPins();
+      const localMap = new Map(localList.map(p => [p.pin, p]));
+      const merged = data.pins.map((p: any) => {
+        const loc = localMap.get(p.pin);
+        if (loc && loc.status === 'used') {
+          return { ...p, status: 'used', usedAt: loc.usedAt || p.usedAt, usedBy: loc.usedBy || p.usedBy };
+        }
+        return p;
+      });
+      saveLocalPatientPins(merged);
+      return {
+        success: true,
+        count: merged.length,
+        message: data.message || `Berhasil mensinkronkan ${merged.length} PIN dengan Google Sheet!`
+      };
+    } else {
+      return {
+        success: false,
+        count: 0,
+        message: data?.error || data?.message || 'Gagal melakukan sinkronisasi dengan Google Sheet.'
+      };
     }
   } catch (err: any) {
-    console.warn('Sync sheet via server failed:', err);
+    return {
+      success: false,
+      count: 0,
+      message: 'Gagal terhubung ke server aplikasi: ' + (err?.message || 'Koneksi terputus')
+    };
   }
+}
 
-  // Fallback direct Apps Script fetch
-  const cfg = loadAppConfig();
-  if (cfg.appsScriptUrl) {
-    try {
-      const directUrl = `${cfg.appsScriptUrl}${cfg.appsScriptUrl.includes('?') ? '&' : '?'}action=get_pins`;
-      const directRes = await fetch(directUrl);
-      if (directRes.ok) {
-        const directData = await directRes.json();
-        if (directData && Array.isArray(directData.pins)) {
-          const localList = loadLocalPatientPins();
-          const localMap = new Map(localList.map(p => [p.pin, p]));
-          const merged = directData.pins.map((p: any) => {
-            const loc = localMap.get(p.pin);
-            if (loc && loc.status === 'used') {
-              return { ...p, status: 'used', usedAt: loc.usedAt || p.usedAt, usedBy: loc.usedBy || p.usedBy };
-            }
-            return p;
-          });
-          saveLocalPatientPins(merged);
-          return {
-            success: true,
-            count: merged.length,
-            message: `Berhasil mengambil ${merged.length} PIN langsung dari Google Sheet!`
-          };
-        }
-      }
-    } catch (err: any) {
-      return { success: false, count: 0, message: 'Gagal terhubung ke Google Sheet: ' + err.message };
+/**
+ * Impor atau Tempel PIN Langsung dari Google Sheet (Manual / Backup)
+ */
+export async function importPinsFromSheetText(rawText: string, adminToken?: string): Promise<{ success: boolean; importedCount: number; message: string }> {
+  try {
+    const res = await fetch('/api/patient-pins/import-pins', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(adminToken ? { Authorization: `Bearer ${adminToken}` } : {}),
+      },
+      body: JSON.stringify({ rawText }),
+    });
+    const data = await res.json().catch(() => null);
+    if (res.ok && data?.success && Array.isArray(data.pins)) {
+      saveLocalPatientPins(data.pins);
+      return {
+        success: true,
+        importedCount: data.importedCount || 0,
+        message: data.message || `Berhasil mengimpor ${data.importedCount} PIN!`
+      };
     }
+    return {
+      success: false,
+      importedCount: 0,
+      message: data?.error || 'Gagal mengimpor PIN.'
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      importedCount: 0,
+      message: 'Gagal menghubungi server: ' + err?.message
+    };
   }
-
-  return { success: false, count: 0, message: 'Gagal melakukan sinkronisasi dengan Google Sheet.' };
 }
 
 /**

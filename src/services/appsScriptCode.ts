@@ -902,39 +902,34 @@ function doPost(e) {
 
     // B. Tambahkan PIN Baru ke Sheet dari Admin Portal
     if (action === "create_pins" && Array.isArray(data.pins)) {
-      const pinSheet = ensurePinSheetExists(ss);
-      const rowsToAdd = [];
+      const pinSheet = findPinSheet(ss) || ensurePinSheetExists(ss);
+      const colMap = detectPinSheetColumns(pinSheet);
       const nowStr = Utilities.formatDate(new Date(), "Asia/Makassar", "yyyy-MM-dd HH:mm:ss 'WITA'");
+      let addedCount = 0;
       
       data.pins.forEach(function(p) {
         const pinCode = String(p.pin || p).replace(/\D/g, "");
         if (pinCode) {
-          rowsToAdd.push([
-            "'" + pinCode,
-            "AKTIF",
-            p.registeredPatientName || "",
-            p.registeredService || "Rawat Inap",
-            p.registeredRoom || "",
-            p.createdAt || nowStr,
-            "",
-            "",
-            "",
-            "",
-            "",
-            p.notes || "Dibuat dari Admin Portal"
-          ]);
+          const rowArr = new Array(Math.max(pinSheet.getLastColumn(), 12)).fill("");
+          rowArr[colMap.colPin - 1] = "'" + pinCode;
+          rowArr[colMap.colStatus - 1] = "AKTIF";
+          if (colMap.colPatient - 1 >= 0) rowArr[colMap.colPatient - 1] = p.registeredPatientName || "";
+          if (colMap.colService - 1 >= 0) rowArr[colMap.colService - 1] = p.registeredService || "Rawat Inap";
+          if (colMap.colRoom - 1 >= 0) rowArr[colMap.colRoom - 1] = p.registeredRoom || "";
+          if (colMap.colCreatedAt - 1 >= 0) rowArr[colMap.colCreatedAt - 1] = p.createdAt || nowStr;
+          if (colMap.colNotes - 1 >= 0) rowArr[colMap.colNotes - 1] = p.notes || "Dibuat dari Admin Portal";
+          if (colMap.colPin === 2 && rowArr[0] === "") rowArr[0] = pinSheet.getLastRow() + 1;
+          pinSheet.appendRow(rowArr);
+          addedCount++;
         }
       });
 
-      if (rowsToAdd.length > 0) {
-        pinSheet.getRange(pinSheet.getLastRow() + 1, 1, rowsToAdd.length, 12).setValues(rowsToAdd);
-      }
-
+      SpreadsheetApp.flush();
       lock.releaseLock();
       return ContentService.createTextOutput(JSON.stringify({
         success: true,
-        message: "Berhasil menambahkan " + rowsToAdd.length + " PIN ke Google Sheet!",
-        count: rowsToAdd.length
+        message: "Berhasil menambahkan " + addedCount + " PIN ke Google Sheet!",
+        count: addedCount
       })).setMimeType(ContentService.MimeType.JSON);
     }
 

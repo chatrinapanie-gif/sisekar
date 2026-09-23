@@ -741,7 +741,7 @@ app.post('/api/patient-pins/generate', async (req: Request, res: Response) => {
         if (RUNTIME_APPS_SCRIPT_URL) {
           fetch(RUNTIME_APPS_SCRIPT_URL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify({ action: 'create_pins', pins: [newPin] }),
           }).catch(e => console.warn('[PIN Sync] Warning pushing custom PIN to Google Sheet:', e));
         }
@@ -775,7 +775,7 @@ app.post('/api/patient-pins/generate', async (req: Request, res: Response) => {
     if (RUNTIME_APPS_SCRIPT_URL) {
       fetch(RUNTIME_APPS_SCRIPT_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ action: 'create_pins', pins: generated }),
       }).catch(e => console.warn('[PIN Sync] Warning pushing generated PINs to Google Sheet:', e));
     }
@@ -1016,7 +1016,20 @@ app.post('/api/patient-pins/sync-sheet', async (req: Request, res: Response) => 
       throw new Error(`Google Apps Script merespons status ${response.status}`);
     }
 
-    const data = await response.json();
+    const rawText = await response.text();
+    let data: any = null;
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      if (rawText.includes('<!DOCTYPE') || rawText.includes('<html') || rawText.includes('drive.google.com')) {
+        return res.status(400).json({
+          error: 'Google Apps Script merespons tampilan Web (HTML) alih-alih data JSON. Pastikan kode Code.gs terbaru sudah di-Deploy ulang sebagai "Versi Baru (New Version)" dengan hak akses "Siapa Saja (Anyone)".',
+          isHtmlResponse: true,
+        });
+      }
+      return res.status(400).json({ error: 'Format respons tidak valid: ' + rawText.substring(0, 120) });
+    }
+
     if (data && Array.isArray(data.pins)) {
       const serverPins = loadPatientPins();
       const serverMap = new Map(serverPins.map(p => [p.pin, p]));
@@ -1072,6 +1085,72 @@ app.post('/api/patient-pins/sync-sheet', async (req: Request, res: Response) => 
   } catch (err: any) {
     return res.status(500).json({ error: 'Gagal mensinkronkan PIN dengan Google Sheet: ' + err?.message });
   }
+});
+
+// 6e2. Impor / Tempel PIN Langsung dari Google Sheet (Manual Backup)
+app.post('/api/patient-pins/import-pins', checkAdminAuth, (req: Request, res: Response) => {
+  const { rawText, pins: explicitPins } = req.body;
+  const existing = loadPatientPins();
+  const existingMap = new Map(existing.map(p => [p.pin, p]));
+  let importedCount = 0;
+
+  if (Array.isArray(explicitPins)) {
+    explicitPins.forEach((p: any) => {
+      const cleanP = String(p.pin || p).replace(/\D/g, '');
+      if (cleanP && cleanP.length >= 4) {
+        if (!existingMap.has(cleanP)) {
+          existingMap.set(cleanP, {
+            id: 'pin_' + cleanP,
+            pin: cleanP,
+            status: p.status === 'used' ? 'used' : (p.status === 'revoked' ? 'revoked' : 'active'),
+            createdAt: p.createdAt || new Date().toISOString(),
+            registeredPatientName: p.registeredPatientName,
+            registeredService: p.registeredService || 'Rawat Inap',
+            registeredRoom: p.registeredRoom,
+            label: p.registeredPatientName ? `Pasien: ${p.registeredPatientName}` : 'Impor Sheet',
+          });
+          importedCount++;
+        }
+      }
+    });
+  } else if (typeof rawText === 'string' && rawText.trim()) {
+    const lines = rawText.split('\n');
+    lines.forEach(line => {
+      const parts = line.split('\t').map(s => s.trim());
+      const rawPin = parts[0]?.replace(/\D/g, '') || '';
+      if (rawPin.length >= 4 && rawPin.length <= 8) {
+        const statusRaw = parts[1]?.toUpperCase() || '';
+        const status = statusRaw.includes('TERPAKAI') || statusRaw.includes('USED') ? 'used' : 'active';
+        const name = parts[2] || undefined;
+        const svc = parts[3] || 'Rawat Inap';
+        const room = parts[4] || undefined;
+
+        if (!existingMap.has(rawPin)) {
+          existingMap.set(rawPin, {
+            id: 'pin_' + rawPin,
+            pin: rawPin,
+            status,
+            createdAt: new Date().toISOString(),
+            registeredPatientName: name,
+            registeredService: svc,
+            registeredRoom: room,
+            label: name ? `Pasien: ${name}` : 'Impor Sheet',
+          });
+          importedCount++;
+        }
+      }
+    });
+  }
+
+  const updated = Array.from(existingMap.values());
+  savePatientPins(updated);
+  return res.json({
+    success: true,
+    importedCount,
+    totalPins: updated.length,
+    message: `Berhasil mengimpor ${importedCount} PIN baru ke dalam sistem!`,
+    pins: updated,
+  });
 });
 
 // 6f. Cabut / Hapus PIN Pasien (Oleh Petugas)

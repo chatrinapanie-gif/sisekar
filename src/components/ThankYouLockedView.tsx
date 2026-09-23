@@ -162,21 +162,11 @@ export const ThankYouLockedView: React.FC<ThankYouLockedViewProps> = ({
           )}
 
           {/* Footer Card Informasi Keamanan */}
-          <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-slate-500">
+          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3 text-[11px] text-slate-500">
             <div className="flex items-center gap-1.5 text-emerald-700">
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
               <span>Koneksi Terenkripsi &amp; Data Tersimpan di Google Sheet RSUD Aeramo</span>
             </div>
-
-            {onAdminUnlockRequest && (
-              <button
-                type="button"
-                onClick={onAdminUnlockRequest}
-                className="text-[11px] text-slate-400 hover:text-blue-700 hover:underline transition"
-              >
-                Akses Petugas / Reset Kiosk
-              </button>
-            )}
           </div>
 
           </div>

@@ -269,22 +269,11 @@ export const PatientPinGate: React.FC<PatientPinGateProps> = ({
           </button>
 
           {/* Info Keamanan & Validitas Data */}
-          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+          <div className="pt-2 border-t border-slate-100 flex items-center justify-center text-[11px] text-slate-500">
             <div className="flex items-center gap-1.5 text-emerald-700 font-medium">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-              <span>Evaluasi Pelayanan Terproteksi</span>
+              <span>Evaluasi Pelayanan Terproteksi • RSUD Aeramo</span>
             </div>
-
-            {onOpenStaffLogin && (
-              <button
-                type="button"
-                onClick={onOpenStaffLogin}
-                className="text-slate-400 hover:text-blue-700 hover:underline transition flex items-center gap-1"
-              >
-                <Lock className="w-3 h-3" />
-                <span>Portal Petugas</span>
-              </button>
-            )}
           </div>
 
         </form>

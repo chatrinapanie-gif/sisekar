@@ -16,6 +16,7 @@ interface HeaderProps {
   activeTab: 'survey' | 'guide';
   setActiveTab: (tab: 'survey' | 'guide') => void;
   isDeviceLocked?: boolean;
+  onAdminAccess?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -23,7 +24,30 @@ export const Header: React.FC<HeaderProps> = ({
   activeTab,
   setActiveTab,
   isDeviceLocked,
+  onAdminAccess,
 }) => {
+  const [logoClickCount, setLogoClickCount] = React.useState(0);
+  const logoClickTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  const handleLogoClick = () => {
+    setActiveTab('survey');
+    if (onAdminAccess) {
+      setLogoClickCount(prev => {
+        const next = prev + 1;
+        if (next >= 3) {
+          onAdminAccess();
+          return 0;
+        }
+        return next;
+      });
+      if (logoClickTimeoutRef.current) {
+        clearTimeout(logoClickTimeoutRef.current);
+      }
+      logoClickTimeoutRef.current = setTimeout(() => {
+        setLogoClickCount(0);
+      }, 1500);
+    }
+  };
   return (
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs transition-all print:hidden">
       {/* Offline Alert Strip if disconnected */}
@@ -39,7 +63,7 @@ export const Header: React.FC<HeaderProps> = ({
           
           {/* Logo & Brand Identity */}
           <div 
-            onClick={() => setActiveTab('survey')}
+            onClick={handleLogoClick}
             className="flex items-center gap-2.5 sm:gap-3 cursor-pointer select-none shrink-0"
           >
             <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center shadow-xs">

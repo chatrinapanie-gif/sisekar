@@ -1,8 +1,6 @@
 {
   "name": "SISEKAR - Survei Kepuasan Pasien",
   "description": "Sistem Evaluasi Kepuasan Pasien dan Keluarga RSUD Aeramo Kabupaten Nagekeo terintegrasi Google Sheets via Google Apps Script untuk Android PWA.",
-  "requestFramePermissions": [
-    "camera"
-  ],
+  "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

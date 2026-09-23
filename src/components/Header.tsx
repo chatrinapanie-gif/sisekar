@@ -15,12 +15,14 @@ interface HeaderProps {
   isOnline: boolean;
   activeTab: 'survey' | 'guide';
   setActiveTab: (tab: 'survey' | 'guide') => void;
+  isDeviceLocked?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   isOnline,
   activeTab,
   setActiveTab,
+  isDeviceLocked,
 }) => {
   return (
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs transition-all print:hidden">
@@ -89,21 +91,23 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
           >
             <FileText className="w-4 h-4" />
-            <span>Formulir Survei</span>
+            <span>{isDeviceLocked ? 'Tanda Terima Survei (Selesai)' : 'Formulir Survei'}</span>
           </button>
 
-          <button
-            onClick={() => setActiveTab('guide')}
-            id="nav-tab-guide"
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-colors ${
-              activeTab === 'guide'
-                ? 'bg-blue-800 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <HelpCircle className="w-4 h-4 text-blue-700" />
-            <span>Panduan Pengisian</span>
-          </button>
+          {!isDeviceLocked && (
+            <button
+              onClick={() => setActiveTab('guide')}
+              id="nav-tab-guide"
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-colors ${
+                activeTab === 'guide'
+                  ? 'bg-blue-800 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <HelpCircle className="w-4 h-4 text-blue-700" />
+              <span>Panduan Pengisian</span>
+            </button>
+          )}
         </div>
 
       </div>

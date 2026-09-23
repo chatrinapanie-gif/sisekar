@@ -1,6 +1,8 @@
 /**
  * Kode Google Apps Script (Code.gs & index.html) siap pakai untuk Google Sheets.
- * Disesuaikan khusus untuk Dashboard Eksekutif & Backend Kuesioner Survei Pasien
+ * Dilengkapi Sistem Manajemen & Rotasi Mingguan Otomatis:
+ * 1. "Rekap_Survei_Aktif" (Data minggu berjalan, cepat & ringan)
+ * 2. "Arsip_Mingguan_Survei" (Penyimpanan historis permanen, data aman tidak terhapus)
  * RSUD AERAMO - KABUPATEN NAGEKEO
  */
 
@@ -8,10 +10,10 @@ export const GOOGLE_APPS_SCRIPT_CODE = `/**
  * ==============================================================================
  * KUESIONER SURVEI KEPUASAN PASIEN & DASHBOARD ADMIN EKSEKUTIF
  * RUMAH SAKIT UMUM DAERAH (RSUD) AERAMO - KABUPATEN NAGEKEO
- * FILE: Code.gs (Google Apps Script Backend)
+ * FILE: Code.gs (Google Apps Script Backend + Auto Weekly Archiver)
  * ==============================================================================
  * Petunjuk Pemasangan di Google Apps Script:
- * 1. Buat Google Sheet baru di Google Drive Anda (atau buka sheet yang sudah ada).
+ * 1. Buka Google Sheet Anda di Google Drive.
  * 2. Klik menu "Ekstensi" (Extensions) > "Apps Script".
  * 3. Di file default "Code.gs", hapus isinya dan tempel seluruh kode ini.
  * 4. Buat file HTML baru:
@@ -24,26 +26,102 @@ export const GOOGLE_APPS_SCRIPT_CODE = `/**
  *    - Jalankan sebagai: "Saya" (Me / email Anda).
  *    - Siapa yang memiliki akses: "Siapa saja" (Anyone)  <--- WAJIB!
  * 7. Klik "Deploy", izinkan otorisasi akun Google.
- * 8. Jika memperbarui script yang sudah berjalan:
- *    - Klik "Terapkan" (Deploy) > "Kelola penerapan" (Manage deployments).
- *    - Klik ikon Pensil (Edit) > pilih "Versi baru" (New version) > klik "Terapkan" (Deploy).
  * ==============================================================================
  */
 
-const SHEET_NAME_RESPONSES = "Data_Survei_Aeramo";
+const SHEET_NAME_RESPONSES = "Data_Survei_Aeramo"; // Sheet Aktif Minggu Berjalan
+const SHEET_NAME_ARCHIVE = "Arsip_Mingguan_Survei"; // Sheet Arsip Permanen
 const SHEET_NAME_DASHBOARD = "Dashboard_IKM";
+
+/**
+ * Menu Kustom di Google Sheet untuk Petugas & Admin RSUD Aeramo
+ */
+function onOpen() {
+  const ui = SpreadsheetApp.getUi();
+  ui.createMenu("📊 SISEKAR RSUD Aeramo")
+    .addItem("🔄 Jalankan Rotasi & Arsip Mingguan", "rotasiMingguanOtomatis")
+    .addItem("⚙️ Pasang Auto-Trigger Mingguan Otomatis", "setupWeeklyTrigger")
+    .addSeparator()
+    .addItem("📈 Perbarui Dashboard IKM", "refreshDashboardManually")
+    .addToUi();
+}
+
+/**
+ * Otomatisasi Rotasi & Arsip Mingguan (Weekly Data Maintenance)
+ * Menjaga sheet aktif tetap ringan & responsif tanpa menghapus data historis sedikit pun.
+ */
+function rotasiMingguanOtomatis() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const activeSheet = ss.getSheetByName(SHEET_NAME_RESPONSES);
+  if (!activeSheet || activeSheet.getLastRow() <= 1) {
+    return "Tidak ada data aktif untuk diarsipkan.";
+  }
+
+  let archiveSheet = ss.getSheetByName(SHEET_NAME_ARCHIVE);
+  if (!archiveSheet) {
+    archiveSheet = ss.insertSheet(SHEET_NAME_ARCHIVE);
+    setupHeaders(archiveSheet, true);
+  }
+
+  const lastRow = activeSheet.getLastRow();
+  const numCols = Math.max(activeSheet.getLastColumn(), 23);
+  const activeData = activeSheet.getRange(2, 1, lastRow - 1, numCols).getValues();
+
+  // Tambahkan label periode minggu sebelum diarsipkan
+  const currentWeekLabel = "Minggu-" + Utilities.formatDate(new Date(), "Asia/Makassar", "yyyy-'W'ww");
+  const archiveRows = activeData.map(function(row) {
+    const newRow = [currentWeekLabel].concat(row);
+    return newRow;
+  });
+
+  // Salin ke sheet arsip historis
+  archiveSheet.getRange(archiveSheet.getLastRow() + 1, 1, archiveRows.length, archiveRows[0].length).setValues(archiveRows);
+
+  // Bersihkan sheet aktif (sisakan header)
+  activeSheet.deleteRows(2, lastRow - 1);
+  updateDashboardSheet(ss);
+
+  return "Berhasil memindahkan " + activeData.length + " data survei ke Sheet Arsip (" + currentWeekLabel + "). Sheet aktif kembali segar!";
+}
+
+/**
+ * Buat trigger otomatis setiap hari Senin jam 01:00 WITA
+ */
+function setupWeeklyTrigger() {
+  // Hapus trigger lama jika ada
+  const triggers = ScriptApp.getProjectTriggers();
+  for (let i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === "rotasiMingguanOtomatis") {
+      ScriptApp.deleteTrigger(triggers[i]);
+    }
+  }
+
+  // Buat trigger mingguan baru
+  ScriptApp.newTrigger("rotasiMingguanOtomatis")
+    .timeBased()
+    .onWeekDay(ScriptApp.WeekDay.MONDAY)
+    .atHour(1)
+    .inTimezone("Asia/Makassar")
+    .create();
+    
+  SpreadsheetApp.getUi().alert("✓ Auto-Trigger Berhasil Diaktifkan! Setiap hari Senin pukul 01:00 WITA data survei akan otomatis diarsipkan ke '" + SHEET_NAME_ARCHIVE + "' sehingga sheet selalu ringan dan cepat.");
+}
+
+function refreshDashboardManually() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  updateDashboardSheet(ss);
+  SpreadsheetApp.getUi().alert("✓ Dashboard IKM berhasil diperbarui!");
+}
 
 /**
  * Melayani Tampilan Halaman Dashboard Admin via Web App URL
  */
 function doGet(e) {
-  // Jika dipanggil dengan parameter ?api=true, kembalikan JSON data mentah
   if (e && e.parameter && e.parameter.api === "true") {
     return ContentService.createTextOutput(JSON.stringify(getDashboardData()))
       .setMimeType(ContentService.MimeType.JSON);
   }
 
-  // Menampilkan Halaman Dashboard Interaktif
   try {
     const template = HtmlService.createTemplateFromFile("index");
     return template.evaluate()
@@ -59,19 +137,19 @@ function doGet(e) {
 }
 
 /**
- * Menerima kiriman data survei baru dari formulir Web / Android / Tablet
+ * Menerima kiriman data survei baru (Dengan proteksi Anti-Spam & Kunci Satu Kali Isi)
  */
 function doPost(e) {
   try {
     const lock = LockService.getScriptLock();
-    lock.waitLock(30000); // Kunci 30 detik mencegah tabrakan data serentak
+    lock.waitLock(30000); // Mencegah tabrakan penginputan serentak
 
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     let sheet = ss.getSheetByName(SHEET_NAME_RESPONSES);
 
     if (!sheet) {
       sheet = ss.insertSheet(SHEET_NAME_RESPONSES);
-      setupHeaders(sheet);
+      setupHeaders(sheet, false);
     } else {
       checkAndUpgradeHeaders(sheet);
     }
@@ -85,10 +163,20 @@ function doPost(e) {
       throw new Error("Tidak ada payload data yang diterima.");
     }
 
+    // Tangani ping uji koneksi
+    if (data.test === true || data.namaPasien === "UJI_KONEKSI_SISTEM" || data.namaPasien === "DIAGNOSTIC_PING") {
+      lock.releaseLock();
+      return ContentService.createTextOutput(JSON.stringify({
+        status: "success",
+        mode: "online",
+        message: "Koneksi Google Apps Script RSUD Aeramo aktif & siap menerima data survei."
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
     const answers = data.answers || {};
     const answeredDetails = data.answeredDetails || [];
 
-    // Ekstraksi nilai Q1 s/d Q7 secara cerdas (mendukung ri_q1..ri_q7, q1..q7, atau array answeredDetails)
+    // Ekstraksi nilai Q1 s/d Q7 secara cerdas
     let q1 = 0, q2 = 0, q3 = 0, q4 = 0, q5 = 0, q6 = 0, q7 = 0;
 
     if (Array.isArray(answeredDetails) && answeredDetails.length > 0) {
@@ -108,7 +196,6 @@ function doPost(e) {
       q6 = Number(answers.ri_q6_kejelasan_informasi || answers.q6_kejelasan_informasi || answers.q6 || answers["6"] || 0);
       q7 = Number(answers.ri_q7_ketersediaan_responsive || answers.q7_ketersediaan_responsive || answers.q7 || answers["7"] || 0);
 
-      // Fallback untuk layanan lain (Radiologi, Rawat Jalan, IGD, dsb.)
       var answerKeys = Object.keys(answers);
       if (!q1 && answerKeys.length > 0) q1 = Number(answers[answerKeys[0]]) || 0;
       if (!q2 && answerKeys.length > 1) q2 = Number(answers[answerKeys[1]]) || 0;
@@ -119,7 +206,6 @@ function doPost(e) {
       if (!q7 && answerKeys.length > 6) q7 = Number(answers[answerKeys[6]]) || 0;
     }
 
-    // Hitung rata-rata semua pertanyaan yang dijawab
     var answerValues = [];
     if (Array.isArray(answeredDetails) && answeredDetails.length > 0) {
       answerValues = answeredDetails.map(function(d) { return Number(d.score); }).filter(function(v) { return !isNaN(v) && v > 0; });
@@ -128,8 +214,6 @@ function doPost(e) {
     }
     const totalScore = answerValues.reduce(function(a, b) { return a + b; }, 0);
     const avgScore = answerValues.length > 0 ? totalScore / answerValues.length : (Number(data.averageScore) || 0);
-    
-    // Konversi ke IKM Skala 100 (Nilai / 4 * 100)
     const ikm100 = data.ikmScore ? Number(data.ikmScore) : ((avgScore / 4) * 100);
 
     let mutuLayanan = data.mutuLayanan;
@@ -140,7 +224,6 @@ function doPost(e) {
       else if (ikm100 < 88.3) mutuLayanan = "Baik (B)";
     }
 
-    // Rincian lengkap pertanyaan & jawaban
     let rincianAspekText = "-";
     if (Array.isArray(answeredDetails) && answeredDetails.length > 0) {
       rincianAspekText = answeredDetails.map(function(d, i) {
@@ -155,10 +238,9 @@ function doPost(e) {
       }
     }
 
-    // Baris data lengkap 23 kolom
     const row = [
       new Date(), // 0: Timestamp Google
-      data.id || Utilities.getUuid(), // 1: ID Survei
+      data.id || Utilities.getUuid(), // 1: ID Survei (Unik)
       data.tanggalSurvei || Utilities.formatDate(new Date(), "Asia/Makassar", "yyyy-MM-dd"), // 2: Tgl
       data.jamSurvei || "08.00 – 14.00 WITA", // 3: Jam
       data.namaPasien || "(Anonim / Tidak Diisi)", // 4: Nama
@@ -189,7 +271,7 @@ function doPost(e) {
 
     return ContentService.createTextOutput(JSON.stringify({
       status: "success",
-      message: "Data survei RSUD Aeramo berhasil disimpan ke Google Sheet!",
+      message: "Terima kasih! Survei kepuasan Anda berhasil dicatat ke Google Sheet RSUD Aeramo.",
       surveyId: data.id,
       timestamp: new Date().toISOString()
     })).setMimeType(ContentService.MimeType.JSON);
@@ -203,7 +285,7 @@ function doPost(e) {
 }
 
 /**
- * Mengambil dan memproses seluruh data survei untuk dikirimkan ke Dashboard Admin (index.html)
+ * Mengambil data untuk Dashboard Admin (Menggabungkan data aktif & arsip)
  */
 function getDashboardData() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -251,59 +333,25 @@ function getDashboardData() {
 
   for (let i = 0; i < values.length; i++) {
     const r = values[i];
-    
-    // Periksa apakah baris ini mengikuti format 23 kolom baru atau 19 kolom lama
-    const isNewFormat = (r.length >= 20 && (
-      String(r[19] || '').indexOf('Baik') !== -1 || 
-      String(r[19] || '').indexOf('Cukup') !== -1 || 
-      (typeof r[14] === 'number' && r[14] <= 4 && typeof r[17] === 'number')
-    ));
-
     const tgl = r[2] instanceof Date ? Utilities.formatDate(r[2], "Asia/Makassar", "yyyy-MM-dd") : String(r[2] || '');
     const nama = String(r[4] || "(Anonim)");
     const jk = String(r[5] || "").toUpperCase();
     const usia = (r[7] !== "-" && r[7] !== "" && !isNaN(Number(r[7]))) ? Number(r[7]) : null;
     const layanan = String(r[9] || "Rawat Inap");
 
-    let vQ1 = 0, vQ2 = 0, vQ3 = 0, vQ4 = 0, vQ5 = 0, vQ6 = 0, vQ7 = 0;
-    let vScore = 0, vIkm = 0, mutu = '', saran = '', rincian = '', device = 'Web';
-
-    if (isNewFormat) {
-      vQ1 = Number(r[10]);
-      vQ2 = Number(r[11]);
-      vQ3 = Number(r[12]);
-      vQ4 = Number(r[13]);
-      vQ5 = Number(r[14]);
-      vQ6 = Number(r[15]);
-      vQ7 = Number(r[16]);
-      vScore = Number(r[17]);
-      vIkm = Number(r[18]);
-      mutu = String(r[19] || "");
-      saran = String(r[20] || "");
-      rincian = String(r[21] || "");
-      device = String(r[22] || "Web");
-    } else {
-      vQ1 = Number(r[10]);
-      vQ2 = Number(r[11]);
-      vQ3 = Number(r[12]);
-      vQ4 = Number(r[13]);
-      vQ5 = 0;
-      vQ6 = 0;
-      vQ7 = 0;
-      vScore = Number(r[14]);
-      vIkm = Number(r[15]);
-      mutu = String(r[16] || "");
-      saran = String(r[17] || "");
-      device = String(r[18] || "Web");
-    }
-
-    if (isNaN(vQ1)) vQ1 = 0;
-    if (isNaN(vQ2)) vQ2 = 0;
-    if (isNaN(vQ3)) vQ3 = 0;
-    if (isNaN(vQ4)) vQ4 = 0;
-    if (isNaN(vQ5)) vQ5 = 0;
-    if (isNaN(vQ6)) vQ6 = 0;
-    if (isNaN(vQ7)) vQ7 = 0;
+    const vQ1 = Number(r[10]) || 0;
+    const vQ2 = Number(r[11]) || 0;
+    const vQ3 = Number(r[12]) || 0;
+    const vQ4 = Number(r[13]) || 0;
+    const vQ5 = Number(r[14]) || 0;
+    const vQ6 = Number(r[15]) || 0;
+    const vQ7 = Number(r[16]) || 0;
+    const vScore = Number(r[17]) || 0;
+    const vIkm = Number(r[18]) || (vScore > 0 ? (vScore / 4 * 100) : 0);
+    const mutu = String(r[19] || "");
+    const saran = String(r[20] || "");
+    const rincian = String(r[21] || "");
+    const device = String(r[22] || "Web");
 
     if (vQ1 > 0) { sumQ1 += vQ1; countQ1++; }
     if (vQ2 > 0) { sumQ2 += vQ2; countQ2++; }
@@ -313,14 +361,13 @@ function getDashboardData() {
     if (vQ6 > 0) { sumQ6 += vQ6; countQ6++; }
     if (vQ7 > 0) { sumQ7 += vQ7; countQ7++; }
 
-    if (!isNaN(vScore) && vScore > 0) {
+    if (vScore > 0) {
       sumScore += vScore;
-      sumIkm += (!isNaN(vIkm) && vIkm > 0) ? vIkm : (vScore / 4 * 100);
+      sumIkm += vIkm;
       countScore++;
       if (vScore >= 3.0) puasCount++;
     }
 
-    // Distribusi Mutu
     if (mutu.indexOf("A") !== -1 || mutu.indexOf("Sangat Baik") !== -1) mutuDist.a++;
     else if (mutu.indexOf("B") !== -1 || mutu.indexOf("Baik") !== -1) mutuDist.b++;
     else if (mutu.indexOf("C") !== -1 || mutu.indexOf("Cukup") !== -1) mutuDist.c++;
@@ -330,15 +377,12 @@ function getDashboardData() {
     else if (vScore >= 2.5) mutuDist.c++;
     else mutuDist.d++;
 
-    // Distribusi Layanan
     layananDist[layanan] = (layananDist[layanan] || 0) + 1;
 
-    // Distribusi Gender
     if (jk.indexOf("L") !== -1) genderDist.L++;
     else if (jk.indexOf("P") !== -1) genderDist.P++;
-    else genderDist.other++;
+    else genderDist.other = (genderDist.other || 0) + 1;
 
-    // Simpan data respon
     recentResponses.push({
       timestamp: r[0] instanceof Date ? Utilities.formatDate(r[0], "Asia/Makassar", "dd/MM/yyyy HH:mm") : String(r[0]),
       id: String(r[1] || Utilities.getUuid()),
@@ -357,8 +401,8 @@ function getDashboardData() {
       q5: vQ5,
       q6: vQ6,
       q7: vQ7,
-      avgScore: !isNaN(vScore) && vScore > 0 ? Number(vScore.toFixed(2)) : 0,
-      ikm100: !isNaN(vIkm) && vIkm > 0 ? Number(vIkm.toFixed(2)) : (!isNaN(vScore) && vScore > 0 ? Number((vScore/4*100).toFixed(2)) : 0),
+      avgScore: vScore > 0 ? Number(vScore.toFixed(2)) : 0,
+      ikm100: vIkm > 0 ? Number(vIkm.toFixed(2)) : 0,
       mutuLayanan: mutu || (vScore >= 3.5 ? "Sangat Baik (A)" : (vScore >= 3.0 ? "Baik (B)" : "Cukup (C)")),
       saran: (saran && saran !== "-") ? saran : "",
       rincianAspek: (rincian && rincian !== "-") ? rincian : "",
@@ -403,10 +447,10 @@ function getDashboardData() {
 }
 
 /**
- * Setup Header Kolom Spreadsheet (23 Kolom Lengkap)
+ * Setup Header Kolom Spreadsheet
  */
-function setupHeaders(sheet) {
-  const headers = [
+function setupHeaders(sheet, isArchive) {
+  let headers = [
     "Timestamp Google",
     "ID Survei",
     "Tanggal Survei",
@@ -432,31 +476,27 @@ function setupHeaders(sheet) {
     "Perangkat Pengisi"
   ];
 
+  if (isArchive) {
+    headers = ["Periode Arsip"].concat(headers);
+  }
+
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
   sheet.getRange(1, 1, 1, headers.length)
-    .setBackground("#1e3a8a")
+    .setBackground(isArchive ? "#0f766e" : "#1e3a8a")
     .setFontColor("#ffffff")
     .setFontWeight("bold")
     .setHorizontalAlignment("center");
   sheet.setFrozenRows(1);
 }
 
-/**
- * Upgrade Header jika sheet lama masih menggunakan 19 kolom
- */
 function checkAndUpgradeHeaders(sheet) {
   try {
     if (sheet.getLastColumn() < 23) {
-      setupHeaders(sheet);
+      setupHeaders(sheet, false);
     }
-  } catch (e) {
-    // Ignore if locked
-  }
+  } catch (e) {}
 }
 
-/**
- * Ringkasan Sheet Dashboard IKM
- */
 function updateDashboardSheet(ss) {
   let dash = ss.getSheetByName(SHEET_NAME_DASHBOARD);
   if (!dash) {
@@ -467,7 +507,7 @@ function updateDashboardSheet(ss) {
   dash.getRange("A2").setValue("Kabupaten Nagekeo | Terakhir Diperbarui: " + new Date().toLocaleString("id-ID")).setFontStyle("italic");
 
   const cards = [
-    ["Total Responden", '=COUNTA(Data_Survei_Aeramo!B2:B)'],
+    ["Total Responden Minggu Ini", '=COUNTA(Data_Survei_Aeramo!B2:B)'],
     ["Rata-Rata IKM (Skala 100)", '=IFERROR(AVERAGE(Data_Survei_Aeramo!S2:S), 0)'],
     ["1. Kenyamanan Kamar & Tempat Tidur", '=IFERROR(AVERAGE(Data_Survei_Aeramo!K2:K), 0)'],
     ["2. Kebersihan Kamar & Kamar Mandi", '=IFERROR(AVERAGE(Data_Survei_Aeramo!L2:L), 0)'],
@@ -569,8 +609,8 @@ export const GOOGLE_APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       <div class="flex items-center gap-2">
         <span class="text-base">ℹ️</span>
         <div>
-          <strong class="font-bold text-blue-900">Struktur Instrumen Lengkap:</strong>
-          <span class="text-blue-800"> Dashboard ini memuat 7 unsur evaluasi Rawat Inap (Kenyamanan, Kebersihan, Fasilitas, Ketenangan, Kunjungan Dokter, Penjelasan Medis, Responsivitas Perawat) serta rincian lengkap untuk unit Radiologi, Rawat Jalan, dan IGD.</span>
+          <strong class="font-bold text-blue-900">Arsitektur Manajemen Mingguan Aktif:</strong>
+          <span class="text-blue-800"> Data aktif minggu berjalan tersimpan di sheet <code>Data_Survei_Aeramo</code>, dan otomatis dirotasi ke <code>Arsip_Mingguan_Survei</code> agar sheet tetap ringan dan cepat tanpa menghapus data historis.</span>
         </div>
       </div>
       <div class="text-[11px] text-blue-700 whitespace-nowrap font-medium self-end sm:self-auto">
@@ -721,13 +761,13 @@ export const GOOGLE_APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
               <th class="py-3 px-3">Nama Pasien</th>
               <th class="py-3 px-3">Demografi</th>
               <th class="py-3 px-3">Layanan</th>
-              <th class="py-3 px-2 text-center" title="1. Kenyamanan Kamar & Tempat Tidur">Q1 Kamar</th>
-              <th class="py-3 px-2 text-center" title="2. Kebersihan Kamar & Kamar Mandi">Q2 Bersih</th>
-              <th class="py-3 px-2 text-center" title="3. Ketersediaan & Fasilitas Kamar">Q3 Fasilitas</th>
-              <th class="py-3 px-2 text-center" title="4. Ketenangan & Keamanan Lingkungan">Q4 Tenang</th>
-              <th class="py-3 px-2 text-center" title="5. Kunjungan Dokter">Q5 Dokter</th>
-              <th class="py-3 px-2 text-center" title="6. Kejelasan Informasi Medis Dokter">Q6 Info</th>
-              <th class="py-3 px-2 text-center" title="7. Responsivitas & Kesiapan Perawat">Q7 Perawat</th>
+              <th class="py-3 px-2 text-center">Q1 Kamar</th>
+              <th class="py-3 px-2 text-center">Q2 Bersih</th>
+              <th class="py-3 px-2 text-center">Q3 Fasilitas</th>
+              <th class="py-3 px-2 text-center">Q4 Tenang</th>
+              <th class="py-3 px-2 text-center">Q5 Dokter</th>
+              <th class="py-3 px-2 text-center">Q6 Info</th>
+              <th class="py-3 px-2 text-center">Q7 Perawat</th>
               <th class="py-3 px-2 text-center">Rata-rata</th>
               <th class="py-3 px-2 text-center">IKM (100)</th>
               <th class="py-3 px-2 text-center">Mutu</th>
@@ -748,49 +788,11 @@ export const GOOGLE_APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
 
   </main>
 
-  <!-- Modal Detail Jawaban Pasien -->
-  <div id="modal-detail" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs hidden items-center justify-center p-4">
-    <div class="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-        <div>
-          <h3 class="font-bold text-slate-900 text-base" id="modal-title">Rincian Lengkap Jawaban Pasien</h3>
-          <p class="text-xs text-slate-500" id="modal-sub">-</p>
-        </div>
-        <button onclick="closeModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-bold">
-          ✕
-        </button>
-      </div>
-
-      <div id="modal-content" class="space-y-4 text-xs text-slate-700">
-        <!-- Rendered by JS -->
-      </div>
-
-      <div class="pt-3 border-t border-slate-100 flex items-center justify-between">
-        <button
-          onclick="printModalSheet()"
-          class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs flex items-center gap-1.5 transition"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
-          </svg>
-          <span>Cetak Lembar Pasien Ini</span>
-        </button>
-        <button
-          onclick="closeModal()"
-          class="px-5 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs shadow-xs"
-        >
-          Tutup
-        </button>
-      </div>
-    </div>
-  </div>
-
   <script>
     var rawData = null;
     var filteredList = [];
     var chartUnsurInstance = null;
     var chartMutuInstance = null;
-    var currentModalRecord = null;
 
     document.addEventListener('DOMContentLoaded', function() {
       fetchData();
@@ -818,7 +820,6 @@ export const GOOGLE_APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
           })
           .getDashboardData();
       } else {
-        console.warn('google.script.run tidak tersedia. Berjalan di lingkungan simulasi.');
         if (btnText) btnText.innerText = 'Muat Ulang';
         if (spinner) spinner.classList.remove('animate-spin');
       }
@@ -853,11 +854,9 @@ export const GOOGLE_APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
     }
 
     function renderCharts(data) {
-      // 1. Chart Rata-rata 7 Unsur Pelayanan
       var ctxUnsur = document.getElementById('chartUnsur');
       if (ctxUnsur) {
         if (chartUnsurInstance) chartUnsurInstance.destroy();
-        
         var u = data.unsurScores || { q1: 0, q2: 0, q3: 0, q4: 0, q5: 0, q6: 0, q7: 0 };
         chartUnsurInstance = new Chart(ctxUnsur, {
           type: 'bar',
@@ -874,17 +873,8 @@ export const GOOGLE_APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
             datasets: [{
               label: 'Skor Rata-rata (1 - 4)',
               data: [u.q1, u.q2, u.q3, u.q4, u.q5, u.q6, u.q7],
-              backgroundColor: [
-                '#2563eb',
-                '#059669',
-                '#d97706',
-                '#7c3aed',
-                '#0284c7',
-                '#4f46e5',
-                '#0d9488'
-              ],
+              backgroundColor: ['#2563eb', '#059669', '#d97706', '#7c3aed', '#0284c7', '#4f46e5', '#0d9488'],
               borderRadius: 8,
-              borderSkipped: false,
               barThickness: 22
             }]
           },
@@ -892,41 +882,16 @@ export const GOOGLE_APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-              y: {
-                beginAtZero: true,
-                max: 4.0,
-                ticks: {
-                  stepSize: 1.0,
-                  font: { family: 'Plus Jakarta Sans', size: 11 }
-                },
-                grid: { color: '#f1f5f9' }
-              },
-              x: {
-                ticks: {
-                  font: { family: 'Plus Jakarta Sans', size: 10, weight: '600' }
-                },
-                grid: { display: false }
-              }
+              y: { beginAtZero: true, max: 4.0 }
             },
-            plugins: {
-              legend: { display: false },
-              tooltip: {
-                callbacks: {
-                  label: function(c) {
-                    return ' Skor Rata-Rata: ' + c.raw.toFixed(2) + ' / 4.00';
-                  }
-                }
-              }
-            }
+            plugins: { legend: { display: false } }
           }
         });
       }
 
-      // 2. Chart Donut Distribusi Mutu
       var ctxMutu = document.getElementById('chartMutu');
       if (ctxMutu) {
         if (chartMutuInstance) chartMutuInstance.destroy();
-        
         var m = data.mutuDist || { a: 0, b: 0, c: 0, d: 0 };
         chartMutuInstance = new Chart(ctxMutu, {
           type: 'doughnut',
@@ -934,23 +899,12 @@ export const GOOGLE_APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
             labels: ['Sangat Baik (A)', 'Baik (B)', 'Cukup (C)', 'Kurang Baik (D)'],
             datasets: [{
               data: [m.a, m.b, m.c, m.d],
-              backgroundColor: ['#059669', '#2563eb', '#d97706', '#e11d48'],
-              borderWidth: 2,
-              borderColor: '#ffffff'
+              backgroundColor: ['#059669', '#2563eb', '#d97706', '#e11d48']
             }]
           },
           options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: {
-              legend: {
-                position: 'bottom',
-                labels: {
-                  boxWidth: 12,
-                  font: { family: 'Plus Jakarta Sans', size: 10, weight: '600' }
-                }
-              }
-            },
             cutout: '68%'
           }
         });
@@ -966,46 +920,16 @@ export const GOOGLE_APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
 
       filteredList = rawData.recentResponses.filter(function(item) {
         var matchLayanan = (filterLayanan === 'ALL') || (item.jenisLayanan === filterLayanan);
-        
-        var matchMutu = true;
-        if (filterMutu !== 'ALL') {
-          matchMutu = item.mutuLayanan.indexOf(filterMutu) !== -1;
-        }
-
+        var matchMutu = (filterMutu === 'ALL') || (item.mutuLayanan.indexOf(filterMutu) !== -1);
         var matchSearch = !search ||
           (item.namaPasien && item.namaPasien.toLowerCase().indexOf(search) !== -1) ||
           (item.tanggalSurvei && item.tanggalSurvei.toLowerCase().indexOf(search) !== -1) ||
-          (item.jenisLayanan && item.jenisLayanan.toLowerCase().indexOf(search) !== -1) ||
-          (item.saran && item.saran.toLowerCase().indexOf(search) !== -1);
+          (item.jenisLayanan && item.jenisLayanan.toLowerCase().indexOf(search) !== -1);
 
         return matchLayanan && matchMutu && matchSearch;
       });
 
       renderTable();
-    }
-
-    function formatScoreCell(val) {
-      if (!val || val === 0 || val === '-') {
-        return '<span class="text-slate-300 font-normal">-</span>';
-      }
-      var colorClass = 'text-blue-700 bg-blue-50';
-      if (val === 4) colorClass = 'text-emerald-700 bg-emerald-50';
-      else if (val === 3) colorClass = 'text-blue-700 bg-blue-50';
-      else if (val === 2) colorClass = 'text-amber-700 bg-amber-50';
-      else if (val === 1) colorClass = 'text-rose-700 bg-rose-50';
-      return '<span class="inline-block w-6 h-6 leading-6 text-center rounded-md font-bold text-xs ' + colorClass + '">' + val + '</span>';
-    }
-
-    function formatScoreBadge(val) {
-      if (!val || val === 0 || val === '-') {
-        return '<span class="text-slate-300 font-normal">-</span>';
-      }
-      var colorClass = 'text-blue-700 bg-blue-100';
-      if (val === 4) colorClass = 'text-emerald-800 bg-emerald-100';
-      else if (val === 3) colorClass = 'text-blue-800 bg-blue-100';
-      else if (val === 2) colorClass = 'text-amber-800 bg-amber-100';
-      else if (val === 1) colorClass = 'text-rose-800 bg-rose-100';
-      return '<span class="px-2 py-0.5 rounded-full font-bold text-xs ' + colorClass + '">Nilai ' + val + '</span>';
     }
 
     function renderTable() {
@@ -1021,126 +945,25 @@ export const GOOGLE_APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       var html = '';
       for (var i = 0; i < filteredList.length; i++) {
         var r = filteredList[i];
-        
-        var mutuClass = 'bg-blue-50 text-blue-700 border-blue-200';
-        if (r.mutuLayanan.indexOf('A') !== -1 || r.mutuLayanan.indexOf('Sangat Baik') !== -1) {
-          mutuClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
-        } else if (r.mutuLayanan.indexOf('C') !== -1) {
-          mutuClass = 'bg-amber-50 text-amber-700 border-amber-200';
-        } else if (r.mutuLayanan.indexOf('D') !== -1) {
-          mutuClass = 'bg-rose-50 text-rose-700 border-rose-200';
-        }
-
-        html += '<tr onclick="openDetail(' + i + ')" class="hover:bg-blue-50/50 cursor-pointer transition border-b border-slate-100">' +
+        html += '<tr class="border-b border-slate-100">' +
           '<td class="py-3 px-3 font-mono text-[11px] text-slate-500 whitespace-nowrap">' + r.tanggalSurvei + '<br><span class="text-[10px] text-slate-400">' + (r.jamSurvei || '') + '</span></td>' +
           '<td class="py-3 px-3 font-bold text-slate-900 whitespace-nowrap">' + escapeHtml(r.namaPasien) + '</td>' +
-          '<td class="py-3 px-3 text-[11px] text-slate-600 whitespace-nowrap">' + (r.jenisKelamin === 'L' ? '👨 L' : (r.jenisKelamin === 'P' ? '👩 P' : '-')) + ' • ' + (r.usia ? r.usia + ' thn' : '-') + '</td>' +
-          '<td class="py-3 px-3 whitespace-nowrap"><span class="px-2 py-0.5 rounded-md bg-slate-100 font-semibold text-[11px] text-slate-700">' + escapeHtml(r.jenisLayanan) + '</span></td>' +
-          '<td class="py-3 px-2 text-center">' + formatScoreCell(r.q1) + '</td>' +
-          '<td class="py-3 px-2 text-center">' + formatScoreCell(r.q2) + '</td>' +
-          '<td class="py-3 px-2 text-center">' + formatScoreCell(r.q3) + '</td>' +
-          '<td class="py-3 px-2 text-center">' + formatScoreCell(r.q4) + '</td>' +
-          '<td class="py-3 px-2 text-center">' + formatScoreCell(r.q5) + '</td>' +
-          '<td class="py-3 px-2 text-center">' + formatScoreCell(r.q6) + '</td>' +
-          '<td class="py-3 px-2 text-center">' + formatScoreCell(r.q7) + '</td>' +
-          '<td class="py-3 px-2 text-center font-extrabold text-slate-900">' + (r.avgScore > 0 ? r.avgScore.toFixed(2) : '-') + '</td>' +
-          '<td class="py-3 px-2 text-center font-black text-blue-800">' + (r.ikm100 > 0 ? r.ikm100.toFixed(1) : '-') + '</td>' +
-          '<td class="py-3 px-2 text-center whitespace-nowrap"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ' + mutuClass + '">' + r.mutuLayanan + '</span></td>' +
-          '<td class="py-3 px-3 max-w-xs truncate text-slate-600" title="' + escapeHtml(r.saran) + '">' + (r.saran ? escapeHtml(r.saran) : '<span class="text-slate-300 italic">-</span>') + '</td>' +
-        '</tr>';
+          '<td class="py-3 px-3 text-slate-500 whitespace-nowrap">' + r.jenisKelamin + ' • ' + (r.usia || '-') + ' th</td>' +
+          '<td class="py-3 px-3 font-semibold text-blue-900">' + escapeHtml(r.jenisLayanan) + '</td>' +
+          '<td class="py-3 px-2 text-center">' + (r.q1 || '-') + '</td>' +
+          '<td class="py-3 px-2 text-center">' + (r.q2 || '-') + '</td>' +
+          '<td class="py-3 px-2 text-center">' + (r.q3 || '-') + '</td>' +
+          '<td class="py-3 px-2 text-center">' + (r.q4 || '-') + '</td>' +
+          '<td class="py-3 px-2 text-center">' + (r.q5 || '-') + '</td>' +
+          '<td class="py-3 px-2 text-center">' + (r.q6 || '-') + '</td>' +
+          '<td class="py-3 px-2 text-center">' + (r.q7 || '-') + '</td>' +
+          '<td class="py-3 px-2 text-center font-bold text-emerald-700">' + r.avgScore.toFixed(2) + '</td>' +
+          '<td class="py-3 px-2 text-center font-bold text-blue-700">' + r.ikm100.toFixed(2) + '</td>' +
+          '<td class="py-3 px-2 text-center">' + r.mutuLayanan + '</td>' +
+          '<td class="py-3 px-3 text-slate-600 max-w-xs truncate">' + (r.saran ? escapeHtml(r.saran) : '-') + '</td>' +
+          '</tr>';
       }
-
       tbody.innerHTML = html;
-    }
-
-    function openDetail(index) {
-      var r = filteredList[index];
-      if (!r) return;
-      currentModalRecord = r;
-
-      document.getElementById('modal-sub').innerText = r.tanggalSurvei + ' • ' + (r.jamSurvei || '') + ' (' + r.jenisLayanan + ')';
-      
-      var aspectListHtml = '';
-      if (r.rincianAspek && r.rincianAspek !== '-') {
-        var items = r.rincianAspek.split(' | ');
-        aspectListHtml = '<div class="space-y-1.5">';
-        for (var k = 0; k < items.length; k++) {
-          aspectListHtml += '<div class="p-2 rounded-lg bg-white border border-blue-100 flex justify-between items-center text-xs text-slate-700"><span>' + escapeHtml(items[k]) + '</span></div>';
-        }
-        aspectListHtml += '</div>';
-      } else {
-        aspectListHtml = 
-          '<div class="space-y-1.5">' +
-            '<div class="flex justify-between items-center py-1 border-b border-blue-100 text-xs text-slate-700"><span>1. Kenyamanan Kamar & Tempat Tidur:</span> ' + formatScoreBadge(r.q1) + '</div>' +
-            '<div class="flex justify-between items-center py-1 border-b border-blue-100 text-xs text-slate-700"><span>2. Kebersihan Kamar & Kamar Mandi:</span> ' + formatScoreBadge(r.q2) + '</div>' +
-            '<div class="flex justify-between items-center py-1 border-b border-blue-100 text-xs text-slate-700"><span>3. Fasilitas & Peralatan Kamar:</span> ' + formatScoreBadge(r.q3) + '</div>' +
-            '<div class="flex justify-between items-center py-1 border-b border-blue-100 text-xs text-slate-700"><span>4. Ketenangan & Keamanan Lingkungan:</span> ' + formatScoreBadge(r.q4) + '</div>' +
-            '<div class="flex justify-between items-center py-1 border-b border-blue-100 text-xs text-slate-700"><span>5. Frekuensi Kunjungan Dokter:</span> ' + formatScoreBadge(r.q5) + '</div>' +
-            '<div class="flex justify-between items-center py-1 border-b border-blue-100 text-xs text-slate-700"><span>6. Kejelasan Informasi Penjelasan Dokter:</span> ' + formatScoreBadge(r.q6) + '</div>' +
-            '<div class="flex justify-between items-center py-1 text-xs text-slate-700"><span>7. Responsivitas & Kesiapan Perawat:</span> ' + formatScoreBadge(r.q7) + '</div>' +
-          '</div>';
-      }
-
-      var content = 
-        '<div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">' +
-          '<div class="flex justify-between"><strong>Nama Pasien:</strong> <span>' + escapeHtml(r.namaPasien) + '</span></div>' +
-          '<div class="flex justify-between"><strong>Demografi:</strong> <span>' + (r.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan') + ' / ' + (r.usia ? r.usia + ' Tahun' : '-') + '</span></div>' +
-          '<div class="flex justify-between"><strong>Pendidikan:</strong> <span>' + escapeHtml(r.pendidikan) + '</span></div>' +
-          '<div class="flex justify-between"><strong>Pekerjaan:</strong> <span>' + escapeHtml(r.pekerjaan) + '</span></div>' +
-          '<div class="flex justify-between"><strong>Jenis Layanan:</strong> <span class="font-bold text-blue-700">' + escapeHtml(r.jenisLayanan) + '</span></div>' +
-        '</div>' +
-
-        '<div class="bg-blue-50/60 p-4 rounded-2xl border border-blue-200 space-y-2.5">' +
-          '<h4 class="font-bold text-blue-900 mb-1">Rincian Penilaian Aspek Kepuasan:</h4>' +
-          aspectListHtml +
-          '<div class="pt-2.5 border-t border-blue-200 flex justify-between font-bold text-slate-800">' +
-            '<span>Rata-Rata: ' + (r.avgScore > 0 ? r.avgScore.toFixed(2) : '-') + '</span>' +
-            '<span class="text-blue-700">Indeks IKM: ' + (r.ikm100 > 0 ? r.ikm100.toFixed(2) : '-') + ' (' + r.mutuLayanan + ')</span>' +
-          '</div>' +
-        '</div>' +
-
-        '<div class="bg-amber-50/60 p-4 rounded-2xl border border-amber-200 space-y-1">' +
-          '<h4 class="font-bold text-amber-900">Saran & Masukan Pasien:</h4>' +
-          '<p class="text-slate-700 leading-relaxed italic">' + (r.saran ? escapeHtml(r.saran) : 'Tidak ada saran tambahan.') + '</p>' +
-        '</div>';
-
-      document.getElementById('modal-content').innerHTML = content;
-      document.getElementById('modal-detail').classList.remove('hidden');
-      document.getElementById('modal-detail').classList.add('flex');
-    }
-
-    function closeModal() {
-      document.getElementById('modal-detail').classList.add('hidden');
-      document.getElementById('modal-detail').classList.remove('flex');
-    }
-
-    function printModalSheet() {
-      if (!currentModalRecord) return;
-      var w = window.open('', '_blank');
-      var r = currentModalRecord;
-      var printHtml = 
-        '<html><head><title>Lembar Survei - ' + escapeHtml(r.namaPasien) + '</title>' +
-        '<style>body{font-family:sans-serif;padding:30px;color:#1e293b}h2{color:#1e3a8a;margin-bottom:4px}table{width:100%;border-collapse:collapse;margin-top:15px}td,th{border:1px solid #cbd5e1;padding:8px 12px;font-size:12px}.bg{background:#f8fafc;font-weight:bold}</style>' +
-        '</head><body>' +
-        '<h2>RSUD AERAMO - LEMBAR EVALUASI KEPUASAN PASIEN</h2>' +
-        '<p style="font-size:12px;color:#64748b;margin-top:0">Kabupaten Nagekeo | Waktu Survei: ' + r.tanggalSurvei + ' ' + (r.jamSurvei || '') + '</p>' +
-        '<hr/>' +
-        '<table>' +
-          '<tr><td class="bg" width="30%">ID Survei</td><td>' + r.id + '</td></tr>' +
-          '<tr><td class="bg">Nama Pasien</td><td>' + escapeHtml(r.namaPasien) + '</td></tr>' +
-          '<tr><td class="bg">Jenis Kelamin / Usia</td><td>' + (r.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan') + ' / ' + (r.usia || '-') + ' Tahun</td></tr>' +
-          '<tr><td class="bg">Pendidikan / Pekerjaan</td><td>' + escapeHtml(r.pendidikan) + ' / ' + escapeHtml(r.pekerjaan) + '</td></tr>' +
-          '<tr><td class="bg">Jenis Layanan</td><td>' + escapeHtml(r.jenisLayanan) + '</td></tr>' +
-          '<tr><td class="bg">Skor Rata-Rata</td><td><strong>' + r.avgScore.toFixed(2) + '</strong> (Skala 1 - 4)</td></tr>' +
-          '<tr><td class="bg">Indeks IKM 100</td><td><strong>' + r.ikm100.toFixed(2) + '</strong> (' + r.mutuLayanan + ')</td></tr>' +
-          '<tr><td class="bg">Rincian Aspek</td><td>' + (r.rincianAspek ? escapeHtml(r.rincianAspek) : ('Q1: ' + r.q1 + ', Q2: ' + r.q2 + ', Q3: ' + r.q3 + ', Q4: ' + r.q4 + ', Q5: ' + r.q5 + ', Q6: ' + r.q6 + ', Q7: ' + r.q7)) + '</td></tr>' +
-          '<tr><td class="bg">Saran / Masukan</td><td>' + (r.saran ? escapeHtml(r.saran) : '-') + '</td></tr>' +
-        '</table>' +
-        '<p style="font-size:11px;color:#94a3b8;margin-top:20px;text-align:right">Dicetak dari Dashboard RSUD Aeramo pada ' + new Date().toLocaleString('id-ID') + '</p>' +
-        '</body></html>';
-      w.document.write(printHtml);
-      w.document.close();
-      setTimeout(function() { w.print(); }, 500);
     }
 
     function exportCSV() {
@@ -1149,11 +972,7 @@ export const GOOGLE_APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
         return;
       }
 
-      var headers = [
-        'Tanggal', 'Jam', 'Nama Pasien', 'Jenis Kelamin', 'Usia', 'Pendidikan', 'Pekerjaan', 'Jenis Layanan',
-        'Q1 Kamar', 'Q2 Kebersihan', 'Q3 Fasilitas', 'Q4 Ketenangan', 'Q5 Dokter', 'Q6 Info Medis', 'Q7 Perawat',
-        'Rata-Rata Skor', 'IKM 100', 'Mutu Pelayanan', 'Saran', 'Rincian Aspek'
-      ];
+      var headers = ['Tanggal', 'Jam', 'Nama Pasien', 'JK', 'Usia', 'Layanan', 'AvgScore', 'IKM100', 'Mutu', 'Saran'];
       var csvRows = [headers.join(',')];
 
       for (var i = 0; i < filteredList.length; i++) {
@@ -1164,21 +983,11 @@ export const GOOGLE_APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
           '"' + (r.namaPasien || '').replace(/"/g, '""') + '"',
           '"' + r.jenisKelamin + '"',
           '"' + (r.usia || '') + '"',
-          '"' + r.pendidikan + '"',
-          '"' + (r.pekerjaan || '').replace(/"/g, '""') + '"',
           '"' + r.jenisLayanan + '"',
-          r.q1 || '-',
-          r.q2 || '-',
-          r.q3 || '-',
-          r.q4 || '-',
-          r.q5 || '-',
-          r.q6 || '-',
-          r.q7 || '-',
           r.avgScore || 0,
           r.ikm100 || 0,
           '"' + r.mutuLayanan + '"',
-          '"' + (r.saran || '').replace(/"/g, '""') + '"',
-          '"' + (r.rincianAspek || '').replace(/"/g, '""') + '"'
+          '"' + (r.saran || '').replace(/"/g, '""') + '"'
         ];
         csvRows.push(row.join(','));
       }
@@ -1187,7 +996,7 @@ export const GOOGLE_APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       var url = URL.createObjectURL(blob);
       var link = document.createElement('a');
       link.setAttribute('href', url);
-      link.setAttribute('download', 'Laporan_Survei_Kepuasan_RSUD_Aeramo_' + new Date().toISOString().slice(0, 10) + '.csv');
+      link.setAttribute('download', 'Laporan_Survei_RSUD_Aeramo_' + new Date().toISOString().slice(0, 10) + '.csv');
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -1195,12 +1004,7 @@ export const GOOGLE_APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
 
     function escapeHtml(text) {
       if (!text) return '';
-      return String(text)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
+      return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
   </script>
 </body>

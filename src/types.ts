@@ -85,12 +85,13 @@ export interface AppConfig {
   autoResetSeconds: number;
 }
 
-export interface QRSession {
-  appsScriptUrl: string;
-  token: string;
-  createdAt: number;
-  expiresAt: number;
-  hospitalName?: string;
-  hospitalSubTitle?: string;
+export interface OneTimeSubmissionLock {
+  isSubmitted: boolean;
+  submissionId?: string;
+  submittedAt?: string;
+  namaPasien?: string;
+  jenisLayanan?: string;
+  mutuLayanan?: string;
+  ikmScore?: number;
 }
 

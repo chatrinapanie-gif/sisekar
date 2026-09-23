@@ -41,15 +41,14 @@ import {
   Pekerjaan, 
   SkalaKepuasan, 
   SurveySubmission, 
-  AppConfig,
-  QRSession
+  AppConfig 
 } from '../types';
-import { sendSurveyToGoogleSheet } from '../services/sheetsService';
+import { sendSurveyToGoogleSheet, saveOneTimeLock } from '../services/sheetsService';
 
 interface SurveyFormProps {
   config: AppConfig;
   isOnline: boolean;
-  onSubmissionSuccess: () => void;
+  onSubmissionSuccess: (submission: SurveySubmission) => void;
   onOpenGuide: () => void;
 }
 
@@ -298,17 +297,11 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
 
     const res = await sendSurveyToGoogleSheet(submission, config.appsScriptUrl);
 
-    setIsSubmitting(false);
-    setSubmitResult({
-      show: true,
-      mode: res.mode,
-      message: res.message,
-      countdown: config.autoResetSeconds,
-      avgScore: avg,
-      ikm,
-    });
+    // Kunci aplikasi secara permanen (One-Time Access Lock) agar tidak bisa diisi ulang
+    saveOneTimeLock(submission);
 
-    onSubmissionSuccess();
+    setIsSubmitting(false);
+    onSubmissionSuccess(submission);
   };
 
   const handlePrint = () => {

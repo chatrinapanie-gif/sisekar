@@ -1,4 +1,4 @@
-import { AppConfig, SurveySubmission } from '../types';
+import { AppConfig, SurveySubmission, OneTimeSubmissionLock } from '../types';
 import { ADMIN_CONFIG } from '../surveyConfig';
 import { sanitizeInput } from '../utils/security';
 
@@ -6,7 +6,53 @@ const STORAGE_KEYS = {
   CONFIG: 'sisekar_aeramo_config',
   SUBMISSIONS: 'sisekar_aeramo_submissions',
   PENDING_QUEUE: 'sisekar_aeramo_pending_queue',
+  ONE_TIME_LOCK: 'sisekar_aeramo_onetime_lock_v1',
 };
+
+/**
+ * Cek status apakah perangkat ini sudah pernah mengisi survei (One-Time Access Lock)
+ */
+export function getOneTimeLock(): OneTimeSubmissionLock | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.ONE_TIME_LOCK);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed?.isSubmitted ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Kunci akses perangkat secara permanen setelah pengiriman survei berhasil (Anti-Spam / One-Time Use)
+ */
+export function saveOneTimeLock(submission: SurveySubmission): void {
+  try {
+    const lockData: OneTimeSubmissionLock = {
+      isSubmitted: true,
+      submissionId: submission.id,
+      submittedAt: new Date().toISOString(),
+      namaPasien: submission.namaPasien || 'Pasien RSUD Aeramo',
+      jenisLayanan: submission.jenisLayanan,
+      mutuLayanan: submission.mutuLayanan,
+      ikmScore: submission.ikmScore,
+    };
+    localStorage.setItem(STORAGE_KEYS.ONE_TIME_LOCK, JSON.stringify(lockData));
+  } catch (err) {
+    console.error('Failed to save one-time lock:', err);
+  }
+}
+
+/**
+ * Buka kunci akses perangkat (Hanya oleh Petugas Admin melalui Portal Terproteksi)
+ */
+export function clearOneTimeLock(): void {
+  try {
+    localStorage.removeItem(STORAGE_KEYS.ONE_TIME_LOCK);
+  } catch (err) {
+    console.error('Failed to clear one-time lock:', err);
+  }
+}
 
 export const DEFAULT_CONFIG: AppConfig = {
   appsScriptUrl: ADMIN_CONFIG.appsScriptUrl || '',

@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Header } from './components/Header';
 import { SurveyForm } from './components/SurveyForm';
 import { PatientGuideView } from './components/PatientGuideView';
+import { ThankYouLockedView } from './components/ThankYouLockedView';
 import { AdminPortalModal } from './components/AdminPortalModal';
 import { 
   loadAppConfig, 
@@ -10,10 +11,12 @@ import {
   loadSubmissions, 
   loadPendingQueue, 
   syncAllPendingQueue,
-  fetchServerConfig
+  fetchServerConfig,
+  getOneTimeLock,
+  clearOneTimeLock
 } from './services/sheetsService';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
-import { AppConfig, SurveySubmission } from './types';
+import { AppConfig, SurveySubmission, OneTimeSubmissionLock } from './types';
 import { CheckCircle2, AlertCircle, Lock, ShieldCheck } from 'lucide-react';
 import { initializeClientSecurityProtections } from './utils/security';
 
@@ -26,6 +29,9 @@ export default function App() {
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+  
+  // Status Kunci Satu Kali Pakai (One-Time Submission Access Lock)
+  const [oneTimeLock, setOneTimeLock] = useState<OneTimeSubmissionLock | null>(() => getOneTimeLock());
 
   // Sinkronisasi otomatis konfigurasi dari server agar aktif di semua perangkat (HP, Laptop, Tablet, Kiosk)
   useEffect(() => {
@@ -74,6 +80,7 @@ export default function App() {
     const pending = loadPendingQueue();
     setSubmissions(list);
     setPendingCount(pending.length);
+    setOneTimeLock(getOneTimeLock());
   }, []);
 
   useEffect(() => {
@@ -130,15 +137,40 @@ export default function App() {
     }
   };
 
+  // Handler saat survei berhasil disubmit oleh pasien
+  const handleSubmissionSuccess = (submission: SurveySubmission) => {
+    refreshData();
+    setOneTimeLock({
+      isSubmitted: true,
+      submissionId: submission.id,
+      submittedAt: submission.timestamp,
+      namaPasien: submission.namaPasien,
+      jenisLayanan: submission.jenisLayanan,
+      mutuLayanan: submission.mutuLayanan,
+      ikmScore: submission.ikmScore,
+    });
+    showToast('success', '✓ Survei berhasil terkirim! Akses formulir telah ditutup otomatis.');
+  };
+
+  // Handler pembukaan kunci oleh petugas / admin rumah sakit
+  const handleUnlockDevice = () => {
+    clearOneTimeLock();
+    setOneTimeLock(null);
+    setActiveTab('survey');
+    setIsAdminModalOpen(false);
+    showToast('success', '✓ Kunci akses dibuka. Formulir survei baru siap digunakan!');
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
       
-      {/* Header — Menampilkan Tab Formulir Survei dan Panduan Pengisian */}
+      {/* Header — Menampilkan Info RSUD Aeramo & Status Jaringan */}
       <Header
         config={config}
         isOnline={isOnline}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
+        isDeviceLocked={!!oneTimeLock}
       />
 
       {/* Floating Toast Notification */}
@@ -161,14 +193,22 @@ export default function App() {
 
       {/* Konten Utama Pasien */}
       <main className="flex-1">
-        {activeTab === 'survey' ? (
+        {oneTimeLock ? (
+          /* TAMPILAN TANDA TERIMA & KUNCI AKSES SETELAH PENGISIAN (ONE-TIME USE) */
+          <ThankYouLockedView
+            lockInfo={oneTimeLock}
+            onAdminUnlockRequest={() => setIsAdminModalOpen(true)}
+          />
+        ) : activeTab === 'survey' ? (
+          /* FORMULIR SURVEI RESMI DOKUMEN RSUD AERAMO */
           <SurveyForm
             config={config}
             isOnline={isOnline}
-            onSubmissionSuccess={refreshData}
+            onSubmissionSuccess={handleSubmissionSuccess}
             onOpenGuide={() => setActiveTab('guide')}
           />
         ) : (
+          /* PANDUAN PENGISIAN */
           <PatientGuideView
             onStartSurvey={() => setActiveTab('survey')}
           />
@@ -221,9 +261,10 @@ export default function App() {
         onSyncAll={handleSyncQueue}
         onClearHistory={handleClearHistory}
         isOnline={isOnline}
+        isDeviceLocked={!!oneTimeLock}
+        onUnlockDevice={handleUnlockDevice}
       />
 
     </div>
   );
 }
-

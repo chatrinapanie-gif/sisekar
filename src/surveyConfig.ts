@@ -289,10 +289,10 @@ export const SERVICE_QUESTIONS: Record<ServiceKey, QuestionSection[]> = {
     {
       id: 'ri_bagian_1',
       title: 'Bagian 1 : Kenyamanan, Kualitas, Keramahan, Kerapihan NAKES dan Fasilitas Kamar Rawat Inap',
-      description: 'Penilaian terhadap fasilitas, kebersihan, dan kenyamanan kamar rawat inap',
+      description: 'Penilaian terhadap fasilitas, kebersihan, dan kenyamanan kamar rawat inap (Untuk Saat Ini hanya disediakan Survey Kepuasan RAWAT JALAN)',
       questions: [
         {
-          id: 'ri_q1_keterpenuhan_kamar',
+          id: 'ri_q1_keterpenuhan_pelayanan',
           aspek: 'Aspek Keterpenuhan Pelayanan Pasien Rawat Inap',
           uraian: 'Menurut Bapak/Ibu, apakah persyaratan untuk mendapatkan pelayanan di Rumah Sakit ini mudah dipenuhi dan sesuai dengan pelayanan yang dibutuhkan?',
           options: OPSI_KESESUAIAN,

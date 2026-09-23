@@ -29,7 +29,6 @@ import { AppConfig, SurveySubmission } from '../types';
 import { ADMIN_CONFIG } from '../surveyConfig';
 import { exportToCSV, testAppsScriptConnection } from '../services/sheetsService';
 import { GOOGLE_APPS_SCRIPT_CODE } from '../services/appsScriptCode';
-import { AdminQRDisplayTab } from './AdminQRDisplayTab';
 import { 
   getSecurityStatus, 
   recordFailedAttempt, 
@@ -50,6 +49,8 @@ interface AdminPortalModalProps {
   onSyncAll: () => void;
   onClearHistory: () => void;
   isOnline: boolean;
+  isDeviceLocked?: boolean;
+  onUnlockDevice?: () => void;
 }
 
 export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
@@ -63,6 +64,8 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
   onSyncAll,
   onClearHistory,
   isOnline,
+  isDeviceLocked,
+  onUnlockDevice,
 }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [sessionToken, setSessionToken] = useState<string | null>(null);
@@ -495,6 +498,17 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
                       <Download className="w-3.5 h-3.5" />
                       <span>Unduh CSV / Excel</span>
                     </button>
+
+                    {onUnlockDevice && (
+                      <button
+                        onClick={onUnlockDevice}
+                        className="px-3 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition"
+                        title="Buka status penguncian untuk pengisian pasien berikutnya"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Buka Akses Survei Baru</span>
+                      </button>
+                    )}
 
                     {submissions.length > 0 && (
                       <button

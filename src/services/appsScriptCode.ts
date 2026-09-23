@@ -35,20 +35,25 @@ const SHEET_NAME_PINS = "PIN_PASIEN"; // Sheet Database PIN Akses Pasien Multi-D
 const SHEET_NAME_DASHBOARD = "Dashboard_IKM";
 
 /**
- * Menu Kustom di Google Sheet untuk Petugas & Admin RSUD Aeramo
+ * Menu Kustom di Google Sheet untuk Petugas & Admin RSUD Aeramo (OPSIONAL / CADANGAN)
+ * CATATAN PENTING:
+ * Pembuatan PIN kini 100% dapat dilakukan langsung dari DASHBOARD ADMIN WEB
+ * tanpa perlu membuka Google Sheet sama sekali. Menu onOpen ini hanya cadangan manual.
  */
 function onOpen() {
-  const ui = SpreadsheetApp.getUi();
-  ui.createMenu("📊 SISEKAR RSUD Aeramo")
-    .addItem("🔑 Buat 10 PIN Pasien Baru (Otomatis)", "generate10PinsMenu")
-    .addItem("🔑 Buat 50 PIN Pasien Baru (Otomatis)", "generate50PinsMenu")
-    .addItem("📋 Periksa & Siapkan Tab Sheet PIN_PASIEN", "setupPinSheetManual")
-    .addSeparator()
-    .addItem("🔄 Jalankan Rotasi & Arsip Mingguan", "rotasiMingguanOtomatis")
-    .addItem("⚙️ Pasang Auto-Trigger Mingguan Otomatis", "setupWeeklyTrigger")
-    .addSeparator()
-    .addItem("📈 Perbarui Dashboard IKM", "refreshDashboardManually")
-    .addToUi();
+  try {
+    const ui = SpreadsheetApp.getUi();
+    ui.createMenu("📊 SISEKAR RSUD Aeramo")
+      .addItem("🔑 Buat 10 PIN Pasien Baru (Cadangan Manual)", "generate10PinsMenu")
+      .addItem("🔑 Buat 50 PIN Pasien Baru (Cadangan Manual)", "generate50PinsMenu")
+      .addItem("📋 Periksa & Siapkan Tab Sheet PIN_PASIEN", "setupPinSheetManual")
+      .addSeparator()
+      .addItem("🔄 Jalankan Rotasi & Arsip Mingguan", "rotasiMingguanOtomatis")
+      .addItem("⚙️ Pasang Auto-Trigger Mingguan Otomatis", "setupWeeklyTrigger")
+      .addSeparator()
+      .addItem("📈 Perbarui Dashboard IKM", "refreshDashboardManually")
+      .addToUi();
+  } catch (err) {}
 }
 
 /**
@@ -254,6 +259,36 @@ function doGet(e) {
       .setMimeType(ContentService.MimeType.JSON);
   }
 
+  // 2b. Buat / Tambah PIN Pasien Baru Langsung dari Web Dashboard (Tanpa Perlu Buka Sheet / onOpen)
+  if (action === "create_pin" || action === "add_pin") {
+    const rawPin = String(params.pin || "").trim().replace(/\D/g, "");
+    if (rawPin) {
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      const pinSheet = ensurePinSheetExists(ss);
+      const nowStr = Utilities.formatDate(new Date(), "Asia/Makassar", "yyyy-MM-dd HH:mm:ss 'WITA'");
+      const newRow = [
+        "'" + rawPin,
+        "AKTIF",
+        params.name || params.namaPasien || "",
+        params.service || params.layanan || "Rawat Inap",
+        params.room || params.kamar || "",
+        nowStr,
+        "",
+        "",
+        "",
+        "",
+        "",
+        params.notes || "Dibuat dari Dashboard Web SISEKAR"
+      ];
+      pinSheet.appendRow(newRow);
+      return ContentService.createTextOutput(JSON.stringify({
+        success: true,
+        message: "PIN " + rawPin + " berhasil dicatat ke Google Sheet!",
+        pin: rawPin
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+
   // 3. Ping Uji Koneksi
   if (action === "ping" || params.ping === "true") {
     return ContentService.createTextOutput(JSON.stringify({
@@ -273,14 +308,142 @@ function doGet(e) {
   try {
     const template = HtmlService.createTemplateFromFile("index");
     return template.evaluate()
-      .setTitle("Dashboard Survei Kepuasan Pasien - RSUD Aeramo")
+      .setTitle("Dashboard Admin & Penerbitan PIN - RSUD Aeramo")
       .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   } catch (err) {
     return ContentService.createTextOutput(
       "Error memuat template index.html: " + err.message +
-      ". Pastikan Anda telah membuat file HTML bernama 'index' di Google Apps Script."
+      ".\n\nLangkah: Buka Google Apps Script > Klik tanda '+' di samping Files > Pilih 'HTML' > Beri nama 'index' > Tempelkan kode file index.html yang disediakan."
     );
+  }
+}
+
+/**
+ * ============================================================================
+ * FUNGSI SERVER-SIDE UNTUK DASHBOARD ADMIN & PENERBITAN PIN (index.html)
+ * Dipanggil langsung oleh index.html melalui google.script.run
+ * ============================================================================
+ */
+
+function generatePinFromDashboard(params) {
+  try {
+    params = params || {};
+    const count = Math.min(Math.max(1, Number(params.count) || 1), 50);
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ensurePinSheetExists(ss);
+    
+    const existingValues = sheet.getLastRow() > 1 
+      ? sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues().map(function(r) { return String(r[0]).replace(/\D/g, ""); })
+      : [];
+    const existingSet = {};
+    existingValues.forEach(function(p) { existingSet[p] = true; });
+
+    const rows = [];
+    const generatedPins = [];
+    const nowStr = Utilities.formatDate(new Date(), "Asia/Makassar", "yyyy-MM-dd HH:mm:ss 'WITA'");
+
+    if (params.customPin && String(params.customPin).trim().length >= 4) {
+      const cleanCustom = String(params.customPin).trim().replace(/\D/g, "");
+      rows.push([
+        "'" + cleanCustom,
+        "AKTIF",
+        params.registeredPatientName || "",
+        params.registeredService || "Rawat Inap",
+        params.registeredRoom || "",
+        nowStr,
+        "", "", "", "", "",
+        params.notes || "Diterbitkan dari Dashboard Apps Script"
+      ]);
+      generatedPins.push({
+        pin: cleanCustom,
+        status: "active",
+        registeredPatientName: params.registeredPatientName || "",
+        registeredService: params.registeredService || "Rawat Inap",
+        registeredRoom: params.registeredRoom || "",
+        createdAt: nowStr
+      });
+    } else {
+      for (let i = 0; i < count; i++) {
+        let pinCode = String(Math.floor(100000 + Math.random() * 900000));
+        while (existingSet[pinCode]) {
+          pinCode = String(Math.floor(100000 + Math.random() * 900000));
+        }
+        existingSet[pinCode] = true;
+        const pName = count === 1 ? (params.registeredPatientName || "") : "";
+        const pRoom = count === 1 ? (params.registeredRoom || "") : "";
+        rows.push([
+          "'" + pinCode,
+          "AKTIF",
+          pName,
+          params.registeredService || "Rawat Inap",
+          pRoom,
+          nowStr,
+          "", "", "", "", "",
+          params.notes || (count === 1 ? "Diterbitkan dari Dashboard Apps Script" : "Batch " + count + " PIN dari Dashboard Apps Script")
+        ]);
+        generatedPins.push({
+          pin: pinCode,
+          status: "active",
+          registeredPatientName: pName,
+          registeredService: params.registeredService || "Rawat Inap",
+          registeredRoom: pRoom,
+          createdAt: nowStr
+        });
+      }
+    }
+
+    if (rows.length > 0) {
+      sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, 12).setValues(rows);
+    }
+
+    return {
+      success: true,
+      message: "Berhasil menerbitkan " + rows.length + " PIN baru di tab PIN_PASIEN!",
+      pins: generatedPins
+    };
+  } catch (err) {
+    return { success: false, message: "Gagal membuat PIN: " + err.message };
+  }
+}
+
+function revokePinFromSheet(pin) {
+  try {
+    const cleanPin = String(pin).replace(/\D/g, "");
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ensurePinSheetExists(ss);
+    if (sheet.getLastRow() <= 1) return { success: false, message: "Sheet kosong" };
+
+    const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, 2).getValues();
+    for (let i = 0; i < values.length; i++) {
+      if (String(values[i][0]).replace(/\D/g, "") === cleanPin) {
+        sheet.getRange(i + 2, 2).setValue("NONAKTIF");
+        return { success: true, message: "PIN " + cleanPin + " telah dinonaktifkan." };
+      }
+    }
+    return { success: false, message: "PIN tidak ditemukan" };
+  } catch (err) {
+    return { success: false, message: err.message };
+  }
+}
+
+function deletePinFromSheet(pin) {
+  try {
+    const cleanPin = String(pin).replace(/\D/g, "");
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ensurePinSheetExists(ss);
+    if (sheet.getLastRow() <= 1) return { success: false, message: "Sheet kosong" };
+
+    const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues();
+    for (let i = 0; i < values.length; i++) {
+      if (String(values[i][0]).replace(/\D/g, "") === cleanPin) {
+        sheet.deleteRow(i + 2);
+        return { success: true, message: "PIN " + cleanPin + " berhasil dihapus dari sheet." };
+      }
+    }
+    return { success: false, message: "PIN tidak ditemukan" };
+  } catch (err) {
+    return { success: false, message: err.message };
   }
 }
 

@@ -11,6 +11,7 @@ import {
   CheckCircle2, 
   Clock, 
   Sparkles, 
+  Zap,
   Share2, 
   Printer, 
   Filter,
@@ -142,6 +143,29 @@ export const AdminPatientPinsTab: React.FC<AdminPatientPinsTabProps> = ({
       }
     } catch (err: any) {
       onToast('error', err?.message || 'Terjadi kesalahan.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleQuickBatch = async (count: number) => {
+    setIsGenerating(true);
+    try {
+      const res = await generatePatientPins({
+        count,
+        registeredService: 'Pelayanan RSUD Aeramo',
+        notes: `Batch Cepat ${count} PIN diterbitkan dari Dashboard Admin Web`,
+        adminToken: adminToken || undefined,
+      });
+
+      if (res && res.length > 0) {
+        onToast('success', `✓ Berhasil menerbitkan ${res.length} PIN baru langsung dari Dashboard Web!`);
+        onRefresh();
+      } else {
+        onToast('error', 'Gagal membuat batch PIN.');
+      }
+    } catch (err: any) {
+      onToast('error', err?.message || 'Terjadi kesalahan saat membuat PIN.');
     } finally {
       setIsGenerating(false);
     }
@@ -378,7 +402,7 @@ export const AdminPatientPinsTab: React.FC<AdminPatientPinsTabProps> = ({
             </div>
             <div>
               <h4 className="text-xs sm:text-sm font-extrabold text-slate-900">Terbitkan PIN Akses Pasien Baru</h4>
-              <p className="text-[11px] text-slate-500">PIN otomatis dicatat ke Google Sheet &amp; berlaku di seluruh smartphone pasien</p>
+              <p className="text-[11px] text-slate-500">Cukup buat PIN dari web ini — otomatis aktif di HP pasien &amp; tersimpan di Google Sheet tanpa perlu buka sheet</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -399,6 +423,45 @@ export const AdminPatientPinsTab: React.FC<AdminPatientPinsTabProps> = ({
               title="Refresh Tampilan"
             >
               <RefreshCw className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Kotak Informasi: Buat PIN Langsung dari Web */}
+        <div className="p-3 bg-blue-50/70 border border-blue-200/80 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start gap-2.5">
+            <Sparkles className="w-4 h-4 text-blue-700 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-xs font-bold text-blue-950">
+                Pembuatan PIN 100% Cukup dari Web Ini (Tidak Perlu Buka Google Sheet / onOpen)
+              </p>
+              <p className="text-[11px] text-blue-900/80 leading-relaxed">
+                Anda tidak perlu membuka Google Sheet lagi. Masukkan nama pasien di form bawah, atau gunakan tombol kilat di sebelah kanan.
+              </p>
+            </div>
+          </div>
+
+          {/* Tombol Kilat Buat PIN Langsung */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => handleQuickBatch(5)}
+              disabled={isGenerating}
+              className="px-3 py-1.5 rounded-xl bg-white hover:bg-blue-100 text-blue-900 font-bold text-xs border border-blue-200 hover:border-blue-300 shadow-2xs transition flex items-center gap-1.5 disabled:opacity-50"
+              title="Terbitkan 5 PIN sekaligus secara instan"
+            >
+              <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+              <span>+5 PIN Kilat</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleQuickBatch(10)}
+              disabled={isGenerating}
+              className="px-3 py-1.5 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs shadow-xs transition flex items-center gap-1.5 disabled:opacity-50"
+              title="Terbitkan 10 PIN bangsal sekaligus secara instan"
+            >
+              <Zap className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
+              <span>+10 PIN Sekaligus</span>
             </button>
           </div>
         </div>

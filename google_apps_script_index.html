@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Admin & Penerbitan PIN Pasien - RSUD Aeramo</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    @media print {
+      .no-print { display: none !important; }
+      .print-only { display: block !important; }
+    }
+    .print-only { display: none; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+  <!-- TOP HEADER RSUD AERAMO -->
+  <header class="bg-gradient-to-r from-blue-950 via-blue-900 to-indigo-900 text-white shadow-lg sticky top-0 z-40 no-print">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-col sm:flex-row items-center justify-between gap-3">
+      
+      <!-- Brand & Hospital Info -->
+      <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-white/10 p-1.5 border border-white/20 flex items-center justify-center shadow-inner">
+            <!-- Nagekeo Emblen Logo SVG -->
+            <svg viewBox="0 0 100 120" class="w-7 h-8" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M50 5 L90 22 V60 C90 90 50 115 50 115 C50 115 10 90 10 60 V22 L50 5 Z" fill="#FACC15" stroke="#FFFFFF" stroke-width="3"/>
+              <path d="M50 12 L82 27 V58 C82 83 50 105 50 105 C50 105 18 83 18 58 V27 L50 12 Z" fill="#15803D"/>
+              <path d="M50 25 L72 37 V57 C72 74 50 90 50 90 C50 90 28 74 28 57 V37 L50 25 Z" fill="#B91C1C"/>
+              <path d="M50 42 L65 52 L60 70 L40 70 L35 52 Z" fill="#F8FAFC" stroke="#CA8A04" stroke-width="2"/>
+              <circle cx="50" cy="56" r="5" fill="#DC2626"/>
+            </svg>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="font-extrabold text-base sm:text-lg tracking-tight text-white leading-tight">
+                RSUD AERAMO
+              </h1>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-blue-950 uppercase tracking-wide">
+                Admin Portal
+              </span>
+            </div>
+            <p class="text-xs text-blue-200 font-medium">
+              Dashboard Manajemen &amp; Penerbitan PIN Pasien (SISEKAR)
+            </p>
+          </div>
+        </div>
+
+        <div class="sm:hidden flex items-center gap-2">
+          <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            Sheet Online
+          </span>
+        </div>
+      </div>
+
+      <!-- Right Control & Links -->
+      <div class="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+        <span class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          Google Sheet Terhubung
+        </span>
+
+        <button 
+          id="btnOpenSpreadsheet"
+          onclick="openActiveSpreadsheet()"
+          class="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold border border-white/20 transition flex items-center gap-1.5"
+          title="Buka File Google Sheet Langsung"
+        >
+          <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <span>Buka Sheet</span>
+        </button>
+
+        <button 
+          onclick="refreshAllData()"
+          class="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs transition"
+          title="Segarkan Data"
+        >
+          <svg id="refreshIcon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- TAB NAVIGATION BAR -->
+    <div class="bg-blue-950/80 border-t border-white/10 px-4 sm:px-6">
+      <div class="max-w-7xl mx-auto flex items-center gap-2 overflow-x-auto py-1.5">
+        <button 
+          id="tabBtnPins"
+          onclick="switchTab('pins')"
+          class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-2 bg-blue-700 text-white shadow-sm whitespace-nowrap"
+        >
+          <svg class="w-4 h-4 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+          </svg>
+          <span>Terbitkan &amp; Kelola PIN Pasien</span>
+          <span id="badgeActivePins" class="px-2 py-0.5 rounded-full text-[10px] bg-amber-400 text-blue-950 font-black">...</span>
+        </button>
+
+        <button 
+          id="tabBtnDashboard"
+          onclick="switchTab('dashboard')"
+          class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-2 text-blue-200 hover:text-white hover:bg-white/10 whitespace-nowrap"
+        >
+          <svg class="w-4 h-4 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+          <span>Dashboard IKM Real-Time</span>
+        </button>
+
+        <button 
+          id="tabBtnResponses"
+          onclick="switchTab('responses')"
+          class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-2 text-blue-200 hover:text-white hover:bg-white/10 whitespace-nowrap"
+        >
+          <svg class="w-4 h-4 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+          </svg>
+          <span>Tabel Riwayat Responden</span>
+          <span id="badgeTotalResponden" class="px-2 py-0.5 rounded-full text-[10px] bg-white/20 text-white font-bold">0</span>
+        </button>
+
+        <button 
+          id="tabBtnSettings"
+          onclick="switchTab('settings')"
+          class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-2 text-blue-200 hover:text-white hover:bg-white/10 whitespace-nowrap"
+        >
+          <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          <span>Tautan Survei Pasien &amp; Info</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 w-full flex-1">
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none max-w-sm">
+      <div id="toastContent" class="bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-700 text-xs font-semibold">
+        <span id="toastIcon">✓</span>
+        <span id="toastMsg">Notifikasi</span>
+      </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- TAB 1: TERBITKAN & KELOLA PIN PASIEN -->
+    <!-- =================================================================== -->
+    <section id="panePins" class="space-y-6">
+      
+      <!-- Highlight Banner -->
+      <div class="bg-white rounded-3xl p-5 border border-blue-100 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div class="space-y-1">
+          <div class="flex items-center gap-2">
+            <span class="w-8 h-8 rounded-xl bg-blue-100 text-blue-900 flex items-center justify-center font-bold">
+              🔑
+            </span>
+            <h2 class="text-base sm:text-lg font-extrabold text-slate-900">
+              Penerbitan PIN Pasien Langsung di Web Admin
+            </h2>
+            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+              Tanpa Perlu Buka Sheet / onOpen
+            </span>
+          </div>
+          <p class="text-xs text-slate-600 leading-relaxed max-w-3xl">
+            Buat PIN baru untuk pasien rawat inap, rawat jalan, atau IGD. Setiap PIN yang diterbitkan di sini <strong>otomatis langsung aktif</strong> di HP pasien dan <strong>langsung tersimpan</strong> ke tab <strong>PIN_PASIEN</strong> di Google Sheet Anda.
+          </p>
+        </div>
+
+        <!-- Tombol Aksi Cepat -->
+        <div class="flex items-center gap-2 flex-wrap w-full md:w-auto">
+          <button 
+            onclick="quickGeneratePins(1)"
+            class="px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-950 font-bold text-xs border border-blue-200 transition flex items-center gap-1.5"
+          >
+            ⚡ +1 PIN Cepat
+          </button>
+          <button 
+            onclick="quickGeneratePins(5)"
+            class="px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-950 font-bold text-xs border border-blue-200 transition flex items-center gap-1.5"
+          >
+            ⚡ +5 PIN Bangsal
+          </button>
+          <button 
+            onclick="quickGeneratePins(10)"
+            class="px-4 py-2 rounded-xl bg-blue-800 hover:bg-blue-900 text-white font-bold text-xs shadow-md transition flex items-center gap-1.5"
+          >
+            ⚡ +10 PIN Sekaligus
+          </button>
+        </div>
+      </div>
+
+      <!-- FORM PENERBITAN PIN BARU -->
+      <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+        <div class="border-b border-slate-100 pb-3">
+          <h3 class="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+            <span>Form Terbitkan PIN Pasien Baru</span>
+            <span class="text-[11px] font-normal text-slate-500">(Nama &amp; Ruangan Otomatis Terisi di HP Pasien)</span>
+          </h3>
+        </div>
+
+        <form id="formGeneratePin" onsubmit="handleFormGeneratePin(event)" class="space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            
+            <!-- Nama Pasien -->
+            <div class="lg:col-span-2">
+              <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Nama Pasien (Terdaftar)
+              </label>
+              <input 
+                type="text" 
+                id="inputPatientName"
+                placeholder="Contoh: CHATRINA HERLOFINA PANIE"
+                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold uppercase focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition"
+              />
+              <span class="text-[10px] text-slate-400 mt-1 block">Pasien tidak perlu mengetik nama lagi saat membuka survei</span>
+            </div>
+
+            <!-- Layanan RSUD Aeramo -->
+            <div>
+              <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Unit / Layanan
+              </label>
+              <select 
+                id="inputService"
+                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white"
+              >
+                <option value="Rawat Inap">Rawat Inap</option>
+                <option value="Rawat Jalan / Poliklinik">Rawat Jalan / Poliklinik</option>
+                <option value="IGD (Instalasi Gawat Darurat)">IGD 24 Jam</option>
+                <option value="Kebidanan & Kandungan (Ruang Bersalin / VK)">Kebidanan &amp; Kandungan (VK)</option>
+                <option value="Farmasi / Apotek">Farmasi / Apotek</option>
+                <option value="Laboratorium & Radiologi">Laboratorium &amp; Radiologi</option>
+                <option value="Pelayanan RSUD Aeramo">Pelayanan Umum RSUD Aeramo</option>
+              </select>
+            </div>
+
+            <!-- Kamar / Ruang -->
+            <div>
+              <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Kamar / Ruang
+              </label>
+              <input 
+                type="text" 
+                id="inputRoom"
+                placeholder="Contoh: Kamar Mawar 102"
+                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-blue-600"
+              />
+            </div>
+
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-slate-100">
+            <div>
+              <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Jumlah PIN
+              </label>
+              <select 
+                id="inputCount"
+                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white"
+              >
+                <option value="1">1 PIN (Pasien Tunggal)</option>
+                <option value="5">5 PIN Sekaligus</option>
+                <option value="10">10 PIN (Satu Bangsal)</option>
+                <option value="25">25 PIN (Satu Shift)</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                PIN Kustom 6-Digit (Opsional)
+              </label>
+              <input 
+                type="text" 
+                id="inputCustomPin"
+                maxlength="6"
+                placeholder="Kosongkan untuk PIN acak otomatis"
+                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-600"
+              />
+            </div>
+
+            <div class="flex items-end">
+              <button 
+                type="submit" 
+                id="btnSubmitGenerate"
+                class="w-full py-2.5 px-4 rounded-xl bg-blue-800 hover:bg-blue-900 active:scale-98 text-white font-extrabold text-xs shadow-md transition flex items-center justify-center gap-2"
+              >
+                <svg class="w-4 h-4 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                <span>Terbitkan PIN Pasien</span>
+              </button>
+            </div>
+          </div>
+        </form>
+
+        <!-- KARTU HASIL TERBITAN TERAKHIR (JIKA BARU DITERBITKAN) -->
+        <div id="newlyGeneratedCard" class="hidden p-4 rounded-2xl bg-amber-50 border border-amber-300/80 space-y-3">
+          <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-amber-200 pb-2">
+            <span class="text-xs font-extrabold text-amber-950 flex items-center gap-1.5">
+              🎉 <span>PIN Berhasil Diterbitkan &amp; Tersimpan ke Sheet:</span>
+            </span>
+            <span id="newPinCreatedTime" class="text-[11px] text-amber-800"></span>
+          </div>
+
+          <div class="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-xl border border-amber-200">
+            <div>
+              <div class="flex items-baseline gap-3">
+                <span class="text-xs font-bold text-slate-500 uppercase">KODE PIN:</span>
+                <span id="newPinCode" class="text-3xl font-black text-blue-950 tracking-widest font-mono">123456</span>
+              </div>
+              <p id="newPinPatientDesc" class="text-xs text-slate-600 font-semibold mt-1">
+                Pasien: CHATRINA HERLOFINA PANIE (Rawat Inap - Kamar Mawar 102)
+              </p>
+            </div>
+
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+              <button 
+                onclick="copyNewlyCreatedPin()"
+                class="flex-1 sm:flex-none px-3.5 py-2 rounded-xl bg-blue-800 hover:bg-blue-900 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm"
+              >
+                📋 Salin PIN
+              </button>
+              <button 
+                onclick="shareNewlyCreatedWhatsApp()"
+                class="flex-1 sm:flex-none px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm"
+              >
+                💬 Kirim WA
+              </button>
+              <button 
+                onclick="copyNewlyCreatedLink()"
+                class="flex-1 sm:flex-none px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition flex items-center justify-center gap-1.5 border border-slate-300"
+              >
+                🔗 Salin Link
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- TABEL DAFTAR PIN DI GOOGLE SHEET -->
+      <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div>
+            <h3 class="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+              <span>Daftar PIN Pasien di Tab PIN_PASIEN</span>
+              <span id="pinTableSummary" class="text-xs text-slate-500 font-normal"></span>
+            </h3>
+            <p class="text-[11px] text-slate-500">Seluruh PIN tersinkronisasi otomatis dengan Google Sheet RSUD Aeramo</p>
+          </div>
+
+          <div class="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+            <!-- Filter Status -->
+            <select 
+              id="filterPinStatus" 
+              onchange="renderPinTable()"
+              class="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold bg-slate-50 text-slate-700 focus:outline-none"
+            >
+              <option value="all">Semua PIN</option>
+              <option value="active" selected>Hanya PIN Aktif</option>
+              <option value="used">Sudah Terpakai</option>
+              <option value="revoked">Nonaktif</option>
+            </select>
+
+            <!-- Search PIN / Nama -->
+            <input 
+              type="text" 
+              id="searchPinInput"
+              oninput="renderPinTable()"
+              placeholder="Cari PIN / Nama..."
+              class="px-3 py-1.5 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-600 w-36 sm:w-48"
+            />
+
+            <button 
+              onclick="loadPinsFromSheet()"
+              class="p-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 transition"
+              title="Refresh Data Sheet"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Tabel Container -->
+        <div class="overflow-x-auto rounded-2xl border border-slate-100">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-100 text-slate-600 font-bold uppercase text-[10px] tracking-wider border-b border-slate-200">
+              <tr>
+                <th class="py-3 px-4">KODE PIN</th>
+                <th class="py-3 px-4">STATUS</th>
+                <th class="py-3 px-4">NAMA PASIEN TERDAFTAR</th>
+                <th class="py-3 px-4">LAYANAN &amp; RUANGAN</th>
+                <th class="py-3 px-4">DIBUAT</th>
+                <th class="py-3 px-4">PENGGUNAAN</th>
+                <th class="py-3 px-4 text-center">AKSI PASIEN</th>
+              </tr>
+            </thead>
+            <tbody id="pinTableBody" class="divide-y divide-slate-100 text-slate-700">
+              <tr>
+                <td colspan="7" class="py-8 text-center text-slate-400">
+                  <div class="inline-block animate-spin w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full mb-2"></div>
+                  <p>Memuat data PIN dari Google Sheet...</p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- TAB 2: DASHBOARD IKM REAL-TIME -->
+    <!-- =================================================================== -->
+    <section id="paneDashboard" class="hidden space-y-6">
+      
+      <!-- STATISTIK KARTU UTAMA -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        <!-- Total Responden -->
+        <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div>
+            <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Responden</span>
+            <h4 id="dashTotalResponden" class="text-3xl font-black text-slate-900 mt-1">0</h4>
+            <span class="text-[10px] text-emerald-700 font-semibold flex items-center gap-1 mt-0.5">
+              <span>●</span> Data Terverifikasi PIN
+            </span>
+          </div>
+          <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-800 flex items-center justify-center text-xl font-bold">
+            👥
+          </div>
+        </div>
+
+        <!-- Indeks IKM (Skala 100) -->
+        <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div>
+            <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Indeks IKM (Skala 100)</span>
+            <h4 id="dashIkmScore" class="text-3xl font-black text-blue-900 mt-1">0.00</h4>
+            <span id="dashMutuBadge" class="inline-block px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-800 mt-0.5">
+              Menghitung...
+            </span>
+          </div>
+          <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-800 flex items-center justify-center text-xl font-bold">
+            📈
+          </div>
+        </div>
+
+        <!-- Rata-rata Skor (Skala 1-4) -->
+        <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div>
+            <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Skor Rata-Rata (1-4)</span>
+            <h4 id="dashAvgScore" class="text-3xl font-black text-slate-900 mt-1">0.00</h4>
+            <span class="text-[10px] text-slate-500 mt-0.5 block">PermenPAN-RB No. 14 / 2017</span>
+          </div>
+          <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-800 flex items-center justify-center text-xl font-bold">
+            ⭐
+          </div>
+        </div>
+
+        <!-- Tingkat Kepuasan -->
+        <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div>
+            <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Tingkat Kepuasan</span>
+            <h4 id="dashSatisfactionRate" class="text-3xl font-black text-emerald-700 mt-1">0%</h4>
+            <span class="text-[10px] text-slate-500 mt-0.5 block">Responden Puas &amp; Sangat Puas</span>
+          </div>
+          <div class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-800 flex items-center justify-center text-xl font-bold">
+            👍
+          </div>
+        </div>
+
+      </div>
+
+      <!-- GRAFIK 7 ASPEK UNSUR PELAYANAN -->
+      <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+        <div class="border-b border-slate-100 pb-3 flex items-center justify-between">
+          <div>
+            <h3 class="text-sm font-extrabold text-slate-900">Nilai Rata-rata per Aspek Evaluasi Pelayanan</h3>
+            <p class="text-[11px] text-slate-500">Skala 1.00 (Kurang Puas) s/d 4.00 (Sangat Puas)</p>
+          </div>
+          <span class="text-xs font-bold text-blue-900">Target Mutu: &ge; 3.00 (Baik)</span>
+        </div>
+
+        <div id="unsurBarContainer" class="space-y-3 text-xs">
+          <!-- Diisi via JavaScript -->
+        </div>
+      </div>
+
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- TAB 3: TABEL RIWAYAT RESPONDEN -->
+    <!-- =================================================================== -->
+    <section id="paneResponses" class="hidden space-y-6">
+      <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div>
+            <h3 class="text-sm font-extrabold text-slate-900">Riwayat Pengisian Survei oleh Pasien</h3>
+            <p class="text-[11px] text-slate-500">Data masuk dari seluruh perangkat secara realtime</p>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button 
+              onclick="openActiveSpreadsheet()"
+              class="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-200 transition flex items-center gap-1.5"
+            >
+              📊 Lihat di Sheet
+            </button>
+            <button 
+              onclick="loadDashboardData()"
+              class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition flex items-center gap-1.5"
+            >
+              🔄 Refresh
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto rounded-2xl border border-slate-100">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-100 text-slate-600 font-bold uppercase text-[10px] tracking-wider border-b border-slate-200">
+              <tr>
+                <th class="py-3 px-4">WAKTU (WITA)</th>
+                <th class="py-3 px-4">NAMA PASIEN</th>
+                <th class="py-3 px-4">LAYANAN</th>
+                <th class="py-3 px-4 text-center">SKOR</th>
+                <th class="py-3 px-4 text-center">IKM</th>
+                <th class="py-3 px-4">MUTU</th>
+                <th class="py-3 px-4">SARAN / MASUKAN</th>
+              </tr>
+            </thead>
+            <tbody id="responseTableBody" class="divide-y divide-slate-100 text-slate-700">
+              <tr>
+                <td colspan="7" class="py-8 text-center text-slate-400">
+                  Memuat data tanggapan pasien...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- TAB 4: TAUTAN SURVEI PASIEN & INFO SISTEM -->
+    <!-- =================================================================== -->
+    <section id="paneSettings" class="hidden space-y-6">
+      <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-5">
+        <div class="border-b border-slate-100 pb-3">
+          <h3 class="text-sm font-extrabold text-slate-900">Tautan &amp; Integrasi Survei Pasien RSUD Aeramo</h3>
+          <p class="text-[11px] text-slate-500">Konfigurasi alamat aplikasi survei untuk diberikan kepada pasien</p>
+        </div>
+
+        <!-- Tautan Utama Aplikasi Pasien -->
+        <div class="p-4 rounded-2xl bg-blue-50/70 border border-blue-200/80 space-y-2">
+          <label class="block text-xs font-bold text-blue-950">
+            Tautan Aplikasi Survei Pasien (Diberikan ke Pasien / Dibuat QR Code):
+          </label>
+          <div class="flex items-center gap-2">
+            <input 
+              type="text" 
+              id="appPatientUrl" 
+              readonly
+              value="https://ais-dev-yccl2mwm2caj7dw5hp4m7l-848831564581.asia-east1.run.app"
+              class="w-full p-2.5 rounded-xl border border-blue-300 text-xs font-mono bg-white text-blue-900 font-semibold"
+            />
+            <button 
+              onclick="copyAppUrl()"
+              class="px-4 py-2.5 rounded-xl bg-blue-800 hover:bg-blue-900 text-white text-xs font-bold transition whitespace-nowrap"
+            >
+              Salin URL
+            </button>
+            <a 
+              id="linkTestApp"
+              href="https://ais-dev-yccl2mwm2caj7dw5hp4m7l-848831564581.asia-east1.run.app"
+              target="_blank"
+              class="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-blue-900 border border-blue-300 text-xs font-bold transition whitespace-nowrap"
+            >
+              Buka Web
+            </a>
+          </div>
+          <p class="text-[11px] text-blue-900/80">
+            💡 Pasien cukup membuka link di atas dari smartphone mereka, memasukkan 6-digit PIN yang diberikan petugas, dan kuesioner akan terbuka.
+          </p>
+        </div>
+
+        <!-- Informasi Keamanan PIN -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+          <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5">
+            <h4 class="font-bold text-slate-900">🛡️ Proteksi Satu Kali Pengisian (Anti-Spam)</h4>
+            <p class="text-[11px] text-slate-600 leading-relaxed">
+              Satu nomor PIN hanya dapat digunakan untuk 1 kali pengisian kuesioner. Setelah pasien mengirimkan survei, status PIN di sheet akan berubah otomatis menjadi <strong>TERPAKAI</strong>.
+            </p>
+          </div>
+          <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5">
+            <h4 class="font-bold text-slate-900">📁 Arsip &amp; Rotasi Otomatis</h4>
+            <p class="text-[11px] text-slate-600 leading-relaxed">
+              Google Apps Script memiliki sistem pemeliharaan otomatis yang mengarsipkan data secara periodik ke tab <strong>Arsip_Survei</strong> sehingga sheet tetap ringan dibuka.
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="bg-white border-t border-slate-200/80 py-4 px-4 text-xs text-slate-500 no-print mt-auto">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+      <div>
+        <span class="font-bold text-slate-800">RSUD Aeramo</span>
+        <span class="text-slate-400 mx-1.5">•</span>
+        <span>Kabupaten Nagekeo</span>
+        <span class="text-slate-400 mx-1.5">•</span>
+        <span>SISEKAR Evaluasi Pelayanan</span>
+      </div>
+      <div class="text-[11px] text-slate-400">
+        Google Apps Script Dashboard Dedicated Portal
+      </div>
+    </div>
+  </footer>
+
+  <!-- SCRIPT LOGIC -->
+  <script>
+    // State Global
+    var allPins = [];
+    var lastCreatedPin = null;
+    var activeSpreadsheetUrl = "";
+    var patientAppBaseUrl = "https://ais-dev-yccl2mwm2caj7dw5hp4m7l-848831564581.asia-east1.run.app";
+
+    // Inisialisasi Saat Halaman Dimuat
+    window.onload = function() {
+      loadPinsFromSheet();
+      loadDashboardData();
+    };
+
+    // Navigasi Tab
+    function switchTab(tabName) {
+      var tabs = ['pins', 'dashboard', 'responses', 'settings'];
+      tabs.forEach(function(t) {
+        var pane = document.getElementById('pane' + t.charAt(0).toUpperCase() + t.slice(1));
+        var btn = document.getElementById('tabBtn' + t.charAt(0).toUpperCase() + t.slice(1));
+        if (pane && btn) {
+          if (t === tabName) {
+            pane.classList.remove('hidden');
+            btn.className = "px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-2 bg-blue-700 text-white shadow-sm whitespace-nowrap";
+          } else {
+            pane.classList.add('hidden');
+            btn.className = "px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-2 text-blue-200 hover:text-white hover:bg-white/10 whitespace-nowrap";
+          }
+        }
+      });
+    }
+
+    // Toast Notifikasi
+    function showToast(msg, isError) {
+      var toast = document.getElementById('toast');
+      var toastMsg = document.getElementById('toastMsg');
+      var toastIcon = document.getElementById('toastIcon');
+      var toastContent = document.getElementById('toastContent');
+
+      toastMsg.innerText = msg;
+      toastIcon.innerText = isError ? '⚠️' : '✓';
+      toastContent.className = isError 
+        ? "bg-rose-900 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-rose-700 text-xs font-semibold"
+        : "bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-700 text-xs font-semibold";
+
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      setTimeout(function() {
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 3500);
+    }
+
+    // Buka Google Spreadsheet
+    function openActiveSpreadsheet() {
+      if (activeSpreadsheetUrl) {
+        window.open(activeSpreadsheetUrl, '_blank');
+      } else {
+        showToast("Memuat tautan Google Sheet...", false);
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run.withSuccessHandler(function(data) {
+            if (data && data.spreadsheetUrl) {
+              window.open(data.spreadsheetUrl, '_blank');
+            }
+          }).getDashboardData();
+        }
+      }
+    }
+
+    // Ambil Data PIN dari Sheet
+    function loadPinsFromSheet() {
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(function(res) {
+            if (res && res.success && Array.isArray(res.pins)) {
+              allPins = res.pins;
+              renderPinTable();
+              updatePinsBadge();
+            }
+          })
+          .withFailureHandler(function(err) {
+            showToast("Gagal memuat data PIN: " + (err.message || err), true);
+          })
+          .getAllPinsFromSheet();
+      } else {
+        // Fallback demo/mock jika dibuka di browser biasa
+        fetch(window.location.href + (window.location.href.indexOf('?') > -1 ? '&' : '?') + 'action=get_pins')
+          .then(function(r) { return r.json(); })
+          .then(function(res) {
+            if (res && res.success && Array.isArray(res.pins)) {
+              allPins = res.pins;
+              renderPinTable();
+              updatePinsBadge();
+            }
+          }).catch(function(e) { console.log('Mock/Offline mode', e); });
+      }
+    }
+
+    function updatePinsBadge() {
+      var activeCount = allPins.filter(function(p) { return p.status === 'active'; }).length;
+      document.getElementById('badgeActivePins').innerText = activeCount + ' Aktif';
+    }
+
+    // Render Tabel PIN
+    function renderPinTable() {
+      var filterStatus = document.getElementById('filterPinStatus').value;
+      var searchQuery = (document.getElementById('searchPinInput').value || '').toLowerCase().trim();
+      var tbody = document.getElementById('pinTableBody');
+
+      var filtered = allPins.filter(function(p) {
+        if (filterStatus !== 'all' && p.status !== filterStatus) return false;
+        if (searchQuery) {
+          var pinMatch = (p.pin || '').indexOf(searchQuery) > -1;
+          var nameMatch = (p.registeredPatientName || '').toLowerCase().indexOf(searchQuery) > -1;
+          var svcMatch = (p.registeredService || '').toLowerCase().indexOf(searchQuery) > -1;
+          var roomMatch = (p.registeredRoom || '').toLowerCase().indexOf(searchQuery) > -1;
+          return pinMatch || nameMatch || svcMatch || roomMatch;
+        }
+        return true;
+      });
+
+      document.getElementById('pinTableSummary').innerText = "(Menampilkan " + filtered.length + " dari " + allPins.length + " PIN)";
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="py-8 text-center text-slate-400 font-medium">Tidak ada data PIN yang cocok.</td></tr>';
+        return;
+      }
+
+      var html = '';
+      filtered.forEach(function(item) {
+        var statusBadge = '';
+        if (item.status === 'active') {
+          statusBadge = '<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>AKTIF</span>';
+        } else if (item.status === 'used') {
+          statusBadge = '<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">TERPAKAI</span>';
+        } else {
+          statusBadge = '<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">NONAKTIF</span>';
+        }
+
+        var pName = item.registeredPatientName || '<span class="text-slate-400 italic">(Belum Diatur)</span>';
+        var roomInfo = item.registeredRoom ? '<span class="text-slate-500 font-normal"> - ' + item.registeredRoom + '</span>' : '';
+        var svcInfo = (item.registeredService || 'Rawat Inap') + roomInfo;
+
+        var patientLink = patientAppBaseUrl + '?pin=' + item.pin;
+
+        html += '<tr class="hover:bg-slate-50 transition">';
+        html += '<td class="py-3 px-4 font-mono font-extrabold text-blue-950 text-sm tracking-wider">' + item.pin + '</td>';
+        html += '<td class="py-3 px-4">' + statusBadge + '</td>';
+        html += '<td class="py-3 px-4 font-bold text-slate-900 uppercase">' + pName + '</td>';
+        html += '<td class="py-3 px-4 text-xs">' + svcInfo + '</td>';
+        html += '<td class="py-3 px-4 text-[11px] text-slate-500">' + (item.createdAt || '-') + '</td>';
+        html += '<td class="py-3 px-4 text-[11px] text-slate-500">' + (item.usedAt ? 'Dipakai: ' + item.usedAt : '-') + '</td>';
+        html += '<td class="py-3 px-4 text-center">';
+        html += '<div class="flex items-center justify-center gap-1.5">';
+        html += '<button onclick="copyText(\'' + item.pin + '\', \'PIN ' + item.pin + ' disalin!\')" class="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-xs" title="Salin PIN">📋</button>';
+        html += '<button onclick="copyText(\'' + patientLink + '\', \'Link survei pasien disalin!\')" class="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs" title="Salin Link Kuesioner Pasien">🔗</button>';
+        html += '<button onclick="shareWhatsApp(\'' + item.pin + '\', \'' + (item.registeredPatientName || '') + '\', \'' + (item.registeredService || '') + '\')" class="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs" title="Kirim ke WhatsApp">💬</button>';
+        if (item.status === 'active') {
+          html += '<button onclick="revokePin(\'' + item.pin + '\')" class="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs" title="Nonaktifkan PIN">🚫</button>';
+        }
+        html += '</div>';
+        html += '</td>';
+        html += '</tr>';
+      });
+
+      tbody.innerHTML = html;
+    }
+
+    // Tangani Submit Form Buat PIN
+    function handleFormGeneratePin(e) {
+      e.preventDefault();
+      var btn = document.getElementById('btnSubmitGenerate');
+      btn.disabled = true;
+      btn.innerText = "Menerbitkan PIN...";
+
+      var payload = {
+        registeredPatientName: document.getElementById('inputPatientName').value.trim(),
+        registeredService: document.getElementById('inputService').value,
+        registeredRoom: document.getElementById('inputRoom').value.trim(),
+        count: Number(document.getElementById('inputCount').value) || 1,
+        customPin: document.getElementById('inputCustomPin').value.trim()
+      };
+
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(function(res) {
+            btn.disabled = false;
+            btn.innerHTML = '<span>Terbitkan PIN Pasien</span>';
+            if (res && res.success) {
+              showToast(res.message || "PIN berhasil dibuat!");
+              document.getElementById('inputPatientName').value = '';
+              document.getElementById('inputRoom').value = '';
+              document.getElementById('inputCustomPin').value = '';
+              
+              if (res.pins && res.pins.length > 0) {
+                showNewlyGeneratedCard(res.pins[0]);
+              }
+              loadPinsFromSheet();
+            } else {
+              showToast(res.message || "Gagal membuat PIN.", true);
+            }
+          })
+          .withFailureHandler(function(err) {
+            btn.disabled = false;
+            btn.innerHTML = '<span>Terbitkan PIN Pasien</span>';
+            showToast("Error: " + (err.message || err), true);
+          })
+          .generatePinFromDashboard(payload);
+      } else {
+        btn.disabled = false;
+        btn.innerHTML = '<span>Terbitkan PIN Pasien</span>';
+        showToast("Simulasi Offline: PIN dibuat!", false);
+      }
+    }
+
+    // Tombol Batch Cepat (+1, +5, +10 PIN)
+    function quickGeneratePins(count) {
+      showToast("Menerbitkan " + count + " PIN cepat ke sheet...", false);
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(function(res) {
+            if (res && res.success) {
+              showToast(res.message || "Berhasil menerbitkan PIN!");
+              if (res.pins && res.pins.length > 0) {
+                showNewlyGeneratedCard(res.pins[0]);
+              }
+              loadPinsFromSheet();
+            }
+          })
+          .withFailureHandler(function(err) {
+            showToast("Gagal: " + (err.message || err), true);
+          })
+          .generatePinFromDashboard({
+            count: count,
+            registeredService: "Pelayanan RSUD Aeramo",
+            notes: "Batch " + count + " PIN dari Web Admin"
+          });
+      }
+    }
+
+    // Tampilkan Kartu PIN yang Baru Dibuat
+    function showNewlyGeneratedCard(pinObj) {
+      lastCreatedPin = pinObj;
+      var card = document.getElementById('newlyGeneratedCard');
+      document.getElementById('newPinCode').innerText = pinObj.pin;
+      document.getElementById('newPinCreatedTime').innerText = pinObj.createdAt || 'Baru saja';
+      var pName = pinObj.registeredPatientName ? 'Pasien: ' + pinObj.registeredPatientName : 'Pasien Pelayanan';
+      var rDesc = pinObj.registeredRoom ? ' (' + pinObj.registeredRoom + ')' : '';
+      document.getElementById('newPinPatientDesc').innerText = pName + ' - ' + (pinObj.registeredService || 'Rawat Inap') + rDesc;
+      card.classList.remove('hidden');
+    }
+
+    function copyNewlyCreatedPin() {
+      if (lastCreatedPin) {
+        copyText(lastCreatedPin.pin, "PIN " + lastCreatedPin.pin + " berhasil disalin!");
+      }
+    }
+
+    function copyNewlyCreatedLink() {
+      if (lastCreatedPin) {
+        var link = patientAppBaseUrl + '?pin=' + lastCreatedPin.pin;
+        copyText(link, "Link survei pasien disalin!");
+      }
+    }
+
+    function shareNewlyCreatedWhatsApp() {
+      if (lastCreatedPin) {
+        shareWhatsApp(lastCreatedPin.pin, lastCreatedPin.registeredPatientName, lastCreatedPin.registeredService);
+      }
+    }
+
+    // Nonaktifkan PIN
+    function revokePin(pin) {
+      if (confirm("Yakin ingin menonaktifkan PIN " + pin + "?")) {
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run
+            .withSuccessHandler(function(res) {
+              showToast(res.message || "PIN dinonaktifkan.");
+              loadPinsFromSheet();
+            })
+            .revokePinFromSheet(pin);
+        }
+      }
+    }
+
+    // Helper Copy Clipboard
+    function copyText(text, successMsg) {
+      navigator.clipboard.writeText(text).then(function() {
+        showToast(successMsg || "Teks disalin ke clipboard!");
+      }).catch(function() {
+        var tempInput = document.createElement('input');
+        tempInput.value = text;
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        document.execCommand('copy');
+        document.body.removeChild(tempInput);
+        showToast(successMsg || "Teks disalin ke clipboard!");
+      });
+    }
+
+    function copyAppUrl() {
+      copyText(patientAppBaseUrl, "Alamat aplikasi survei disalin!");
+    }
+
+    // Share WhatsApp
+    function shareWhatsApp(pin, name, service) {
+      var patientName = name || "Bapak/Ibu Pasien";
+      var svcName = service || "Pelayanan";
+      var link = patientAppBaseUrl + "?pin=" + pin;
+
+      var text = "Halo Bapak/Ibu *" + patientName + "*,\n\n" +
+        "Anda telah menyelesaikan layanan *" + svcName + "* di *RSUD Aeramo Kabupaten Nagekeo*.\n\n" +
+        "Silakan klik tautan di bawah ini untuk mengisi kuesioner singkat evaluasi kepuasan:\n" +
+        "👉 " + link + "\n\n" +
+        "Kode PIN Akses: *" + pin + "*\n\n" +
+        "Terima kasih atas partisipasi Anda demi peningkatan mutu layanan kami.\n" +
+        "_RSUD Aeramo - Melayani dengan Kasih_";
+
+      var waUrl = "https://api.whatsapp.com/send?text=" + encodeURIComponent(text);
+      window.open(waUrl, '_blank');
+    }
+
+    // Ambil Data Dashboard IKM
+    function loadDashboardData() {
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(function(data) {
+            renderDashboard(data);
+          })
+          .getDashboardData();
+      }
+    }
+
+    function renderDashboard(data) {
+      if (!data) return;
+      if (data.spreadsheetUrl) activeSpreadsheetUrl = data.spreadsheetUrl;
+
+      document.getElementById('dashTotalResponden').innerText = data.totalResponden || 0;
+      document.getElementById('badgeTotalResponden').innerText = data.totalResponden || 0;
+      document.getElementById('dashIkmScore').innerText = (data.avgIkm ? data.avgIkm.toFixed(2) : (data.avgScore ? (data.avgScore * 25).toFixed(2) : "0.00"));
+      document.getElementById('dashAvgScore').innerText = (data.avgScore ? data.avgScore.toFixed(2) : "0.00");
+      document.getElementById('dashSatisfactionRate').innerText = (data.kepuasanRate ? data.kepuasanRate.toFixed(1) : "0") + "%";
+      document.getElementById('dashMutuBadge').innerText = data.mutuPelayanan || "Sangat Baik";
+
+      // Render Bar Unsur
+      var container = document.getElementById('unsurBarContainer');
+      var unsurNames = [
+        { key: 'q1', label: '1. Kenyamanan Kamar & Tempat Tidur' },
+        { key: 'q2', label: '2. Kebersihan Kamar & Kamar Mandi' },
+        { key: 'q3', label: '3. Ketersediaan Fasilitas Ruangan' },
+        { key: 'q4', label: '4. Ketenangan & Keamanan Lingkungan' },
+        { key: 'q5', label: '5. Kunjungan & Ketepatan Dokter' },
+        { key: 'q6', label: '6. Kejelasan Informasi Medis' },
+        { key: 'q7', label: '7. Kesiapan & Responsivitas Perawat' }
+      ];
+
+      var html = '';
+      var scores = data.unsurScores || {};
+      unsurNames.forEach(function(u) {
+        var score = scores[u.key] || 0;
+        var pct = (score / 4.0) * 100;
+        var color = score >= 3.5 ? 'bg-emerald-600' : (score >= 3.0 ? 'bg-blue-600' : 'bg-amber-500');
+
+        html += '<div>';
+        html += '<div class="flex justify-between font-bold text-slate-700 mb-1">';
+        html += '<span>' + u.label + '</span>';
+        html += '<span class="font-mono text-blue-900">' + score.toFixed(2) + ' / 4.00</span>';
+        html += '</div>';
+        html += '<div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">';
+        html += '<div class="' + color + ' h-2.5 rounded-full transition-all duration-500" style="width: ' + pct + '%"></div>';
+        html += '</div>';
+        html += '</div>';
+      });
+      container.innerHTML = html;
+
+      // Render Riwayat Responden
+      renderResponsesTable(data.recentResponses || []);
+    }
+
+    function renderResponsesTable(responses) {
+      var tbody = document.getElementById('responseTableBody');
+      if (responses.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="py-8 text-center text-slate-400">Belum ada survei yang masuk.</td></tr>';
+        return;
+      }
+
+      var html = '';
+      responses.forEach(function(r) {
+        html += '<tr class="hover:bg-slate-50 transition">';
+        html += '<td class="py-3 px-4 text-slate-500 text-[11px]">' + (r.timestamp || '-') + '</td>';
+        html += '<td class="py-3 px-4 font-bold text-slate-900 uppercase">' + (r.namaPasien || '(Anonim)') + '</td>';
+        html += '<td class="py-3 px-4">' + (r.jenisLayanan || 'Rawat Inap') + '</td>';
+        html += '<td class="py-3 px-4 font-mono font-bold text-center">' + (r.avgScore ? r.avgScore.toFixed(2) : '-') + '</td>';
+        html += '<td class="py-3 px-4 font-mono font-bold text-blue-900 text-center">' + (r.ikm100 ? r.ikm100.toFixed(2) : '-') + '</td>';
+        html += '<td class="py-3 px-4"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">' + (r.mutuLayanan || 'Baik') + '</span></td>';
+        html += '<td class="py-3 px-4 text-xs text-slate-600 max-w-xs truncate" title="' + (r.saran || '') + '">' + (r.saran || '-') + '</td>';
+        html += '</tr>';
+      });
+      tbody.innerHTML = html;
+    }
+
+    function refreshAllData() {
+      showToast("Menyegarkan seluruh data...", false);
+      loadPinsFromSheet();
+      loadDashboardData();
+    }
+  </script>
+
+</body>
+</html>

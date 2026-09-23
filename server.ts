@@ -64,39 +64,49 @@ const SYSTEM_DEFAULT_PINS: ServerPatientPin[] = [
     pin: '582049',
     status: 'active',
     createdAt: '2026-09-23T01:00:00.000Z',
-    registeredPatientName: 'Pasien Poli Umum',
-    registeredService: 'Rawat Jalan / Poliklinik',
-    registeredRoom: 'Poli Umum',
-    label: 'Pasien Poli Umum / Rawat Jalan',
+    registeredPatientName: 'CHATRINA HERLOFINA PANIE',
+    registeredService: 'Rawat Inap',
+    registeredRoom: 'Kamar Mawar 102',
+    label: 'Pasien: CHATRINA HERLOFINA PANIE',
   },
   {
     id: 'pin_746193',
     pin: '746193',
     status: 'active',
     createdAt: '2026-09-23T01:00:00.000Z',
-    registeredPatientName: 'Pasien IGD 24 Jam',
-    registeredService: 'IGD (Instalasi Gawat Darurat)',
-    registeredRoom: 'Bed Triase',
-    label: 'Pasien IGD 24 Jam',
+    registeredPatientName: 'Pasien Poliklinik',
+    registeredService: 'Rawat Jalan / Poliklinik',
+    registeredRoom: 'Poli Penyakit Dalam',
+    label: 'Pasien Poliklinik',
   },
   {
     id: 'pin_391824',
     pin: '391824',
     status: 'active',
     createdAt: '2026-09-23T01:00:00.000Z',
-    registeredPatientName: 'Pasien Farmasi / Apotek',
-    registeredService: 'Farmasi / Apotek',
-    label: 'Pasien Farmasi',
+    registeredPatientName: 'Pasien Gawat Darurat',
+    registeredService: 'IGD 24 Jam',
+    registeredRoom: 'Bed 03',
+    label: 'Pasien Gawat Darurat',
   },
   {
     id: 'pin_829104',
     pin: '829104',
     status: 'active',
     createdAt: '2026-09-23T01:00:00.000Z',
-    registeredPatientName: 'Ibu & Anak (VK)',
-    registeredService: 'Kebidanan & Kandungan (Ruang Bersalin / VK)',
+    registeredPatientName: 'Ibu & Anak',
+    registeredService: 'Kebidanan & Kandungan (VK)',
     registeredRoom: 'Kamar Bersalin',
     label: 'Pasien VK / Bersalin',
+  },
+  {
+    id: 'pin_615284',
+    pin: '615284',
+    status: 'active',
+    createdAt: '2026-09-23T01:00:00.000Z',
+    registeredPatientName: 'Pasien Umum',
+    registeredService: 'Pelayanan RSUD Aeramo',
+    label: 'Pasien Umum RSUD Aeramo',
   },
 ];
 
@@ -348,6 +358,14 @@ function sanitizeData(input: any): any {
 // =============================================================================
 // API ROUTES
 // =============================================================================
+
+app.get('/apps-script-index.html', (_req, res) => {
+  const filePath = path.join(__dirname, 'google_apps_script_index.html');
+  if (fs.existsSync(filePath)) {
+    return res.sendFile(filePath);
+  }
+  return res.status(404).send('File not found');
+});
 
 // 1. Health check
 app.get('/api/health', (req: Request, res: Response) => {

@@ -270,6 +270,8 @@ function savePersistedConfig(appsScriptUrl: string): void {
   }
 }
 
+let RUNTIME_APPS_SCRIPT_URL: string = '';
+
 function getActiveAppsScriptUrl(): string {
   if (RUNTIME_APPS_SCRIPT_URL && RUNTIME_APPS_SCRIPT_URL.trim()) {
     return RUNTIME_APPS_SCRIPT_URL.trim();

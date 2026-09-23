@@ -580,6 +580,17 @@ app.post('/api/survey/submit', async (req: Request, res: Response) => {
       body: JSON.stringify(sanitizedSubmission),
     });
 
+    // Panggil juga endpoint toggle_pin ke Apps Script untuk menjamin status di Google Sheet menjadi NON AKTIF
+    if (usedPin) {
+      try {
+        fetch(targetUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'toggle_pin', pin: usedPin, status: 'NON AKTIF' }),
+        }).catch(() => {});
+      } catch {}
+    }
+
     return res.json({
       success: true,
       mode: 'online',
@@ -741,7 +752,18 @@ app.post('/api/patient-pins/validate', async (req: Request, res: Response) => {
         try {
           sheetData = JSON.parse(rawText);
         } catch {
-          // Google Apps Script mengembalikan HTML (belum deploy 'Versi Baru' dengan validate_pin)
+          // Jika GET mengembalikan HTML, coba fallback POST validate_pin
+          try {
+            const postRes = await fetch(activeUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+              body: JSON.stringify({ action: 'validate_pin', pin: cleanPin }),
+            });
+            if (postRes.ok) {
+              const postText = await postRes.text();
+              sheetData = JSON.parse(postText);
+            }
+          } catch {}
         }
 
         if (sheetData && typeof sheetData.valid === 'boolean') {
@@ -938,9 +960,9 @@ app.post('/api/patient-pins/revoke', checkAdminAuth, (req: Request, res: Respons
   return res.status(404).json({ error: 'PIN tidak ditemukan.' });
 });
 
-// 6f. Hapus PIN Pasien
-app.post('/api/patient-pins/delete', checkAdminAuth, (req: Request, res: Response) => {
-  const { id, allUsed, all } = req.body;
+// 6g. Hapus PIN Pasien (Server & Google Sheet)
+app.post('/api/patient-pins/delete', checkAdminAuth, async (req: Request, res: Response) => {
+  const { id, pin, allUsed, all } = req.body;
   let existing = loadPatientPins();
 
   if (all) {
@@ -954,10 +976,30 @@ app.post('/api/patient-pins/delete', checkAdminAuth, (req: Request, res: Respons
     return res.json({ success: true, message: 'Seluruh riwayat PIN yang sudah digunakan berhasil dibersihkan.' });
   }
 
-  if (id) {
-    existing = existing.filter(p => p.id !== id);
+  const targetItem = existing.find(p => (id && p.id === id) || (pin && p.pin === pin));
+  const pinToDelete = targetItem?.pin || (pin ? String(pin).replace(/\D/g, '') : '');
+
+  if (id || pin) {
+    existing = existing.filter(p => {
+      if (id && p.id === id) return false;
+      if (pin && p.pin === pin) return false;
+      return true;
+    });
     savePatientPins(existing);
-    return res.json({ success: true, message: 'PIN berhasil dihapus.' });
+
+    // Hapus juga baris di Google Sheet jika URL aktif
+    const activeUrl = getActiveAppsScriptUrl();
+    if (activeUrl && pinToDelete) {
+      try {
+        fetch(activeUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'delete_pin', pin: pinToDelete }),
+        }).catch(() => {});
+      } catch {}
+    }
+
+    return res.json({ success: true, message: `PIN ${pinToDelete || ''} berhasil dihapus dari sistem dan antrean Google Sheet.` });
   }
 
   return res.status(400).json({ error: 'Parameter hapus tidak valid.' });

@@ -280,6 +280,32 @@ function togglePinStatus(pinToChange, newStatus) {
 }
 
 /**
+ * Fungsi untuk Menghapus PIN dari Google Sheet
+ */
+function deletePinFromSheet(pinToDelete) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    if (!ss) return { success: false, message: "Spreadsheet tidak terdeteksi" };
+    const sheet = findPinSheet(ss);
+    if (!sheet || sheet.getLastRow() <= 1) return { success: false, message: "Sheet kosong" };
+
+    const cleanPin = String(pinToDelete || "").replace(/\\D/g, "");
+    const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues();
+
+    for (let i = 0; i < values.length; i++) {
+      const pinInCell = String(values[i][0] || "").replace(/\\D/g, "");
+      if (pinInCell === cleanPin) {
+        sheet.deleteRow(i + 2);
+        return { success: true, message: "PIN " + cleanPin + " berhasil dihapus permanen dari Google Sheet." };
+      }
+    }
+    return { success: false, message: "PIN " + cleanPin + " tidak ditemukan di Google Sheet." };
+  } catch (err) {
+    return { success: false, message: "Gagal menghapus PIN: " + err.toString() };
+  }
+}
+
+/**
  * Melayani Permintaan GET:
  * 1. Validasi PIN Pasien dari Seluruh HP / Perangkat (?action=validate_pin&pin=123456)
  * 2. Mengambil Semua PIN Aktif (?action=get_pins)
@@ -506,7 +532,15 @@ function doPost(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
-    // D. Tambahkan PIN Batch Baru ke Sheet
+    // D. Hapus Baris PIN dari Sheet via POST
+    if (action === "delete_pin") {
+      const res = deletePinFromSheet(data.pin);
+      lock.releaseLock();
+      return ContentService.createTextOutput(JSON.stringify(res))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // E. Tambahkan PIN Batch Baru ke Sheet
     if (action === "create_pins") {
       if (Array.isArray(data.pins)) {
         const pinSheet = findPinSheet(ss);
@@ -1671,12 +1705,19 @@ export const GOOGLE_APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
             \${!isAct && p.usedAt ? '<div class="text-slate-700 font-medium">' + p.usedAt + '</div>' : '<span class="text-slate-400">-</span>'}
             \${p.usedByPatientName ? '<div class="text-blue-700 font-semibold">' + p.usedByPatientName + '</div>' : ''}
           </td>
-          <td class="px-4 py-3.5 text-center whitespace-nowrap">
+          <td class="px-4 py-3.5 text-center whitespace-nowrap space-x-1.5">
             <button
               onclick="togglePinStatusDirect('\${p.pin}', '\${isAct ? 'NON AKTIF' : 'AKTIF'}')"
-              class="px-2.5 py-1 rounded-lg text-[11px] font-bold border transition active:scale-95 \${isAct ? 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100' : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'}"
+              class="px-2.5 py-1 rounded-lg text-[11px] font-bold border transition active:scale-95 \${isAct ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100' : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'}"
             >
               \${isAct ? 'Nonaktifkan' : 'Aktifkan'}
+            </button>
+            <button
+              onclick="deletePinDirect('\${p.pin}')"
+              class="px-2.5 py-1 rounded-lg text-[11px] font-bold border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition active:scale-95"
+              title="Hapus baris PIN permanen dari Google Sheet"
+            >
+              🗑️ Hapus
             </button>
           </td>
         \`;
@@ -1771,6 +1812,26 @@ export const GOOGLE_APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
             showToast('Gagal mengubah status: ' + err.message, 'error');
           })
           .togglePinStatus(pin, newStatus);
+      }
+    }
+
+    function deletePinDirect(pin) {
+      if (!confirm('Apakah Anda yakin ingin menghapus permanen baris PIN ' + pin + ' dari Google Sheet?')) return;
+      showToast('Sedang menghapus PIN...', 'success');
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(function(res) {
+            if (res && res.success) {
+              showToast(res.message, 'success');
+              fetchPinsData();
+            } else {
+              showToast((res && res.message) ? res.message : 'Gagal menghapus PIN', 'error');
+            }
+          })
+          .withFailureHandler(function(err) {
+            showToast('Gagal menghapus PIN: ' + err.message, 'error');
+          })
+          .deletePinFromSheet(pin);
       }
     }
 

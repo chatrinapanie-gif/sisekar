@@ -270,9 +270,17 @@ function savePersistedConfig(appsScriptUrl: string): void {
   }
 }
 
-// Inisialisasi URL Google Apps Script: ambil dari penyimpanan permanen disk dahulu
-const initialPersisted = loadPersistedConfig();
-let RUNTIME_APPS_SCRIPT_URL = initialPersisted.appsScriptUrl || (process.env.APPS_SCRIPT_URL || '').trim();
+function getActiveAppsScriptUrl(): string {
+  if (RUNTIME_APPS_SCRIPT_URL && RUNTIME_APPS_SCRIPT_URL.trim()) {
+    return RUNTIME_APPS_SCRIPT_URL.trim();
+  }
+  const persisted = loadPersistedConfig();
+  if (persisted.appsScriptUrl && persisted.appsScriptUrl.trim()) {
+    RUNTIME_APPS_SCRIPT_URL = persisted.appsScriptUrl.trim();
+    return RUNTIME_APPS_SCRIPT_URL;
+  }
+  return (process.env.APPS_SCRIPT_URL || '').trim();
+}
 
 // =============================================================================
 // KONFIGURASI KEAMANAN SERVER (CYBER SECURITY HARDENING)
@@ -422,10 +430,11 @@ app.post('/api/admin/verify', (req: Request, res: Response) => {
 
 // 2b. Ambil Konfigurasi Publik (Dapat Diakses Seluruh Device / HP / Kiosk Otomatis)
 app.get('/api/config', (req: Request, res: Response) => {
+  const url = getActiveAppsScriptUrl();
   res.json({
     success: true,
-    appsScriptUrl: RUNTIME_APPS_SCRIPT_URL,
-    hasConfiguredUrl: Boolean(RUNTIME_APPS_SCRIPT_URL),
+    appsScriptUrl: url,
+    hasConfiguredUrl: Boolean(url),
     hospitalName: 'RSUD Aeramo',
     hospitalSubTitle: 'Pemerintah Kabupaten Nagekeo - Dinas Kesehatan',
   });
@@ -433,10 +442,11 @@ app.get('/api/config', (req: Request, res: Response) => {
 
 // 3. Ambil Konfigurasi Admin (Hanya Petugas Terautentikasi)
 app.get('/api/admin/config', checkAdminAuth, (req: Request, res: Response) => {
+  const url = getActiveAppsScriptUrl();
   res.json({
     success: true,
-    appsScriptUrl: RUNTIME_APPS_SCRIPT_URL,
-    hasConfiguredUrl: Boolean(RUNTIME_APPS_SCRIPT_URL),
+    appsScriptUrl: url,
+    hasConfiguredUrl: Boolean(url),
     securityFeatures: [
       'Anti-Brute Force Protection',
       'Timing Attack Resistance',
@@ -456,7 +466,7 @@ app.post('/api/admin/config', checkAdminAuth, (req: Request, res: Response) => {
   }
   res.json({
     success: true,
-    appsScriptUrl: RUNTIME_APPS_SCRIPT_URL,
+    appsScriptUrl: getActiveAppsScriptUrl(),
     message: 'Konfigurasi Google Apps Script berhasil disimpan secara permanen di server dan otomatis aktif untuk seluruh user dan perangkat.',
   });
 });
@@ -507,7 +517,8 @@ app.post('/api/survey/submit', async (req: Request, res: Response) => {
     }
 
     // Ambil target URL Google Apps Script dari konfigurasi server atau fallback payload
-    const targetUrl = RUNTIME_APPS_SCRIPT_URL || (typeof rawData.scriptUrl === 'string' ? rawData.scriptUrl.trim() : '');
+    const activeUrl = getActiveAppsScriptUrl();
+    const targetUrl = activeUrl || (typeof rawData.scriptUrl === 'string' ? rawData.scriptUrl.trim() : '');
 
     if (!targetUrl) {
       return res.json({
@@ -603,8 +614,9 @@ app.post('/api/patient-pins/generate', async (req: Request, res: Response) => {
         existing.unshift(newPin);
         savePatientPins(existing);
 
-        if (RUNTIME_APPS_SCRIPT_URL) {
-          fetch(RUNTIME_APPS_SCRIPT_URL, {
+        const activeUrl = getActiveAppsScriptUrl();
+        if (activeUrl) {
+          fetch(activeUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'create_pins', pins: [newPin] }),
@@ -637,8 +649,9 @@ app.post('/api/patient-pins/generate', async (req: Request, res: Response) => {
     const updated = [...generated, ...existing];
     savePatientPins(updated);
 
-    if (RUNTIME_APPS_SCRIPT_URL) {
-      fetch(RUNTIME_APPS_SCRIPT_URL, {
+    const activeUrl = getActiveAppsScriptUrl();
+    if (activeUrl) {
+      fetch(activeUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'create_pins', pins: generated }),
@@ -666,11 +679,12 @@ app.post('/api/patient-pins/validate', async (req: Request, res: Response) => {
   const cleanPin = pin.trim().replace(/\D/g, '');
 
   // 1. Cek Google Sheet via Apps Script jika URL aktif
-  if (RUNTIME_APPS_SCRIPT_URL) {
+  const activeUrl = getActiveAppsScriptUrl();
+  if (activeUrl) {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 4000);
-      const sheetCheckUrl = `${RUNTIME_APPS_SCRIPT_URL}${RUNTIME_APPS_SCRIPT_URL.includes('?') ? '&' : '?'}action=validate_pin&pin=${cleanPin}`;
+      const sheetCheckUrl = `${activeUrl}${activeUrl.includes('?') ? '&' : '?'}action=validate_pin&pin=${cleanPin}`;
       
       const sheetRes = await fetch(sheetCheckUrl, {
         method: 'GET',
@@ -796,12 +810,13 @@ app.post('/api/patient-pins/consume', (req: Request, res: Response) => {
 
 // 6e. Sinkronisasi Dua Arah PIN dengan Google Sheet (Tab PIN_PASIEN)
 app.post('/api/patient-pins/sync-sheet', async (req: Request, res: Response) => {
-  if (!RUNTIME_APPS_SCRIPT_URL) {
+  const activeUrl = getActiveAppsScriptUrl();
+  if (!activeUrl) {
     return res.status(400).json({ error: 'URL Google Apps Script belum dikonfigurasi.' });
   }
 
   try {
-    const fetchUrl = `${RUNTIME_APPS_SCRIPT_URL}${RUNTIME_APPS_SCRIPT_URL.includes('?') ? '&' : '?'}action=get_pins`;
+    const fetchUrl = `${activeUrl}${activeUrl.includes('?') ? '&' : '?'}action=get_pins`;
     const response = await fetch(fetchUrl);
     if (!response.ok) {
       throw new Error(`Google Apps Script merespons status ${response.status}`);

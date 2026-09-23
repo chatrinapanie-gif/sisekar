@@ -1040,7 +1040,8 @@
     var allResponses = [];
     var lastCreatedPin = null;
     var activeSpreadsheetUrl = "";
-    var patientAppBaseUrl = "https://ais-dev-yccl2mwm2caj7dw5hp4m7l-848831564581.asia-east1.run.app";
+    var patientAppBaseUrl = "https://ais-pre-yccl2mwm2caj7dw5hp4m7l-848831564581.asia-east1.run.app";
+    var patientAppDevUrl = "https://ais-dev-yccl2mwm2caj7dw5hp4m7l-848831564581.asia-east1.run.app";
 
     // Chart Instances
     var chartRadar = null;
@@ -1524,13 +1525,16 @@
 
     // Sinkronisasi Data PIN dari Google Sheet ke Cloud SISEKAR
     function syncPinsToCloud(pins) {
-      if (!patientAppBaseUrl || !Array.isArray(pins) || pins.length === 0) return;
-      fetch(patientAppBaseUrl + '/api/patient-pins/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pins: pins })
-      }).catch(function(err) {
-        console.warn('Sync PINs to cloud background notice:', err);
+      if (!Array.isArray(pins) || pins.length === 0) return;
+      var targets = [patientAppBaseUrl, patientAppDevUrl].filter(Boolean);
+      targets.forEach(function(url) {
+        fetch(url + '/api/patient-pins/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pins: pins })
+        }).catch(function(err) {
+          console.warn('Sync PINs notice to ' + url + ':', err);
+        });
       });
     }
 

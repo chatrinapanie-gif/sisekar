@@ -864,7 +864,7 @@ app.post('/api/patient-pins/validate', async (req: Request, res: Response) => {
   if (RUNTIME_APPS_SCRIPT_URL) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2500);
+      const timeoutId = setTimeout(() => controller.abort(), 7000);
       const sheetCheckUrl = `${RUNTIME_APPS_SCRIPT_URL}${RUNTIME_APPS_SCRIPT_URL.includes('?') ? '&' : '?'}action=validate_pin&pin=${cleanPin}`;
       
       const sheetRes = await fetch(sheetCheckUrl, {

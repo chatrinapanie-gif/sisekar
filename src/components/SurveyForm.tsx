@@ -431,23 +431,28 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
       </div>
 
       {/* KERTAS FORMULIR RESMI DENGAN KOP SURAT (SESUAI GAMBAR 1 & GAMBAR 2) */}
-      <form onSubmit={handleSubmit} className="relative overflow-hidden bg-white rounded-3xl p-5 sm:p-10 shadow-lg border border-slate-200 text-slate-900 print:shadow-none print:p-0 print:border-none">
+      <form onSubmit={handleSubmit} className="relative overflow-hidden bg-white rounded-3xl p-5 sm:p-10 shadow-xl border border-slate-200/90 ring-1 ring-rose-950/5 text-slate-900 print:shadow-none print:p-0 print:border-none">
         
-        {/* WATERMARK MAWAR ELEGAN DI TENGAH KERTAS KUESIONER (WATERMARK DOKUMEN RESMI) */}
+        {/* WATERMARK MAWAR MERAH ELEGAN DI TENGAH KERTAS KUESIONER */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0 overflow-hidden">
-          <div className="text-rose-900/40 opacity-[0.04] sm:opacity-[0.045] print:opacity-[0.06] transform rotate-12 scale-110 sm:scale-125">
-            <RoseWatermarkIcon className="w-[500px] h-[500px] sm:w-[650px] sm:h-[650px]" opacity="opacity-100" />
+          <div className="opacity-[0.065] sm:opacity-[0.075] print:opacity-[0.08] transform rotate-12 scale-110 sm:scale-125 transition-opacity">
+            <RoseWatermarkIcon className="w-[520px] h-[520px] sm:w-[680px] sm:h-[680px]" />
           </div>
         </div>
 
-        {/* WATERMARK MAWAR DI SUDUT KANAN ATAS FORMULIR */}
-        <div className="absolute -top-16 -right-16 pointer-events-none select-none z-0 text-rose-800 opacity-[0.035] transform -rotate-15">
-          <RoseWatermarkIcon className="w-64 h-64 sm:w-80 sm:h-80" opacity="opacity-100" />
+        {/* WATERMARK MAWAR MERAH DI SUDUT KANAN ATAS FORMULIR */}
+        <div className="absolute -top-14 -right-14 pointer-events-none select-none z-0 opacity-[0.09] sm:opacity-[0.11] transform -rotate-12 transition-opacity">
+          <RoseWatermarkIcon className="w-64 h-64 sm:w-80 sm:h-80" />
         </div>
 
-        {/* WATERMARK MAWAR DI SUDUT KIRI BAWAH FORMULIR */}
-        <div className="absolute -bottom-16 -left-16 pointer-events-none select-none z-0 text-rose-800 opacity-[0.035] transform rotate-45">
-          <RoseWatermarkIcon className="w-64 h-64 sm:w-80 sm:h-80" opacity="opacity-100" />
+        {/* WATERMARK MAWAR MERAH DI SUDUT KIRI BAWAH FORMULIR */}
+        <div className="absolute -bottom-14 -left-14 pointer-events-none select-none z-0 opacity-[0.09] sm:opacity-[0.11] transform rotate-45 transition-opacity">
+          <RoseWatermarkIcon className="w-64 h-64 sm:w-80 sm:h-80" />
+        </div>
+
+        {/* AKSEN MAWAR LEMBUT DI SUDUT KIRI ATAS FORMULIR */}
+        <div className="hidden sm:block absolute -top-16 -left-16 pointer-events-none select-none z-0 opacity-[0.07] transform rotate-90">
+          <RoseWatermarkIcon className="w-60 h-60" />
         </div>
         
         <div className="relative z-10 space-y-6 sm:space-y-8">
@@ -493,22 +498,31 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
         {/* ========================================================================= */}
         {/* JUDUL DOKUMEN & IDENTITAS SURVEI                                          */}
         {/* ========================================================================= */}
-        <div className="text-center mt-2 sm:mt-4 mb-6">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-900 text-xs font-bold uppercase tracking-wider mb-2.5 print:hidden">
-            <Sparkles className="w-3.5 h-3.5 text-blue-700" />
+        <div className="text-center mt-2 sm:mt-4 mb-6 relative">
+          
+          {/* Badge Resmi yang Mewah & Elegan */}
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-rose-50 via-blue-50 to-indigo-50 border border-blue-200/80 shadow-xs text-blue-950 text-xs font-bold uppercase tracking-wider mb-3 print:hidden">
+            <Sparkles className="w-3.5 h-3.5 text-rose-600" />
             <span>Kuesioner Resmi Rumah Sakit</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
           </div>
 
-          <h2 className="text-base sm:text-xl font-extrabold uppercase tracking-wide font-serif underline underline-offset-4 decoration-2 text-slate-950 leading-snug">
+          {/* Judul Kuesioner dengan Tipografi Berkelas */}
+          <h2 className="text-lg sm:text-2xl font-extrabold uppercase tracking-tight font-serif text-slate-950 leading-snug">
             KUESIONER SURVEY KEPUASAN PASIEN
-            <br />
-            PELAYANAN {activeServiceOption.label.toUpperCase()}
-            <br />
-            <span className="text-sm sm:text-lg text-slate-800 font-bold font-sans">
-              RSUD AERAMO - KABUPATEN NAGEKEO
-            </span>
+            <div className="my-1 sm:my-1.5">
+              <span className="inline-block px-3 py-0.5 rounded-lg bg-blue-50 border border-blue-200/70 text-blue-900 text-sm sm:text-lg font-sans font-bold shadow-2xs">
+                PELAYANAN {activeServiceOption.label.toUpperCase()}
+              </span>
+            </div>
+            <div className="text-sm sm:text-lg text-slate-800 font-bold font-sans tracking-normal mt-1 flex items-center justify-center gap-2">
+              <span className="h-px w-8 sm:w-12 bg-gradient-to-r from-transparent to-rose-400" />
+              <span>RSUD AERAMO - KABUPATEN NAGEKEO</span>
+              <span className="h-px w-8 sm:w-12 bg-gradient-to-l from-transparent to-rose-400" />
+            </div>
           </h2>
-          <p className="text-xs text-slate-500 mt-1.5 font-sans print:hidden">
+
+          <p className="text-xs sm:text-sm text-slate-600 mt-2 font-sans max-w-lg mx-auto print:hidden">
             Mohon berikan penilaian objektif Anda untuk peningkatan mutu pelayanan kami
           </p>
         </div>

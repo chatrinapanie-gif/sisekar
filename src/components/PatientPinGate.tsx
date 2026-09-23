@@ -135,12 +135,12 @@ export const PatientPinGate: React.FC<PatientPinGateProps> = ({
       {/* Kartu Autentikasi PIN Akses Pasien */}
       <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200/90 overflow-hidden relative z-10 animate-in fade-in zoom-in-95 duration-300">
         
-        {/* Background Watermark Mawar Halus */}
-        <div className="absolute -top-16 -right-16 text-rose-800 opacity-[0.035] pointer-events-none transform -rotate-12">
-          <RoseWatermarkIcon className="w-72 h-72" opacity="opacity-100" />
+        {/* Background Watermark Mawar Merah Mewah */}
+        <div className="absolute -top-16 -right-16 opacity-[0.09] pointer-events-none transform -rotate-12">
+          <RoseWatermarkIcon className="w-72 h-72" />
         </div>
-        <div className="absolute -bottom-16 -left-16 text-rose-800 opacity-[0.035] pointer-events-none transform rotate-45">
-          <RoseWatermarkIcon className="w-72 h-72" opacity="opacity-100" />
+        <div className="absolute -bottom-16 -left-16 opacity-[0.09] pointer-events-none transform rotate-45">
+          <RoseWatermarkIcon className="w-72 h-72" />
         </div>
 
         {/* Header Visual Atas */}

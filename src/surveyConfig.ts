@@ -112,6 +112,42 @@ export const SYSTEM_PRESET_PINS: SystemPresetPin[] = [
     label: 'Pasien Umum RSUD Aeramo',
     createdAt: '2026-09-23T01:00:00.000Z',
   },
+  {
+    id: 'pin_681619',
+    pin: '681619',
+    status: 'active',
+    registeredPatientName: 'test',
+    registeredService: 'Rawat Inap',
+    label: 'Pasien: test (Rawat Inap)',
+    createdAt: '2026-09-23T15:35:25.000Z',
+  },
+  {
+    id: 'pin_905929',
+    pin: '905929',
+    status: 'active',
+    registeredPatientName: 'test2',
+    registeredService: 'Rawat Inap',
+    label: 'Pasien: test2 (Rawat Inap)',
+    createdAt: '2026-09-23T15:36:56.000Z',
+  },
+  {
+    id: 'pin_777628',
+    pin: '777628',
+    status: 'active',
+    registeredPatientName: 'Refli',
+    registeredService: 'Rawat Inap',
+    label: 'Pasien: Refli (Rawat Inap)',
+    createdAt: '2026-09-23T15:42:39.000Z',
+  },
+  {
+    id: 'pin_950529',
+    pin: '950529',
+    status: 'active',
+    registeredPatientName: 'Test5',
+    registeredService: 'Rawat Inap',
+    label: 'Pasien: Test5 (Rawat Inap)',
+    createdAt: '2026-09-23T16:02:37.000Z',
+  },
 ];
 
 /**

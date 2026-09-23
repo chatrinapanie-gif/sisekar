@@ -1,5 +1,5 @@
 import { AppConfig, SurveySubmission, OneTimeSubmissionLock, PatientPinToken } from '../types';
-import { ADMIN_CONFIG } from '../surveyConfig';
+import { ADMIN_CONFIG, SYSTEM_PRESET_PINS } from '../surveyConfig';
 import { sanitizeInput } from '../utils/security';
 
 const STORAGE_KEYS = {
@@ -39,13 +39,47 @@ export function setActiveSessionPatientPin(pin: string | null): void {
 }
 
 export function loadLocalPatientPins(): PatientPinToken[] {
+  let pins: PatientPinToken[] = [];
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.PATIENT_PINS);
-    if (!raw) return [];
-    return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        pins = parsed;
+      }
+    }
   } catch {
-    return [];
+    pins = [];
   }
+
+  // Selalu gabungkan PIN Bawaan Sistem (seperti 268907 untuk Chatrina Herlofina Panie, 102938, dll)
+  // sehingga selalu aktif di perangkat/browser/email mana pun pasien membuka
+  const existingSet = new Set(pins.map(p => p.pin));
+  let hasNew = false;
+  for (const preset of SYSTEM_PRESET_PINS) {
+    if (!existingSet.has(preset.pin)) {
+      pins.push({
+        id: preset.id,
+        pin: preset.pin,
+        status: preset.status,
+        registeredPatientName: preset.registeredPatientName,
+        registeredService: preset.registeredService,
+        registeredRoom: preset.registeredRoom,
+        label: preset.label,
+        createdAt: preset.createdAt,
+      });
+      existingSet.add(preset.pin);
+      hasNew = true;
+    }
+  }
+
+  if (hasNew) {
+    try {
+      localStorage.setItem(STORAGE_KEYS.PATIENT_PINS, JSON.stringify(pins));
+    } catch {}
+  }
+
+  return pins;
 }
 
 export function saveLocalPatientPins(pins: PatientPinToken[]): void {
@@ -198,7 +232,7 @@ export async function validatePatientPin(pin: string): Promise<{
         token,
         message: data.message || 'PIN valid dari Google Sheet RSUD Aeramo.',
       };
-    } else if (data.status) {
+    } else if (data.status && data.status !== 'not_found') {
       return {
         valid: false,
         status: data.status,
@@ -317,6 +351,20 @@ export async function generatePatientPins(params: {
         const current = loadLocalPatientPins();
         const merged = [...data.pins, ...current];
         saveLocalPatientPins(merged);
+
+        // Langsung kirim ke Google Apps Script (Tab PIN_PASIEN) dari browser juga
+        const cfg = loadAppConfig();
+        if (cfg.appsScriptUrl) {
+          try {
+            fetch(cfg.appsScriptUrl, {
+              method: 'POST',
+              mode: 'no-cors',
+              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+              body: JSON.stringify({ action: 'create_pins', pins: data.pins }),
+            }).catch(e => console.warn('Direct Apps Script PIN sync:', e));
+          } catch {}
+        }
+
         return data.pins;
       }
     }

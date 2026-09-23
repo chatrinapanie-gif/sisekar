@@ -28,6 +28,82 @@ export const ADMIN_CONFIG = {
   requirePatientPin: true, // Wajibkan PIN Satu Kali Pakai untuk Setiap Pasien
 };
 
+export interface SystemPresetPin {
+  id: string;
+  pin: string;
+  status: 'active' | 'used';
+  registeredPatientName?: string;
+  registeredService?: string;
+  registeredRoom?: string;
+  label?: string;
+  createdAt: string;
+}
+
+/**
+ * Daftar PIN Pasien Bawaan Sistem RSUD Aeramo (Permanen di Seluruh Perangkat & Email)
+ */
+export const SYSTEM_PRESET_PINS: SystemPresetPin[] = [
+  {
+    id: 'pin_268907',
+    pin: '268907',
+    status: 'active',
+    registeredPatientName: 'CHATRINA HERLOFINA PANIE',
+    registeredService: 'Rawat Inap',
+    registeredRoom: 'Kamar Mawar 102',
+    label: 'Pasien: CHATRINA HERLOFINA PANIE',
+    createdAt: '2026-09-23T01:00:00.000Z',
+  },
+  {
+    id: 'pin_102938',
+    pin: '102938',
+    status: 'active',
+    registeredPatientName: 'Bapak / Ibu Pasien',
+    registeredService: 'Rawat Inap',
+    registeredRoom: 'Kamar 101',
+    label: 'Pasien Rawat Inap (Kamar 101)',
+    createdAt: '2026-09-23T01:00:00.000Z',
+  },
+  {
+    id: 'pin_582049',
+    pin: '582049',
+    status: 'active',
+    registeredPatientName: 'Pasien Poli Umum',
+    registeredService: 'Rawat Jalan / Poliklinik',
+    registeredRoom: 'Poli Umum',
+    label: 'Pasien Poli Umum / Rawat Jalan',
+    createdAt: '2026-09-23T01:00:00.000Z',
+  },
+  {
+    id: 'pin_746193',
+    pin: '746193',
+    status: 'active',
+    registeredPatientName: 'Pasien IGD 24 Jam',
+    registeredService: 'IGD (Instalasi Gawat Darurat)',
+    registeredRoom: 'Bed Triase',
+    label: 'Pasien IGD 24 Jam',
+    createdAt: '2026-09-23T01:00:00.000Z',
+  },
+  {
+    id: 'pin_391824',
+    pin: '391824',
+    status: 'active',
+    registeredPatientName: 'Pasien Farmasi / Apotek',
+    registeredService: 'Farmasi / Apotek',
+    label: 'Pasien Farmasi',
+    createdAt: '2026-09-23T01:00:00.000Z',
+  },
+  {
+    id: 'pin_829104',
+    pin: '829104',
+    status: 'active',
+    registeredPatientName: 'Ibu & Anak (VK)',
+    registeredService: 'Kebidanan & Kandungan (Ruang Bersalin / VK)',
+    registeredRoom: 'Kamar Bersalin',
+    label: 'Pasien VK / Bersalin',
+    createdAt: '2026-09-23T01:00:00.000Z',
+  },
+];
+
 /**
  * ============================================================================
  * KONFIGURASI FORMULIR SURVEI RSUD AERAMO - KABUPATEN NAGEKEO

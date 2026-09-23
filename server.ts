@@ -37,7 +37,71 @@ interface ServerPatientPin {
   notes?: string;
 }
 
+const SYSTEM_DEFAULT_PINS: ServerPatientPin[] = [
+  {
+    id: 'pin_268907',
+    pin: '268907',
+    status: 'active',
+    createdAt: '2026-09-23T01:00:00.000Z',
+    registeredPatientName: 'CHATRINA HERLOFINA PANIE',
+    registeredService: 'Rawat Inap',
+    registeredRoom: 'Kamar Mawar 102',
+    label: 'Pasien: CHATRINA HERLOFINA PANIE',
+    notes: 'PIN Resmi Terdaftar RSUD Aeramo',
+  },
+  {
+    id: 'pin_102938',
+    pin: '102938',
+    status: 'active',
+    createdAt: '2026-09-23T01:00:00.000Z',
+    registeredPatientName: 'Bapak / Ibu Pasien',
+    registeredService: 'Rawat Inap',
+    registeredRoom: 'Kamar 101',
+    label: 'Pasien Rawat Inap (Kamar 101)',
+  },
+  {
+    id: 'pin_582049',
+    pin: '582049',
+    status: 'active',
+    createdAt: '2026-09-23T01:00:00.000Z',
+    registeredPatientName: 'Pasien Poli Umum',
+    registeredService: 'Rawat Jalan / Poliklinik',
+    registeredRoom: 'Poli Umum',
+    label: 'Pasien Poli Umum / Rawat Jalan',
+  },
+  {
+    id: 'pin_746193',
+    pin: '746193',
+    status: 'active',
+    createdAt: '2026-09-23T01:00:00.000Z',
+    registeredPatientName: 'Pasien IGD 24 Jam',
+    registeredService: 'IGD (Instalasi Gawat Darurat)',
+    registeredRoom: 'Bed Triase',
+    label: 'Pasien IGD 24 Jam',
+  },
+  {
+    id: 'pin_391824',
+    pin: '391824',
+    status: 'active',
+    createdAt: '2026-09-23T01:00:00.000Z',
+    registeredPatientName: 'Pasien Farmasi / Apotek',
+    registeredService: 'Farmasi / Apotek',
+    label: 'Pasien Farmasi',
+  },
+  {
+    id: 'pin_829104',
+    pin: '829104',
+    status: 'active',
+    createdAt: '2026-09-23T01:00:00.000Z',
+    registeredPatientName: 'Ibu & Anak (VK)',
+    registeredService: 'Kebidanan & Kandungan (Ruang Bersalin / VK)',
+    registeredRoom: 'Kamar Bersalin',
+    label: 'Pasien VK / Bersalin',
+  },
+];
+
 function loadPatientPins(): ServerPatientPin[] {
+  let pins: ServerPatientPin[] = [];
   try {
     if (!fs.existsSync(DATA_DIR)) {
       fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -46,13 +110,31 @@ function loadPatientPins(): ServerPatientPin[] {
       const data = fs.readFileSync(PINS_FILE, 'utf-8');
       const parsed = JSON.parse(data);
       if (Array.isArray(parsed)) {
-        return parsed;
+        pins = parsed;
       }
     }
   } catch (err) {
     console.warn('[Server Storage] Gagal membaca patient-pins.json:', err);
   }
-  return [];
+
+  // Merge default pins jika belum ada di file
+  const pinSet = new Set(pins.map(p => p.pin));
+  let modified = false;
+  for (const defPin of SYSTEM_DEFAULT_PINS) {
+    if (!pinSet.has(defPin.pin)) {
+      pins.push(defPin);
+      pinSet.add(defPin.pin);
+      modified = true;
+    }
+  }
+
+  if (modified || !fs.existsSync(PINS_FILE)) {
+    try {
+      fs.writeFileSync(PINS_FILE, JSON.stringify(pins, null, 2), 'utf-8');
+    } catch {}
+  }
+
+  return pins;
 }
 
 function savePatientPins(pins: ServerPatientPin[]): void {
@@ -564,7 +646,14 @@ app.post('/api/patient-pins/validate', async (req: Request, res: Response) => {
       clearTimeout(timeoutId);
 
       if (sheetRes.ok) {
-        const sheetData = await sheetRes.json();
+        const rawText = await sheetRes.text();
+        let sheetData: any = null;
+        try {
+          sheetData = JSON.parse(rawText);
+        } catch {
+          // Google Apps Script mengembalikan HTML (belum deploy 'Versi Baru' dengan validate_pin)
+        }
+
         if (sheetData && typeof sheetData.valid === 'boolean') {
           const existing = loadPatientPins();
           const idx = existing.findIndex(p => p.pin === cleanPin);

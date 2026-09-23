@@ -19,7 +19,12 @@ import {
   RefreshCw,
   FileSpreadsheet,
   Globe2,
-  Smartphone
+  Smartphone,
+  AlertTriangle,
+  Code2,
+  Info,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { PatientPinToken } from '../types';
 import { 
@@ -28,6 +33,7 @@ import {
   deletePatientPin,
   syncPinsWithGoogleSheet
 } from '../services/sheetsService';
+import { GOOGLE_APPS_SCRIPT_CODE } from '../services/appsScriptCode';
 
 interface AdminPatientPinsTabProps {
   pins: PatientPinToken[];
@@ -58,6 +64,15 @@ export const AdminPatientPinsTab: React.FC<AdminPatientPinsTabProps> = ({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showPrintModal, setShowPrintModal] = useState<boolean>(false);
   const [selectedPinForPrint, setSelectedPinForPrint] = useState<PatientPinToken | null>(null);
+  const [copiedScriptCode, setCopiedScriptCode] = useState<boolean>(false);
+  const [showDeploymentGuide, setShowDeploymentGuide] = useState<boolean>(false);
+
+  const handleCopyScriptCode = () => {
+    navigator.clipboard.writeText(GOOGLE_APPS_SCRIPT_CODE);
+    setCopiedScriptCode(true);
+    setTimeout(() => setCopiedScriptCode(null as any), 3000);
+    onToast('success', 'Kode Code.gs terbaru berhasil disalin ke clipboard!');
+  };
 
   // Perhitungan statistik
   const totalCount = pins.length;
@@ -278,6 +293,80 @@ export const AdminPatientPinsTab: React.FC<AdminPatientPinsTabProps> = ({
           <FileSpreadsheet className={`w-4 h-4 ${isSyncingSheet ? 'animate-spin' : ''}`} />
           <span>{isSyncingSheet ? 'Sinkronisasi Sheet...' : 'Sinkronkan Google Sheet'}</span>
         </button>
+      </div>
+
+      {/* Banner Penting: Cara Memastikan PIN Terbuka di Email Pasien & Seluruh HP */}
+      <div className="bg-amber-50/90 border border-amber-300/80 rounded-2xl p-4 space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 mt-0.5">
+              <AlertTriangle className="w-4 h-4" />
+            </div>
+            <div>
+              <h5 className="text-xs sm:text-sm font-bold text-amber-950 flex items-center gap-2">
+                <span>Panduan Penting: Agar PIN Dapat Dibuka di Email Pasien &amp; Perangkat Lain</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-200/80 text-amber-900 border border-amber-300">
+                  Wajib Disimak
+                </span>
+              </h5>
+              <p className="text-[11px] text-amber-900/90 leading-relaxed mt-0.5">
+                PIN <strong>268907</strong> (Pasien: CHATRINA HERLOFINA PANIE) serta seluruh PIN terdaftar kini telah aktif di sistem. Agar PIN baru yang dibuat otomatis tercatat di Google Sheet dan bisa diakses pasien tanpa Anda harus membuka admin di HP mereka, pastikan Google Apps Script Anda disetel ke <strong>Versi Baru</strong> dan hak akses <strong>Siapa Saja (Anyone)</strong>.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowDeploymentGuide(!showDeploymentGuide)}
+            className="px-3 py-1.5 rounded-xl bg-amber-200/80 hover:bg-amber-300/80 text-amber-950 font-bold text-xs flex items-center gap-1.5 transition shrink-0"
+          >
+            <span>{showDeploymentGuide ? 'Sembunyikan' : 'Buka Cara Update'}</span>
+            {showDeploymentGuide ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
+        </div>
+
+        {showDeploymentGuide && (
+          <div className="pt-3 border-t border-amber-200/80 space-y-3 text-xs text-amber-950 animate-in fade-in duration-200">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div className="p-3 rounded-xl bg-white/80 border border-amber-200 space-y-1">
+                <span className="font-bold text-slate-900 flex items-center gap-1.5">
+                  <span className="w-4 h-4 rounded-full bg-blue-700 text-white flex items-center justify-center text-[10px]">1</span>
+                  <span>Salin Kode Code.gs Terbaru</span>
+                </span>
+                <p className="text-[11px] text-slate-600">
+                  Kode Code.gs terbaru sudah mencakup fitur tab <strong>PIN_PASIEN</strong> dan validasi multi-perangkat.
+                </p>
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={handleCopyScriptCode}
+                    className="px-3 py-1.5 rounded-lg bg-blue-700 hover:bg-blue-800 text-white font-bold text-[11px] flex items-center gap-1.5 transition shadow-xs"
+                  >
+                    {copiedScriptCode ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedScriptCode ? 'Kode Code.gs Tersalin!' : 'Salin Kode Code.gs'}</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-white/80 border border-amber-200 space-y-1">
+                <span className="font-bold text-slate-900 flex items-center gap-1.5">
+                  <span className="w-4 h-4 rounded-full bg-emerald-700 text-white flex items-center justify-center text-[10px]">2</span>
+                  <span>Terapkan sebagai Versi Baru (Deploy)</span>
+                </span>
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  Buka Google Sheet &gt; Ekstensi &gt; Apps Script &gt; Klik <strong>Deploy (Terapkan)</strong> &gt; <strong>Kelola penerapan</strong> &gt; Klik ikon <strong>Pensil (Edit)</strong> &gt; Pada Versi pilih <strong>Versi baru (New version)</strong> &gt; Pastikan Siapa yang memiliki akses: <strong>Siapa saja (Anyone)</strong> &gt; Klik <strong>Terapkan</strong>.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-2.5 rounded-xl bg-amber-100/70 text-[11px] text-amber-900 flex items-center gap-2">
+              <Info className="w-4 h-4 shrink-0 text-amber-700" />
+              <span>
+                <strong>Kenapa wajib "Siapa Saja"?</strong> Jika disetel "Hanya saya", Google akan memblokir email pasien lain dan server web sehingga muncul pesan PIN tidak terdaftar. Dengan memilih "Siapa saja", seluruh pasien bisa langsung mengisi survei dengan aman.
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Form Pembuatan PIN Akses Pasien Baru */}

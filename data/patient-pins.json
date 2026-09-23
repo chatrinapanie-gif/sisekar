@@ -1,0 +1,61 @@
+[
+  {
+    "id": "pin_268907",
+    "pin": "268907",
+    "status": "active",
+    "createdAt": "2026-09-23T01:00:00.000Z",
+    "registeredPatientName": "CHATRINA HERLOFINA PANIE",
+    "registeredService": "Rawat Inap",
+    "registeredRoom": "Kamar Mawar 102",
+    "label": "Pasien: CHATRINA HERLOFINA PANIE"
+  },
+  {
+    "id": "pin_102938",
+    "pin": "102938",
+    "status": "active",
+    "createdAt": "2026-09-23T01:30:26.830Z",
+    "registeredPatientName": "Bapak / Ibu Pasien",
+    "registeredService": "Rawat Inap",
+    "registeredRoom": "Kamar 101",
+    "label": "Pasien Rawat Inap (Kamar 101)"
+  },
+  {
+    "id": "pin_582049",
+    "pin": "582049",
+    "status": "active",
+    "createdAt": "2026-09-23T01:30:26.831Z",
+    "registeredPatientName": "Pasien Poli Umum",
+    "registeredService": "Rawat Jalan / Poliklinik",
+    "registeredRoom": "Poli Umum",
+    "label": "Pasien Poli Umum / Rawat Jalan"
+  },
+  {
+    "id": "pin_746193",
+    "pin": "746193",
+    "status": "active",
+    "createdAt": "2026-09-23T01:30:26.831Z",
+    "registeredPatientName": "Pasien IGD 24 Jam",
+    "registeredService": "IGD (Instalasi Gawat Darurat)",
+    "registeredRoom": "Bed Triase",
+    "label": "Pasien IGD 24 Jam"
+  },
+  {
+    "id": "pin_391824",
+    "pin": "391824",
+    "status": "active",
+    "createdAt": "2026-09-23T01:00:00.000Z",
+    "registeredPatientName": "Pasien Farmasi",
+    "registeredService": "Farmasi / Apotek",
+    "label": "Pasien Farmasi"
+  },
+  {
+    "id": "pin_829104",
+    "pin": "829104",
+    "status": "active",
+    "createdAt": "2026-09-23T01:00:00.000Z",
+    "registeredPatientName": "Ibu & Anak",
+    "registeredService": "Kebidanan & Kandungan (Ruang Bersalin / VK)",
+    "registeredRoom": "Kamar Bersalin",
+    "label": "Pasien VK / Bersalin"
+  }
+]

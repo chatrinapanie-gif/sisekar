@@ -472,6 +472,40 @@ app.post('/api/survey/submit', async (req: Request, res: Response) => {
     // Sanitasi semua teks yang diinput pasien
     const sanitizedSubmission = sanitizeData(rawData);
 
+    // Otomatis tandai PIN sebagai digunakan (non-aktif) di server lokal seketika
+    const usedPin = String(sanitizedSubmission.patientPin || sanitizedSubmission.pin || '').replace(/\D/g, '');
+    if (usedPin) {
+      const existing = loadPatientPins();
+      const idx = existing.findIndex(p => p.pin === usedPin);
+      if (idx !== -1) {
+        existing[idx].status = 'used';
+        existing[idx].usedAt = new Date().toISOString();
+        existing[idx].usedBy = {
+          submissionId: sanitizedSubmission.id,
+          namaPasien: sanitizedSubmission.namaPasien || 'Pasien Anonim',
+          jenisLayanan: sanitizedSubmission.jenisLayanan || 'Pelayanan RSUD Aeramo',
+          ikmScore: typeof sanitizedSubmission.ikmScore === 'number' ? sanitizedSubmission.ikmScore : undefined,
+        };
+        savePatientPins(existing);
+      } else {
+        existing.unshift({
+          id: 'pin_' + usedPin,
+          pin: usedPin,
+          status: 'used',
+          createdAt: new Date().toISOString(),
+          usedAt: new Date().toISOString(),
+          usedBy: {
+            submissionId: sanitizedSubmission.id,
+            namaPasien: sanitizedSubmission.namaPasien || 'Pasien Anonim',
+            jenisLayanan: sanitizedSubmission.jenisLayanan || 'Pelayanan RSUD Aeramo',
+            ikmScore: typeof sanitizedSubmission.ikmScore === 'number' ? sanitizedSubmission.ikmScore : undefined,
+          },
+          label: 'PIN Digunakan',
+        });
+        savePatientPins(existing);
+      }
+    }
+
     // Ambil target URL Google Apps Script dari konfigurasi server atau fallback payload
     const targetUrl = RUNTIME_APPS_SCRIPT_URL || (typeof rawData.scriptUrl === 'string' ? rawData.scriptUrl.trim() : '');
 
@@ -479,7 +513,7 @@ app.post('/api/survey/submit', async (req: Request, res: Response) => {
       return res.json({
         success: true,
         mode: 'offline_saved',
-        message: 'Survei tersimpan aman di sistem lokal. URL Google Apps Script belum dikonfigurasi di server.',
+        message: 'Survei tersimpan aman di sistem lokal dan PIN telah dinonaktifkan. URL Google Apps Script belum dikonfigurasi di server.',
       });
     }
 

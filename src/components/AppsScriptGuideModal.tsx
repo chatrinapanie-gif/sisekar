@@ -237,22 +237,22 @@ export const AppsScriptGuideModal: React.FC = () => {
                 </div>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex gap-3">
+              <div className="p-3.5 rounded-2xl bg-blue-50 border border-blue-200 flex gap-3">
                 <span className="w-6 h-6 rounded-full bg-blue-700 text-white flex items-center justify-center text-xs font-bold shrink-0">3</span>
                 <div>
-                  <p className="font-bold text-slate-900">Tempelkan Kode Code.gs</p>
-                  <p className="text-slate-500 text-xs mt-0.5">
-                    Hapus isi file <code className="bg-white px-1.5 py-0.5 rounded border">Code.gs</code>, paste kode dari tab <em>"1. File: Code.gs"</em> di atas.
+                  <p className="font-bold text-blue-950">Tempelkan Kode ke Code.gs (Backend &amp; Sinkronisasi PIN)</p>
+                  <p className="text-blue-900 text-xs mt-0.5">
+                    Hapus seluruh isi file <code className="bg-white px-1.5 py-0.5 rounded border font-bold">Code.gs</code>, lalu paste kode dari tombol <strong>"Salin Code.gs"</strong> di atas. Klik tombol <strong>Save (Ikon Disket)</strong>.
                   </p>
                 </div>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 flex gap-3">
+              <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-300 flex gap-3">
                 <span className="w-6 h-6 rounded-full bg-emerald-700 text-white flex items-center justify-center text-xs font-bold shrink-0">4</span>
                 <div>
-                  <p className="font-bold text-emerald-950">Buat File Baru: index.html (Dashboard Eksekutif)</p>
-                  <p className="text-emerald-900 text-xs mt-0.5">
-                    Di samping tulisan <strong>Files</strong> di Google Apps Script, klik tombol <strong>+ (Tambah)</strong> &gt; pilih <strong>HTML</strong> &gt; beri nama: <strong className="font-mono bg-white px-1.5 py-0.5 rounded border border-emerald-300">index</strong> (otomatis jadi index.html). Hapus isinya, lalu paste kode dari tab <em>"2. File: index.html"</em>. Klik tombol Save (ikon disket).
+                  <p className="font-bold text-emerald-950">File index.html (Dashboard Khusus Admin)</p>
+                  <p className="text-emerald-900 text-xs mt-0.5 leading-relaxed">
+                    Agar admin memiliki dashboard eksekutif mandiri saat membuka link Apps Script: Klik tombol <strong>+ (Tambah)</strong> di samping Files &gt; pilih <strong>HTML</strong> &gt; beri nama: <code className="bg-white px-1.5 py-0.5 rounded border font-mono font-bold">index</code> (otomatis menjadi index.html). Hapus isinya dan paste kode dari tab <em>"2. File: index.html (Dashboard Eksekutif)"</em>.
                   </p>
                 </div>
               </div>

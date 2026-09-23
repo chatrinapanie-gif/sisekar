@@ -7,13 +7,11 @@ import { OneTimeSubmissionLock } from '../types';
 
 interface ThankYouLockedViewProps {
   lockInfo: OneTimeSubmissionLock | null;
-  onAdminUnlockRequest?: () => void;
   onNewPatientPinRequest?: () => void;
 }
 
 export const ThankYouLockedView: React.FC<ThankYouLockedViewProps> = ({
   lockInfo,
-  onAdminUnlockRequest,
   onNewPatientPinRequest,
 }) => {
   const formattedDate = lockInfo?.submittedAt

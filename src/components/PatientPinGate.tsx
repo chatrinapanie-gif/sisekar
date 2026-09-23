@@ -22,13 +22,11 @@ import { PatientPinToken } from '../types';
 
 interface PatientPinGateProps {
   onPinVerified: (token: PatientPinToken, pin: string) => void;
-  onOpenStaffLogin?: () => void;
   initialPinFromUrl?: string;
 }
 
 export const PatientPinGate: React.FC<PatientPinGateProps> = ({
   onPinVerified,
-  onOpenStaffLogin,
   initialPinFromUrl,
 }) => {
   const [pinDigits, setPinDigits] = useState<string[]>(['', '', '', '', '', '']);

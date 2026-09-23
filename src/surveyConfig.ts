@@ -11,7 +11,7 @@ import { QuestionSection } from './types';
  */
 export const ADMIN_CONFIG = {
   // Masukkan URL Google Apps Script Web App Anda di sini (atau biarkan kosong untuk diisi via Portal Petugas Terproteksi):
-  appsScriptUrl: 'https://script.google.com/macros/s/AKfycbwzmMBm-rAMk7il3_12He88LvfqDj1xlIr7l8I1B1vUGLHF39nMI5H141FGxLkH5JGklw/exec', // Web App RSUD Aeramo
+  appsScriptUrl: 'https://script.google.com/macros/s/AKfycbyiQtnJ9n3023h0YUkXd9UxG7_MKByYp0QEiWmHXqTgO_Eu8_stwzEML-clR0SWAVON1A/exec', // Web App RSUD Aeramo
   
   /**
    * PENGATURAN LOGO RESMI:
@@ -67,39 +67,49 @@ export const SYSTEM_PRESET_PINS: SystemPresetPin[] = [
     id: 'pin_582049',
     pin: '582049',
     status: 'active',
-    registeredPatientName: 'Pasien Poli Umum',
-    registeredService: 'Rawat Jalan / Poliklinik',
-    registeredRoom: 'Poli Umum',
-    label: 'Pasien Poli Umum / Rawat Jalan',
-    createdAt: '2026-09-23T01:00:00.000Z',
+    registeredPatientName: 'CHATRINA HERLOFINA PANIE',
+    registeredService: 'Rawat Inap',
+    registeredRoom: 'Kamar Mawar 102',
+    label: 'Pasien: CHATRINA HERLOFINA PANIE',
+    createdAt: '2026-09-23T01:30:26.831Z',
   },
   {
     id: 'pin_746193',
     pin: '746193',
     status: 'active',
-    registeredPatientName: 'Pasien IGD 24 Jam',
-    registeredService: 'IGD (Instalasi Gawat Darurat)',
-    registeredRoom: 'Bed Triase',
-    label: 'Pasien IGD 24 Jam',
-    createdAt: '2026-09-23T01:00:00.000Z',
+    registeredPatientName: 'Pasien Poliklinik',
+    registeredService: 'Rawat Jalan / Poliklinik',
+    registeredRoom: 'Poli Penyakit Dalam',
+    label: 'Pasien Poliklinik',
+    createdAt: '2026-09-23T01:30:26.831Z',
   },
   {
     id: 'pin_391824',
     pin: '391824',
     status: 'active',
-    registeredPatientName: 'Pasien Farmasi / Apotek',
-    registeredService: 'Farmasi / Apotek',
-    label: 'Pasien Farmasi',
+    registeredPatientName: 'Pasien Gawat Darurat',
+    registeredService: 'IGD 24 Jam',
+    registeredRoom: 'Bed 03',
+    label: 'Pasien Gawat Darurat',
     createdAt: '2026-09-23T01:00:00.000Z',
   },
   {
     id: 'pin_829104',
     pin: '829104',
     status: 'active',
-    registeredPatientName: 'Ibu & Anak (VK)',
-    registeredService: 'Kebidanan & Kandungan (Ruang Bersalin / VK)',
+    registeredPatientName: 'Ibu & Anak',
+    registeredService: 'Kebidanan & Kandungan (VK)',
     registeredRoom: 'Kamar Bersalin',
     label: 'Pasien VK / Bersalin',
+    createdAt: '2026-09-23T01:00:00.000Z',
+  },
+  {
+    id: 'pin_615284',
+    pin: '615284',
+    status: 'active',
+    registeredPatientName: 'Pasien Umum',
+    registeredService: 'Pelayanan RSUD Aeramo',
+    label: 'Pasien Umum RSUD Aeramo',
     createdAt: '2026-09-23T01:00:00.000Z',
   },
 ];

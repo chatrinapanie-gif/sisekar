@@ -1,5 +1,86 @@
 [
   {
+    "id": "pin_896418",
+    "pin": "896418",
+    "status": "active",
+    "createdAt": "2026-09-23T14:20:00.000Z",
+    "registeredPatientName": "Pasien RSUD Aeramo",
+    "registeredService": "Rawat Inap",
+    "registeredRoom": "-",
+    "label": "Pasien Terdaftar"
+  },
+  {
+    "id": "pin_255966",
+    "pin": "255966",
+    "status": "active",
+    "createdAt": "2026-09-23T13:36:55.000Z",
+    "registeredPatientName": "Derni",
+    "registeredService": "Rawat Inap",
+    "registeredRoom": "-",
+    "label": "Pasien: Derni"
+  },
+  {
+    "id": "pin_654356",
+    "pin": "654356",
+    "status": "active",
+    "createdAt": "2026-09-23T13:45:35.000Z",
+    "registeredPatientName": "Feni",
+    "registeredService": "Rawat Inap",
+    "registeredRoom": "R1",
+    "label": "Pasien: Feni"
+  },
+  {
+    "id": "pin_663891",
+    "pin": "663891",
+    "status": "active",
+    "createdAt": "2026-09-23T13:36:00.000Z",
+    "registeredPatientName": "KHATRIN",
+    "registeredService": "Rawat Inap (Kamar Mawar)",
+    "registeredRoom": "Ruang Mawar",
+    "label": "Pasien: KHATRIN"
+  },
+  {
+    "id": "pin_1790170431462_0_wbu8a",
+    "pin": "867839",
+    "status": "active",
+    "createdAt": "2026-09-23T13:33:51.462Z",
+    "registeredPatientName": "KHATRIN",
+    "registeredService": "Rawat Inap (Kamar Mawar)",
+    "registeredRoom": "Ruang Mawar",
+    "label": "Pasien: KHATRIN"
+  },
+  {
+    "id": "pin_1790170099463_b07fw",
+    "pin": "889977",
+    "status": "used",
+    "createdAt": "2026-09-23T13:28:19.463Z",
+    "registeredPatientName": "Uji Status",
+    "registeredService": "Rawat Inap",
+    "label": "Pasien: Uji Status",
+    "usedAt": "2026-09-23T13:28:32.448Z",
+    "usedBy": {
+      "submissionId": "SRV_TEST_1",
+      "namaPasien": "Pasien Test Status",
+      "jenisLayanan": "Rawat Inap",
+      "ikmScore": 88.5
+    }
+  },
+  {
+    "id": "pin_1790168159189_0_qpddq",
+    "pin": "407200",
+    "status": "used",
+    "createdAt": "2026-09-23T12:55:59.189Z",
+    "registeredPatientName": "Pasien Uji Web",
+    "registeredService": "Rawat Inap",
+    "registeredRoom": "Kamar Teratai 201",
+    "label": "Pasien: Pasien Uji Web",
+    "usedAt": "2026-09-23T13:20:49.598Z",
+    "usedBy": {
+      "namaPasien": "Pasien Anonim",
+      "jenisLayanan": "Pelayanan RSUD Aeramo"
+    }
+  },
+  {
     "id": "pin_268907",
     "pin": "268907",
     "status": "active",
@@ -24,29 +105,30 @@
     "pin": "582049",
     "status": "active",
     "createdAt": "2026-09-23T01:30:26.831Z",
-    "registeredPatientName": "Pasien Poli Umum",
-    "registeredService": "Rawat Jalan / Poliklinik",
-    "registeredRoom": "Poli Umum",
-    "label": "Pasien Poli Umum / Rawat Jalan"
+    "registeredPatientName": "CHATRINA HERLOFINA PANIE",
+    "registeredService": "Rawat Inap",
+    "registeredRoom": "Kamar Mawar 102",
+    "label": "Pasien: CHATRINA HERLOFINA PANIE"
   },
   {
     "id": "pin_746193",
     "pin": "746193",
     "status": "active",
     "createdAt": "2026-09-23T01:30:26.831Z",
-    "registeredPatientName": "Pasien IGD 24 Jam",
-    "registeredService": "IGD (Instalasi Gawat Darurat)",
-    "registeredRoom": "Bed Triase",
-    "label": "Pasien IGD 24 Jam"
+    "registeredPatientName": "Pasien Poliklinik",
+    "registeredService": "Rawat Jalan / Poliklinik",
+    "registeredRoom": "Poli Penyakit Dalam",
+    "label": "Pasien Poliklinik"
   },
   {
     "id": "pin_391824",
     "pin": "391824",
     "status": "active",
     "createdAt": "2026-09-23T01:00:00.000Z",
-    "registeredPatientName": "Pasien Farmasi",
-    "registeredService": "Farmasi / Apotek",
-    "label": "Pasien Farmasi"
+    "registeredPatientName": "Pasien Gawat Darurat",
+    "registeredService": "IGD 24 Jam",
+    "registeredRoom": "Bed 03",
+    "label": "Pasien Gawat Darurat"
   },
   {
     "id": "pin_829104",
@@ -54,8 +136,17 @@
     "status": "active",
     "createdAt": "2026-09-23T01:00:00.000Z",
     "registeredPatientName": "Ibu & Anak",
-    "registeredService": "Kebidanan & Kandungan (Ruang Bersalin / VK)",
+    "registeredService": "Kebidanan & Kandungan (VK)",
     "registeredRoom": "Kamar Bersalin",
     "label": "Pasien VK / Bersalin"
+  },
+  {
+    "id": "pin_615284",
+    "pin": "615284",
+    "status": "active",
+    "createdAt": "2026-09-23T01:00:00.000Z",
+    "registeredPatientName": "Pasien Umum",
+    "registeredService": "Pelayanan RSUD Aeramo",
+    "label": "Pasien Umum RSUD Aeramo"
   }
 ]

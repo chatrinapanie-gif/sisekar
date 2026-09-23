@@ -16,7 +16,6 @@ interface HeaderProps {
   activeTab: 'survey' | 'guide';
   setActiveTab: (tab: 'survey' | 'guide') => void;
   isDeviceLocked?: boolean;
-  onAdminAccess?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -24,29 +23,9 @@ export const Header: React.FC<HeaderProps> = ({
   activeTab,
   setActiveTab,
   isDeviceLocked,
-  onAdminAccess,
 }) => {
-  const [logoClickCount, setLogoClickCount] = React.useState(0);
-  const logoClickTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
-
   const handleLogoClick = () => {
     setActiveTab('survey');
-    if (onAdminAccess) {
-      setLogoClickCount(prev => {
-        const next = prev + 1;
-        if (next >= 3) {
-          onAdminAccess();
-          return 0;
-        }
-        return next;
-      });
-      if (logoClickTimeoutRef.current) {
-        clearTimeout(logoClickTimeoutRef.current);
-      }
-      logoClickTimeoutRef.current = setTimeout(() => {
-        setLogoClickCount(0);
-      }, 1500);
-    }
   };
   return (
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs transition-all print:hidden">

@@ -5,7 +5,6 @@ import { SurveyForm } from './components/SurveyForm';
 import { PatientGuideView } from './components/PatientGuideView';
 import { ThankYouLockedView } from './components/ThankYouLockedView';
 import { PatientPinGate } from './components/PatientPinGate';
-import { AdminPortalModal } from './components/AdminPortalModal';
 import { RoseWatermarkBackground } from './components/RoseWatermark';
 import { 
   loadAppConfig, 
@@ -21,17 +20,14 @@ import {
 } from './services/sheetsService';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
 import { AppConfig, SurveySubmission, OneTimeSubmissionLock, PatientPinToken } from './types';
-import { CheckCircle2, AlertCircle, Lock, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, AlertCircle, ShieldCheck } from 'lucide-react';
 import { initializeClientSecurityProtections } from './utils/security';
 
 export default function App() {
   const isOnline = useOnlineStatus();
   const [config, setConfig] = useState<AppConfig>(loadAppConfig());
-  const [submissions, setSubmissions] = useState<SurveySubmission[]>([]);
   const [pendingCount, setPendingCount] = useState<number>(0);
   const [activeTab, setActiveTab] = useState<'survey' | 'guide'>('survey');
-  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
   
   // Status Kunci Satu Kali Pakai (One-Time Submission Access Lock)
@@ -71,7 +67,7 @@ export default function App() {
           if (isMounted) {
             setConfig(updated);
             saveAppConfig(updated);
-            setToast({ type: 'success', msg: '✓ URL Google Apps Script otomatis aktif dari tautan!' });
+            setToast({ type: 'success', msg: '✓ URL Google Apps Script otomatis terhubung!' });
           }
           // Simpan permanen ke server
           fetch('/api/admin/config', {
@@ -98,9 +94,7 @@ export default function App() {
   }, []);
 
   const refreshData = useCallback(() => {
-    const list = loadSubmissions();
     const pending = loadPendingQueue();
-    setSubmissions(list);
     setPendingCount(pending.length);
     setOneTimeLock(getOneTimeLock());
   }, []);
@@ -109,7 +103,7 @@ export default function App() {
     refreshData();
   }, [refreshData]);
 
-  // Aktifkan Proteksi Cyber Security Anti-Inspeksi Kiosk (Blokir F12, DevTools, Klik Kanan)
+  // Aktifkan Proteksi Cyber Security Anti-Inspeksi Kiosk
   useEffect(() => {
     const cleanup = initializeClientSecurityProtections();
     return cleanup;
@@ -132,30 +126,13 @@ export default function App() {
       return;
     }
 
-    setIsSyncing(true);
     const res = await syncAllPendingQueue(config.appsScriptUrl);
-    setIsSyncing(false);
     refreshData();
 
     if (res.syncedCount > 0) {
       showToast('success', `${res.syncedCount} survei berhasil disinkronkan ke Google Sheet!`);
     } else if (res.failedCount > 0) {
       showToast('error', 'Gagal menyinkronkan beberapa survei.');
-    }
-  };
-
-  const handleSaveConfig = (newConfig: AppConfig) => {
-    setConfig(newConfig);
-    saveAppConfig(newConfig);
-    showToast('success', 'Pengaturan berhasil diperbarui!');
-  };
-
-  const handleClearHistory = () => {
-    if (window.confirm('Hapus seluruh riwayat survei lokal di perangkat ini? (Data di Google Sheet tetap aman)')) {
-      localStorage.removeItem('sisekar_aeramo_submissions');
-      localStorage.removeItem('sisekar_aeramo_pending_queue');
-      refreshData();
-      showToast('success', 'Riwayat lokal berhasil dibersihkan.');
     }
   };
 
@@ -199,44 +176,19 @@ export default function App() {
     showToast('success', 'Silakan masukkan PIN akses pasien baru.');
   };
 
-  // Handler pembukaan kunci oleh petugas / admin rumah sakit
-  const handleUnlockDevice = () => {
-    clearOneTimeLock();
-    setOneTimeLock(null);
-    setVerifiedPatientPin(null);
-    setVerifiedPatientToken(null);
-    setActiveSessionPatientPin(null);
-    setActiveTab('survey');
-    setIsAdminModalOpen(false);
-    showToast('success', '✓ Kunci akses dibuka. Formulir survei baru siap digunakan!');
-  };
-
-  // Shortcut Keyboard Akses Admin (Ctrl+Shift+A atau Alt+A) khusus petugas
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey && e.shiftKey && (e.key === 'A' || e.key === 'a')) || (e.altKey && (e.key === 'a' || e.key === 'A'))) {
-        e.preventDefault();
-        setIsAdminModalOpen(true);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col relative">
       
       {/* Latar Belakang Watermark Mawar Elegan */}
       <RoseWatermarkBackground />
 
-      {/* Header — Menampilkan Info RSUD Aeramo & Status Jaringan */}
+      {/* Header — Menampilkan Info RSUD Aeramo & Status Jaringan Pasien */}
       <Header
         config={config}
         isOnline={isOnline}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         isDeviceLocked={!!oneTimeLock}
-        onAdminAccess={() => setIsAdminModalOpen(true)}
       />
 
       {/* Floating Toast Notification */}
@@ -263,14 +215,12 @@ export default function App() {
           /* TAMPILAN TANDA TERIMA & KUNCI AKSES SETELAH PENGISIAN (ONE-TIME USE) */
           <ThankYouLockedView
             lockInfo={oneTimeLock}
-            onAdminUnlockRequest={() => setIsAdminModalOpen(true)}
             onNewPatientPinRequest={handleNewPatientPinSession}
           />
         ) : config.requirePatientPin && !verifiedPatientPin ? (
           /* GERBANG PIN AKSES SATU KALI PAKAI PASIEN (PATIENT PIN GATE) */
           <PatientPinGate
             onPinVerified={handlePinVerified}
-            onOpenStaffLogin={() => setIsAdminModalOpen(true)}
             initialPinFromUrl={initialUrlPin}
           />
         ) : activeTab === 'survey' ? (
@@ -299,13 +249,13 @@ export default function App() {
             <span className="text-slate-400 mx-1.5">•</span>
             <span>Kabupaten Nagekeo</span>
             <span className="text-slate-400 mx-1.5">•</span>
-            <span className="text-slate-500 font-medium">SISEKAR Pelayanan</span>
+            <span className="text-slate-500 font-medium">SISEKAR Pelayanan Pasien</span>
           </div>
 
           <div className="flex items-center gap-2.5">
             <span 
               className="inline-flex items-center gap-1 text-[11px] text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/80 font-medium select-none"
-              title="Sistem Keamanan Siber Aktif: PIN Pasien Sekali Pakai &amp; Webhook Terenkripsi"
+              title="Sistem Keamanan Aktif: PIN Pasien Sekali Pakai &amp; Data Terenkripsi Google Sheets"
             >
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
               <span>Sistem Terlindungi PIN Pasien</span>
@@ -313,22 +263,6 @@ export default function App() {
           </div>
         </div>
       </footer>
-
-      {/* Modal Admin & Riwayat (Dilindungi PIN, tidak terlihat pasien) */}
-      <AdminPortalModal
-        isOpen={isAdminModalOpen}
-        onClose={() => setIsAdminModalOpen(false)}
-        config={config}
-        onSaveConfig={handleSaveConfig}
-        submissions={submissions}
-        pendingCount={pendingCount}
-        isSyncing={isSyncing}
-        onSyncAll={handleSyncQueue}
-        onClearHistory={handleClearHistory}
-        isOnline={isOnline}
-        isDeviceLocked={!!oneTimeLock}
-        onUnlockDevice={handleUnlockDevice}
-      />
 
     </div>
   );

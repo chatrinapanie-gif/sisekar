@@ -11,6 +11,7 @@ import {
   CheckCircle2, 
   Clock, 
   Sparkles, 
+  Zap,
   Share2, 
   Printer, 
   Filter,
@@ -31,9 +32,10 @@ import {
   generatePatientPins, 
   revokePatientPin, 
   deletePatientPin,
-  syncPinsWithGoogleSheet
+  syncPinsWithGoogleSheet,
+  importPinsFromSheetText
 } from '../services/sheetsService';
-import { GOOGLE_APPS_SCRIPT_CODE } from '../services/appsScriptCode';
+import { GOOGLE_APPS_SCRIPT_CODE, GOOGLE_APPS_SCRIPT_INDEX_HTML } from '../services/appsScriptCode';
 
 interface AdminPatientPinsTabProps {
   pins: PatientPinToken[];
@@ -65,13 +67,47 @@ export const AdminPatientPinsTab: React.FC<AdminPatientPinsTabProps> = ({
   const [showPrintModal, setShowPrintModal] = useState<boolean>(false);
   const [selectedPinForPrint, setSelectedPinForPrint] = useState<PatientPinToken | null>(null);
   const [copiedScriptCode, setCopiedScriptCode] = useState<boolean>(false);
+  const [copiedHtmlCode, setCopiedHtmlCode] = useState<boolean>(false);
   const [showDeploymentGuide, setShowDeploymentGuide] = useState<boolean>(false);
+  const [showImportModal, setShowImportModal] = useState<boolean>(false);
+  const [importText, setImportText] = useState<string>('');
+  const [isImporting, setIsImporting] = useState<boolean>(false);
 
   const handleCopyScriptCode = () => {
     navigator.clipboard.writeText(GOOGLE_APPS_SCRIPT_CODE);
     setCopiedScriptCode(true);
-    setTimeout(() => setCopiedScriptCode(null as any), 3000);
+    setTimeout(() => setCopiedScriptCode(false), 3000);
     onToast('success', 'Kode Code.gs terbaru berhasil disalin ke clipboard!');
+  };
+
+  const handleCopyIndexHtml = () => {
+    navigator.clipboard.writeText(GOOGLE_APPS_SCRIPT_INDEX_HTML);
+    setCopiedHtmlCode(true);
+    setTimeout(() => setCopiedHtmlCode(false), 3000);
+    onToast('success', 'Kode index.html (Dashboard Admin) berhasil disalin ke clipboard!');
+  };
+
+  const handleImportSheetText = async () => {
+    if (!importText.trim()) {
+      onToast('error', 'Masukkan atau tempel teks dari Google Sheet terlebih dahulu.');
+      return;
+    }
+    setIsImporting(true);
+    try {
+      const res = await importPinsFromSheetText(importText, adminToken || undefined);
+      if (res.success) {
+        onToast('success', `✓ ${res.message}`);
+        setImportText('');
+        setShowImportModal(false);
+        onRefresh();
+      } else {
+        onToast('error', res.message || 'Gagal mengimpor PIN.');
+      }
+    } catch (err: any) {
+      onToast('error', err?.message || 'Terjadi kesalahan saat mengimpor.');
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   // Perhitungan statistik
@@ -142,6 +178,29 @@ export const AdminPatientPinsTab: React.FC<AdminPatientPinsTabProps> = ({
       }
     } catch (err: any) {
       onToast('error', err?.message || 'Terjadi kesalahan.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleQuickBatch = async (count: number) => {
+    setIsGenerating(true);
+    try {
+      const res = await generatePatientPins({
+        count,
+        registeredService: 'Pelayanan RSUD Aeramo',
+        notes: `Batch Cepat ${count} PIN diterbitkan dari Dashboard Admin Web`,
+        adminToken: adminToken || undefined,
+      });
+
+      if (res && res.length > 0) {
+        onToast('success', `✓ Berhasil menerbitkan ${res.length} PIN baru langsung dari Dashboard Web!`);
+        onRefresh();
+      } else {
+        onToast('error', 'Gagal membuat batch PIN.');
+      }
+    } catch (err: any) {
+      onToast('error', err?.message || 'Terjadi kesalahan saat membuat PIN.');
     } finally {
       setIsGenerating(false);
     }
@@ -283,16 +342,26 @@ export const AdminPatientPinsTab: React.FC<AdminPatientPinsTabProps> = ({
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={handleSyncSheet}
-          disabled={isSyncingSheet}
-          className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 active:scale-98 text-white font-bold text-xs shadow-xs flex items-center gap-2 transition shrink-0 disabled:opacity-50"
-          title="Tarik data PIN terbaru dari Google Sheet"
-        >
-          <FileSpreadsheet className={`w-4 h-4 ${isSyncingSheet ? 'animate-spin' : ''}`} />
-          <span>{isSyncingSheet ? 'Sinkronisasi Sheet...' : 'Sinkronkan Google Sheet'}</span>
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setShowImportModal(true)}
+            className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 font-bold text-xs shadow-xs flex items-center gap-1.5 transition active:scale-98"
+            title="Tempel baris atau nomor PIN yang disalin dari Google Sheet"
+          >
+            <span>📥 Tempel Data Sheet</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleSyncSheet}
+            disabled={isSyncingSheet}
+            className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 active:scale-98 text-white font-bold text-xs shadow-xs flex items-center gap-2 transition disabled:opacity-50"
+            title="Tarik data PIN terbaru dari Google Sheet"
+          >
+            <FileSpreadsheet className={`w-4 h-4 ${isSyncingSheet ? 'animate-spin' : ''}`} />
+            <span>{isSyncingSheet ? 'Sinkronisasi Sheet...' : 'Sinkronkan Google Sheet'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Banner Penting: Cara Memastikan PIN Terbuka di Email Pasien & Seluruh HP */}
@@ -328,22 +397,30 @@ export const AdminPatientPinsTab: React.FC<AdminPatientPinsTabProps> = ({
         {showDeploymentGuide && (
           <div className="pt-3 border-t border-amber-200/80 space-y-3 text-xs text-amber-950 animate-in fade-in duration-200">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              <div className="p-3 rounded-xl bg-white/80 border border-amber-200 space-y-1">
+              <div className="p-3 rounded-xl bg-white/80 border border-amber-200 space-y-2">
                 <span className="font-bold text-slate-900 flex items-center gap-1.5">
                   <span className="w-4 h-4 rounded-full bg-blue-700 text-white flex items-center justify-center text-[10px]">1</span>
-                  <span>Salin Kode Code.gs Terbaru</span>
+                  <span>Salin File Script (Code.gs &amp; index.html)</span>
                 </span>
                 <p className="text-[11px] text-slate-600">
-                  Kode Code.gs terbaru sudah mencakup fitur tab <strong>PIN_PASIEN</strong> dan validasi multi-perangkat.
+                  Salin kedua file ini ke editor Google Apps Script:
                 </p>
-                <div className="pt-1">
+                <div className="flex flex-wrap items-center gap-2 pt-1">
                   <button
                     type="button"
                     onClick={handleCopyScriptCode}
                     className="px-3 py-1.5 rounded-lg bg-blue-700 hover:bg-blue-800 text-white font-bold text-[11px] flex items-center gap-1.5 transition shadow-xs"
                   >
                     {copiedScriptCode ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{copiedScriptCode ? 'Kode Code.gs Tersalin!' : 'Salin Kode Code.gs'}</span>
+                    <span>{copiedScriptCode ? 'Code.gs Tersalin!' : 'Salin Code.gs'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCopyIndexHtml}
+                    className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-[11px] flex items-center gap-1.5 transition shadow-xs"
+                  >
+                    {copiedHtmlCode ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Sparkles className="w-3.5 h-3.5" />}
+                    <span>{copiedHtmlCode ? 'index.html Tersalin!' : 'Salin index.html (Dashboard)'}</span>
                   </button>
                 </div>
               </div>
@@ -378,7 +455,7 @@ export const AdminPatientPinsTab: React.FC<AdminPatientPinsTabProps> = ({
             </div>
             <div>
               <h4 className="text-xs sm:text-sm font-extrabold text-slate-900">Terbitkan PIN Akses Pasien Baru</h4>
-              <p className="text-[11px] text-slate-500">PIN otomatis dicatat ke Google Sheet &amp; berlaku di seluruh smartphone pasien</p>
+              <p className="text-[11px] text-slate-500">Cukup buat PIN dari web ini — otomatis aktif di HP pasien &amp; tersimpan di Google Sheet tanpa perlu buka sheet</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -399,6 +476,45 @@ export const AdminPatientPinsTab: React.FC<AdminPatientPinsTabProps> = ({
               title="Refresh Tampilan"
             >
               <RefreshCw className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Kotak Informasi: Buat PIN Langsung dari Web */}
+        <div className="p-3 bg-blue-50/70 border border-blue-200/80 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start gap-2.5">
+            <Sparkles className="w-4 h-4 text-blue-700 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-xs font-bold text-blue-950">
+                Pembuatan PIN 100% Cukup dari Web Ini (Tidak Perlu Buka Google Sheet / onOpen)
+              </p>
+              <p className="text-[11px] text-blue-900/80 leading-relaxed">
+                Anda tidak perlu membuka Google Sheet lagi. Masukkan nama pasien di form bawah, atau gunakan tombol kilat di sebelah kanan.
+              </p>
+            </div>
+          </div>
+
+          {/* Tombol Kilat Buat PIN Langsung */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => handleQuickBatch(5)}
+              disabled={isGenerating}
+              className="px-3 py-1.5 rounded-xl bg-white hover:bg-blue-100 text-blue-900 font-bold text-xs border border-blue-200 hover:border-blue-300 shadow-2xs transition flex items-center gap-1.5 disabled:opacity-50"
+              title="Terbitkan 5 PIN sekaligus secara instan"
+            >
+              <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+              <span>+5 PIN Kilat</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleQuickBatch(10)}
+              disabled={isGenerating}
+              className="px-3 py-1.5 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs shadow-xs transition flex items-center gap-1.5 disabled:opacity-50"
+              title="Terbitkan 10 PIN bangsal sekaligus secara instan"
+            >
+              <Zap className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
+              <span>+10 PIN Sekaligus</span>
             </button>
           </div>
         </div>
@@ -829,6 +945,65 @@ export const AdminPatientPinsTab: React.FC<AdminPatientPinsTabProps> = ({
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* Modal Impor / Tempel Data PIN dari Google Sheet */}
+      {showImportModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+            <div className="border-b pb-3 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                  <span>📥 Impor / Tempel Data PIN dari Google Sheet</span>
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Salin (Copy) baris data dari Google Sheet dan tempel (Paste) di bawah ini:
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowImportModal(false)}
+                className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <div className="bg-blue-50/80 border border-blue-200 rounded-xl p-3 text-[11px] text-blue-900 space-y-1">
+                <p className="font-bold">💡 Format Mudah:</p>
+                <p>1. Di Google Sheet Anda, blok sel (misal Kolom PIN, Nama Pasien, Layanan) lalu tekan <strong>Ctrl + C</strong>.</p>
+                <p>2. Tempel di kotak di bawah lalu klik tombol <strong>"Proses Impor PIN"</strong>.</p>
+              </div>
+
+              <textarea
+                value={importText}
+                onChange={(e) => setImportText(e.target.value)}
+                placeholder="Contoh salinan baris dari Google Sheet:&#10;255966	AKTIF	Derni	Rawat Inap	-&#10;654356	AKTIF	Feni	Rawat Inap	R1"
+                rows={6}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-300 font-mono text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t">
+              <button
+                type="button"
+                onClick={() => setShowImportModal(false)}
+                className="px-4 py-2 rounded-xl border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-semibold"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleImportSheetText}
+                disabled={isImporting || !importText.trim()}
+                className="px-5 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 disabled:opacity-50 text-white font-bold text-xs shadow-md transition"
+              >
+                {isImporting ? 'Memproses...' : 'Proses Impor PIN'}
+              </button>
+            </div>
           </div>
         </div>
       )}

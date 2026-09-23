@@ -3,35 +3,80 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard Admin & Penerbitan PIN Pasien - RSUD Aeramo</title>
+  <title>Dashboard Eksekutif IKM &amp; Manajemen PIN - RSUD Aeramo</title>
+  
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN untuk Grafik Profesional -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- Google Fonts: Plus Jakarta Sans -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
   <style>
     body {
       font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
+
+    /* Watermark Mawar Elegan Background */
+    .watermark-mawar-bg {
+      position: relative;
+    }
+    .watermark-mawar-bg::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 400' fill='none'%3E%3Cpath d='M200 60 C180 60 160 75 160 100 C160 120 175 135 190 145 C150 140 120 165 120 195 C120 225 145 250 180 255 C150 270 145 305 170 330 C195 355 235 345 250 320 C270 340 305 330 315 305 C325 280 310 255 285 245 C320 235 335 200 320 170 C305 140 270 145 245 155 C255 130 245 90 220 70 C212 63 206 60 200 60 Z' stroke='%23e11d48' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round' opacity='0.04' fill='none'/%3E%3Cpath d='M200 110 C190 110 180 120 180 135 C180 155 205 170 215 185 C225 170 240 155 240 135 C240 120 225 110 200 110 Z' stroke='%23be123c' stroke-width='3' opacity='0.05' fill='none'/%3E%3Cpath d='M195 245 C195 290 175 340 140 375' stroke='%2315803d' stroke-width='3.5' stroke-linecap='round' opacity='0.04' fill='none'/%3E%3Cpath d='M185 280 C150 280 130 265 120 250 C125 280 155 295 180 290' stroke='%2315803d' stroke-width='2.5' opacity='0.04' fill='none'/%3E%3Cpath d='M190 320 C220 320 240 305 250 290 C245 320 215 335 190 330' stroke='%2315803d' stroke-width='2.5' opacity='0.04' fill='none'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: center center;
+      background-size: 550px 550px;
+      opacity: 0.9;
+    }
+
+    /* Watermark Mawar Card Container */
+    .card-watermark {
+      position: relative;
+      overflow: hidden;
+    }
+    .card-watermark::after {
+      content: "";
+      position: absolute;
+      right: -25px;
+      bottom: -25px;
+      width: 140px;
+      height: 140px;
+      pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200' fill='none'%3E%3Cpath d='M100 25 C80 25 70 45 75 65 C60 65 45 75 45 95 C45 115 60 130 80 132 C70 145 75 165 90 175 C105 185 125 175 130 160 C145 170 165 160 170 145 C175 130 165 115 150 110 C165 100 170 80 160 65 C150 50 130 55 120 60 C125 45 115 25 100 25 Z' stroke='%23e11d48' stroke-width='3' opacity='0.06' fill='none'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-size: contain;
+    }
+
+    /* Print View Styling */
     @media print {
       .no-print { display: none !important; }
       .print-only { display: block !important; }
+      body { background: #fff !important; color: #000 !important; }
+      .print-break-inside { break-inside: avoid; }
     }
     .print-only { display: none; }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col watermark-mawar-bg relative selection:bg-blue-600 selection:text-white">
 
-  <!-- TOP HEADER RSUD AERAMO -->
-  <header class="bg-gradient-to-r from-blue-950 via-blue-900 to-indigo-900 text-white shadow-lg sticky top-0 z-40 no-print">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-col sm:flex-row items-center justify-between gap-3">
+  <!-- ===================================================================== -->
+  <!-- TOP NAVIGATION & EXECUTIVE HEADER -->
+  <!-- ===================================================================== -->
+  <header class="bg-gradient-to-r from-slate-950 via-blue-950 to-indigo-950 text-white shadow-xl sticky top-0 z-40 border-b border-blue-900/50 no-print">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-col md:flex-row items-center justify-between gap-3 relative z-10">
       
-      <!-- Brand & Hospital Info -->
-      <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
+      <!-- Hospital Brand & Emblems -->
+      <div class="flex items-center gap-3.5 w-full md:w-auto justify-between md:justify-start">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-white/10 p-1.5 border border-white/20 flex items-center justify-center shadow-inner">
-            <!-- Nagekeo Emblen Logo SVG -->
+          <!-- Logo Shield RSUD Aeramo -->
+          <div class="w-11 h-11 rounded-2xl bg-white/10 p-2 border border-white/20 flex items-center justify-center shadow-inner backdrop-blur-xs">
             <svg viewBox="0 0 100 120" class="w-7 h-8" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M50 5 L90 22 V60 C90 90 50 115 50 115 C50 115 10 90 10 60 V22 L50 5 Z" fill="#FACC15" stroke="#FFFFFF" stroke-width="3"/>
               <path d="M50 12 L82 27 V58 C82 83 50 105 50 105 C50 105 18 83 18 58 V27 L50 12 Z" fill="#15803D"/>
@@ -40,52 +85,78 @@
               <circle cx="50" cy="56" r="5" fill="#DC2626"/>
             </svg>
           </div>
+
           <div>
             <div class="flex items-center gap-2">
-              <h1 class="font-extrabold text-base sm:text-lg tracking-tight text-white leading-tight">
+              <h1 class="font-black text-base sm:text-lg tracking-tight text-white leading-tight">
                 RSUD AERAMO
               </h1>
-              <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-blue-950 uppercase tracking-wide">
-                Admin Portal
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white uppercase tracking-wider flex items-center gap-1 shadow-xs">
+                <span>🌹</span> MAWAR EDITION
+              </span>
+              <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/30 text-blue-200 border border-blue-400/30">
+                PermenPAN-RB No. 14 / 2017
               </span>
             </div>
             <p class="text-xs text-blue-200 font-medium">
-              Dashboard Manajemen &amp; Penerbitan PIN Pasien (SISEKAR)
+              Sistem Informasi Survei Kepuasan &amp; Manajemen Mutu Pasien (SISEKAR)
             </p>
           </div>
         </div>
 
-        <div class="sm:hidden flex items-center gap-2">
-          <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            Sheet Online
+        <!-- Mobile Badge -->
+        <div class="md:hidden flex items-center gap-2">
+          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            Online
           </span>
         </div>
       </div>
 
-      <!-- Right Control & Links -->
-      <div class="flex items-center gap-2.5 w-full sm:w-auto justify-end">
-        <span class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+      <!-- Quick Actions Header -->
+      <div class="flex items-center gap-2 w-full md:w-auto justify-end flex-wrap">
+        <span class="hidden lg:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
           <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          Google Sheet Terhubung
+          Google Sheet Terkoneksi
         </span>
 
         <button 
-          id="btnOpenSpreadsheet"
           onclick="openActiveSpreadsheet()"
-          class="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold border border-white/20 transition flex items-center gap-1.5"
-          title="Buka File Google Sheet Langsung"
+          class="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold border border-white/20 transition flex items-center gap-1.5 active:scale-95"
+          title="Buka Spreadsheet Google Sheet"
         >
           <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
-          <span>Buka Sheet</span>
+          <span class="hidden sm:inline">Google Sheet</span>
+        </button>
+
+        <button 
+          onclick="exportToCSV()"
+          class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm active:scale-95"
+          title="Unduh Data Survei ke Format CSV / Excel"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+          <span>Ekspor CSV</span>
+        </button>
+
+        <button 
+          onclick="window.print()"
+          class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm active:scale-95"
+          title="Cetak Laporan IKM Resmi (Watermark Mawar)"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+          </svg>
+          <span class="hidden sm:inline">Cetak Laporan</span>
         </button>
 
         <button 
           onclick="refreshAllData()"
-          class="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs transition"
-          title="Segarkan Data"
+          class="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs transition active:scale-95"
+          title="Segarkan Semua Data Realtime"
         >
           <svg id="refreshIcon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -96,63 +167,92 @@
     </div>
 
     <!-- TAB NAVIGATION BAR -->
-    <div class="bg-blue-950/80 border-t border-white/10 px-4 sm:px-6">
-      <div class="max-w-7xl mx-auto flex items-center gap-2 overflow-x-auto py-1.5">
+    <div class="bg-slate-950/90 border-t border-white/10 px-4 sm:px-6">
+      <div class="max-w-7xl mx-auto flex items-center gap-2 overflow-x-auto py-2 scrollbar-none">
+        
         <button 
-          id="tabBtnPins"
-          onclick="switchTab('pins')"
-          class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-2 bg-blue-700 text-white shadow-sm whitespace-nowrap"
+          id="tabBtnAnalytics"
+          onclick="switchTab('analytics')"
+          class="px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold transition flex items-center gap-2 bg-rose-600 text-white shadow-md whitespace-nowrap"
         >
-          <svg class="w-4 h-4 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-          </svg>
-          <span>Terbitkan &amp; Kelola PIN Pasien</span>
-          <span id="badgeActivePins" class="px-2 py-0.5 rounded-full text-[10px] bg-amber-400 text-blue-950 font-black">...</span>
-        </button>
-
-        <button 
-          id="tabBtnDashboard"
-          onclick="switchTab('dashboard')"
-          class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-2 text-blue-200 hover:text-white hover:bg-white/10 whitespace-nowrap"
-        >
-          <svg class="w-4 h-4 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-4 h-4 text-amber-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
           </svg>
-          <span>Dashboard IKM Real-Time</span>
+          <span>📊 Grafik &amp; Dashboard IKM</span>
+          <span class="px-2 py-0.5 rounded-full text-[10px] bg-white/20 text-white font-bold">Live</span>
         </button>
 
         <button 
-          id="tabBtnResponses"
-          onclick="switchTab('responses')"
-          class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-2 text-blue-200 hover:text-white hover:bg-white/10 whitespace-nowrap"
+          id="tabBtnData"
+          onclick="switchTab('data')"
+          class="px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold transition flex items-center gap-2 text-slate-300 hover:text-white hover:bg-white/10 whitespace-nowrap"
         >
           <svg class="w-4 h-4 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
           </svg>
-          <span>Tabel Riwayat Responden</span>
-          <span id="badgeTotalResponden" class="px-2 py-0.5 rounded-full text-[10px] bg-white/20 text-white font-bold">0</span>
+          <span>📋 Data Masuk (Responden Pasien)</span>
+          <span id="badgeTabResponden" class="px-2 py-0.5 rounded-full text-[10px] bg-blue-500/30 text-blue-200 font-black">0</span>
         </button>
 
         <button 
-          id="tabBtnSettings"
-          onclick="switchTab('settings')"
-          class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-2 text-blue-200 hover:text-white hover:bg-white/10 whitespace-nowrap"
+          id="tabBtnPins"
+          onclick="switchTab('pins')"
+          class="px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold transition flex items-center gap-2 text-slate-300 hover:text-white hover:bg-white/10 whitespace-nowrap"
         >
-          <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          <svg class="w-4 h-4 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
           </svg>
-          <span>Tautan Survei Pasien &amp; Info</span>
+          <span>🔑 Terbitkan &amp; Kelola PIN Pasien</span>
+          <span id="badgeActivePins" class="px-2 py-0.5 rounded-full text-[10px] bg-amber-400 text-slate-950 font-black">...</span>
         </button>
+
+        <button 
+          id="tabBtnLink"
+          onclick="switchTab('link')"
+          class="px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold transition flex items-center gap-2 text-slate-300 hover:text-white hover:bg-white/10 whitespace-nowrap"
+        >
+          <svg class="w-4 h-4 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+          </svg>
+          <span>🌐 Tautan Survei Pasien &amp; QR Code</span>
+        </button>
+
       </div>
     </div>
   </header>
 
-  <!-- MAIN CONTAINER -->
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 w-full flex-1">
+  <!-- ===================================================================== -->
+  <!-- PRINT KOP SURAT RESMI RSUD AERAMO (PRINT ONLY) -->
+  <!-- ===================================================================== -->
+  <div class="print-only p-6 border-b-2 border-slate-900 mb-6">
+    <div class="flex items-center justify-between gap-4">
+      <div class="w-16 h-20 flex items-center justify-center">
+        <svg viewBox="0 0 100 120" class="w-16 h-20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M50 5 L90 22 V60 C90 90 50 115 50 115 C50 115 10 90 10 60 V22 L50 5 Z" fill="#FACC15" stroke="#000" stroke-width="2"/>
+          <path d="M50 12 L82 27 V58 C82 83 50 105 50 105 C50 105 18 83 18 58 V27 L50 12 Z" fill="#15803D"/>
+          <path d="M50 25 L72 37 V57 C72 74 50 90 50 90 C50 90 28 74 28 57 V37 L50 25 Z" fill="#B91C1C"/>
+          <circle cx="50" cy="56" r="5" fill="#000"/>
+        </svg>
+      </div>
+      <div class="text-center flex-1">
+        <h2 class="text-sm font-bold tracking-wider">PEMERINTAH KABUPATEN NAGEKEO</h2>
+        <h1 class="text-lg font-black tracking-tight">RUMAH SAKIT UMUM DAERAH AERAMO</h1>
+        <p class="text-[11px] text-slate-700">Jl. Aeramo, Kec. Aesesa, Kab. Nagekeo, Nusa Tenggara Timur</p>
+        <p class="text-xs font-bold text-rose-700 mt-0.5">LAPORAN HASIL EVALUASI INDEKS KEPUASAN MASYARAKAT (IKM) • WATERMARK RUANG MAWAR</p>
+      </div>
+      <div class="w-16 text-right text-xs font-mono">
+        <span id="printDate"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MAIN CONTAINER WITH ROSE WATERMARK EMBEDDED -->
+  <!-- ===================================================================== -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 w-full flex-1 relative z-10">
 
     <!-- TOAST NOTIFICATION -->
-    <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none max-w-sm">
+    <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none max-w-sm no-print">
       <div id="toastContent" class="bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-700 text-xs font-semibold">
         <span id="toastIcon">✓</span>
         <span id="toastMsg">Notifikasi</span>
@@ -160,54 +260,415 @@
     </div>
 
     <!-- =================================================================== -->
-    <!-- TAB 1: TERBITKAN & KELOLA PIN PASIEN -->
+    <!-- TAB 1: GRAFIK & DASHBOARD IKM EKSEKUTIF (PROFESIONAL & WATERMARK MAWAR) -->
     <!-- =================================================================== -->
-    <section id="panePins" class="space-y-6">
+    <section id="paneAnalytics" class="space-y-6">
       
-      <!-- Highlight Banner -->
-      <div class="bg-white rounded-3xl p-5 border border-blue-100 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <!-- ROSE BANNER HEADER -->
+      <div class="bg-gradient-to-r from-white via-rose-50/40 to-white rounded-3xl p-5 border border-rose-200/80 shadow-sm card-watermark flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div class="space-y-1">
-          <div class="flex items-center gap-2">
-            <span class="w-8 h-8 rounded-xl bg-blue-100 text-blue-900 flex items-center justify-center font-bold">
-              🔑
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="w-8 h-8 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center font-bold text-base shadow-xs">
+              🌹
             </span>
-            <h2 class="text-base sm:text-lg font-extrabold text-slate-900">
-              Penerbitan PIN Pasien Langsung di Web Admin
+            <h2 class="text-base sm:text-lg font-black text-slate-900 tracking-tight">
+              Dashboard Eksekutif IKM &amp; Kualitas Pelayanan RSUD Aeramo
             </h2>
-            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-              Tanpa Perlu Buka Sheet / onOpen
+            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
+              Watermark Ruang Mawar
             </span>
           </div>
           <p class="text-xs text-slate-600 leading-relaxed max-w-3xl">
-            Buat PIN baru untuk pasien rawat inap, rawat jalan, atau IGD. Setiap PIN yang diterbitkan di sini <strong>otomatis langsung aktif</strong> di HP pasien dan <strong>langsung tersimpan</strong> ke tab <strong>PIN_PASIEN</strong> di Google Sheet Anda.
+            Visualisasi data analitik real-time kuesioner pasien berdasarkan 7 dimensi mutu PermenPAN-RB No. 14 Tahun 2017. Seluruh metrik dihitung langsung dari lembar kerja Google Sheet RSUD Aeramo.
           </p>
         </div>
 
-        <!-- Tombol Aksi Cepat -->
+        <div class="flex items-center gap-3 self-end md:self-auto text-xs text-slate-500 font-medium">
+          <span>Pembaruan: <strong id="lastUpdatedTime" class="text-slate-800 font-bold">Memuat...</strong></span>
+        </div>
+      </div>
+
+      <!-- 4 KARTU STATISTIK UTAMA (METRIK EKSEKUTIF) -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        <!-- Total Responden Pasien -->
+        <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm card-watermark hover:shadow-md transition">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Responden Masuk</span>
+            <span class="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold text-sm">👥</span>
+          </div>
+          <h4 id="dashTotalResponden" class="text-3xl font-black text-slate-900 mt-2">0</h4>
+          <div class="flex items-center justify-between text-[11px] text-slate-500 mt-2 pt-2 border-t border-slate-100">
+            <span class="text-emerald-700 font-semibold flex items-center gap-1">
+              <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> 100% Verifikasi PIN
+            </span>
+            <span id="genderStat" class="font-medium text-slate-600">L: 0 | P: 0</span>
+          </div>
+        </div>
+
+        <!-- Indeks Kepuasan Masyarakat (IKM 0-100) -->
+        <div class="bg-white p-5 rounded-3xl border border-blue-200 shadow-sm card-watermark hover:shadow-md transition bg-gradient-to-b from-white to-blue-50/20">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-bold text-blue-900 uppercase tracking-wider">Indeks IKM (Skala 100)</span>
+            <span class="w-8 h-8 rounded-xl bg-blue-100 text-blue-900 flex items-center justify-center font-bold text-sm">📈</span>
+          </div>
+          <div class="flex items-baseline gap-2 mt-2">
+            <h4 id="dashIkmScore" class="text-3xl font-black text-blue-950">0.00</h4>
+            <span class="text-xs font-bold text-slate-400">/ 100</span>
+          </div>
+          <div class="flex items-center justify-between text-[11px] mt-2 pt-2 border-t border-slate-100">
+            <span id="dashMutuBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-900 border border-blue-200">
+              Menghitung...
+            </span>
+            <span class="text-slate-400 text-[10px]">Target: &ge; 76.61</span>
+          </div>
+        </div>
+
+        <!-- Skor Rata-rata Unsur (Skala 1-4) -->
+        <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm card-watermark hover:shadow-md transition">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Nilai Rata-rata (1-4)</span>
+            <span class="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold text-sm">⭐</span>
+          </div>
+          <div class="flex items-baseline gap-2 mt-2">
+            <h4 id="dashAvgScore" class="text-3xl font-black text-slate-900">0.00</h4>
+            <span class="text-xs font-bold text-slate-400">/ 4.00</span>
+          </div>
+          <div class="flex items-center justify-between text-[11px] text-slate-500 mt-2 pt-2 border-t border-slate-100">
+            <span>7 Unsur Pelayanan</span>
+            <span class="font-bold text-amber-700">&ge; 3.00 (Baik)</span>
+          </div>
+        </div>
+
+        <!-- Tingkat Kepuasan Pasien (%) -->
+        <div class="bg-white p-5 rounded-3xl border border-emerald-200 shadow-sm card-watermark hover:shadow-md transition bg-gradient-to-b from-white to-emerald-50/20">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-bold text-emerald-900 uppercase tracking-wider">Tingkat Kepuasan</span>
+            <span class="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-sm">👍</span>
+          </div>
+          <h4 id="dashSatisfactionRate" class="text-3xl font-black text-emerald-800 mt-2">0%</h4>
+          <div class="flex items-center justify-between text-[11px] text-slate-500 mt-2 pt-2 border-t border-slate-100">
+            <span>Pasien Puas &amp; Sangat Puas</span>
+            <span class="text-emerald-700 font-bold">Standard Akreditasi</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- GRAFIK PROFESIONAL 1 & 2: RADAR 7 ASPEK & DONUT MUTU -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Radar Chart: 7 Aspek Dimensi Pelayanan -->
+        <div class="lg:col-span-7 bg-white rounded-3xl p-6 border border-slate-200 shadow-sm card-watermark flex flex-col justify-between">
+          <div>
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+              <div>
+                <h3 class="text-sm font-extrabold text-slate-900 flex items-center gap-1.5">
+                  <span>🕸️ Spider Radar Mutu 7 Aspek Pelayanan</span>
+                </h3>
+                <p class="text-[11px] text-slate-500">Evaluasi menyeluruh kamar tidur, dokter, perawat, dan fasilitas</p>
+              </div>
+              <span class="text-[11px] font-bold text-rose-700 bg-rose-50 px-2.5 py-1 rounded-full border border-rose-200">
+                Skala 1.00 - 4.00
+              </span>
+            </div>
+            <div class="h-72 w-full mt-4 relative">
+              <canvas id="chartRadarUnsur"></canvas>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-3 border-t border-slate-100 text-[10px] text-slate-500 mt-2">
+            <div>Q1: Kenyamanan Kamar</div>
+            <div>Q2: Kebersihan Toilet</div>
+            <div>Q3: Fasilitas Kamar</div>
+            <div>Q4: Ketenangan Bangsal</div>
+            <div>Q5: Kehadiran Dokter</div>
+            <div>Q6: Info Medis Jelas</div>
+            <div>Q7: Respon Perawat</div>
+            <div class="font-bold text-blue-900">🌹 RSUD Aeramo</div>
+          </div>
+        </div>
+
+        <!-- Donut Chart: Distribusi Predikat Mutu (A, B, C, D) -->
+        <div class="lg:col-span-5 bg-white rounded-3xl p-6 border border-slate-200 shadow-sm card-watermark flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 class="text-sm font-extrabold text-slate-900">
+                  🎯 Distribusi Predikat Mutu (Grade)
+                </h3>
+                <p class="text-[11px] text-slate-500">Proporsi responden kategori Mutu A, B, C, &amp; D</p>
+              </div>
+            </div>
+            <div class="h-60 w-full mt-4 relative flex items-center justify-center">
+              <canvas id="chartDonutMutu"></canvas>
+            </div>
+          </div>
+
+          <!-- Rincian Legend Kategori Mutu -->
+          <div class="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 text-xs mt-2">
+            <div class="p-2 rounded-xl bg-emerald-50 border border-emerald-100">
+              <div class="flex items-center justify-between font-bold text-emerald-950">
+                <span>Mutu A (Sangat Baik)</span>
+                <span id="statMutuA" class="font-mono">0</span>
+              </div>
+              <span class="text-[10px] text-emerald-700">IKM 88.31 - 100</span>
+            </div>
+
+            <div class="p-2 rounded-xl bg-blue-50 border border-blue-100">
+              <div class="flex items-center justify-between font-bold text-blue-950">
+                <span>Mutu B (Baik)</span>
+                <span id="statMutuB" class="font-mono">0</span>
+              </div>
+              <span class="text-[10px] text-blue-700">IKM 76.61 - 88.30</span>
+            </div>
+
+            <div class="p-2 rounded-xl bg-amber-50 border border-amber-100">
+              <div class="flex items-center justify-between font-bold text-amber-950">
+                <span>Mutu C (Kurang Baik)</span>
+                <span id="statMutuC" class="font-mono">0</span>
+              </div>
+              <span class="text-[10px] text-amber-700">IKM 65.00 - 76.60</span>
+            </div>
+
+            <div class="p-2 rounded-xl bg-rose-50 border border-rose-100">
+              <div class="flex items-center justify-between font-bold text-rose-950">
+                <span>Mutu D (Tidak Baik)</span>
+                <span id="statMutuD" class="font-mono">0</span>
+              </div>
+              <span class="text-[10px] text-rose-700">IKM 25.00 - 64.99</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- GRAFIK PROFESIONAL 3 & 4: BAR LAYANAN & TREN IKM WAKTU -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Bar Chart: Distribusi Responden per Layanan / Unit -->
+        <div class="lg:col-span-6 bg-white rounded-3xl p-6 border border-slate-200 shadow-sm card-watermark">
+          <div class="border-b border-slate-100 pb-3 flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-extrabold text-slate-900">
+                🏥 Volume Responden per Unit Layanan
+              </h3>
+              <p class="text-[11px] text-slate-500">Rawat Inap (Kamar Mawar), Rawat Jalan, IGD, VK, Apotek</p>
+            </div>
+          </div>
+          <div class="h-64 w-full mt-4">
+            <canvas id="chartBarLayanan"></canvas>
+          </div>
+        </div>
+
+        <!-- Line Chart: Tren Nilai IKM Survei Terbaru -->
+        <div class="lg:col-span-6 bg-white rounded-3xl p-6 border border-slate-200 shadow-sm card-watermark">
+          <div class="border-b border-slate-100 pb-3 flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-extrabold text-slate-900">
+                📈 Tren Nilai IKM Responden Masuk
+              </h3>
+              <p class="text-[11px] text-slate-500">Fluktuasi skor kepuasan survei-survei terakhir yang masuk</p>
+            </div>
+            <span class="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+              Ambang Batas: 76.6
+            </span>
+          </div>
+          <div class="h-64 w-full mt-4">
+            <canvas id="chartLineTren"></canvas>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- SARAN & MASUKAN PASIEN TERKINI (KARTU TESTIMONI) -->
+      <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm card-watermark space-y-4">
+        <div class="border-b border-slate-100 pb-3 flex items-center justify-between">
+          <div>
+            <h3 class="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+              <span>💬 Saran, Apresiasi &amp; Masukan Pasien Terkini</span>
+            </h3>
+            <p class="text-[11px] text-slate-500">Suara hati pasien untuk peningkatan berkelanjutan mutu RSUD Aeramo</p>
+          </div>
+          <button 
+            onclick="switchTab('data')"
+            class="text-xs font-bold text-blue-700 hover:text-blue-900 hover:underline flex items-center gap-1"
+          >
+            <span>Lihat Semua Data</span> &rarr;
+          </button>
+        </div>
+
+        <div id="latestSaranContainer" class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div class="p-4 rounded-2xl bg-slate-50 border border-slate-100 text-slate-400 text-xs italic text-center py-8 col-span-3">
+            Belum ada catatan masukan dari responden pasien.
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- TAB 2: DATA MASUK LENGKAP (TABEL RESPONDEN, DETAIL Q1-Q7 & FILTER) -->
+    <!-- =================================================================== -->
+    <section id="paneData" class="hidden space-y-6">
+      <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm card-watermark space-y-4">
+        
+        <!-- Header Tabel & Filter Bar -->
+        <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="w-7 h-7 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-center font-bold text-xs">📋</span>
+              <h3 class="text-sm sm:text-base font-black text-slate-900">
+                Seluruh Data Masuk Pengisian Kuesioner Pasien
+              </h3>
+              <span id="dataCountBadge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-900 border border-blue-200">
+                0 Responden
+              </span>
+            </div>
+            <p class="text-[11px] text-slate-500 mt-1">
+              Data terenkripsi dan diverifikasi oleh PIN Pasien. Klik pada baris pasien untuk melihat rincian nilai skor Q1 s/d Q7.
+            </p>
+          </div>
+
+          <!-- Controls & Filters -->
+          <div class="flex items-center gap-2 flex-wrap w-full lg:w-auto justify-start lg:justify-end">
+            <!-- Filter Unit Layanan -->
+            <select 
+              id="filterDataLayanan" 
+              onchange="filterAndRenderResponses()"
+              class="px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600"
+            >
+              <option value="all">Semua Layanan</option>
+              <option value="Rawat Inap">Rawat Inap</option>
+              <option value="Rawat Jalan">Rawat Jalan / Poliklinik</option>
+              <option value="IGD">IGD 24 Jam</option>
+              <option value="Kebidanan">Kebidanan / VK</option>
+              <option value="Farmasi">Farmasi / Apotek</option>
+              <option value="Laboratorium">Laboratorium &amp; Radiologi</option>
+            </select>
+
+            <!-- Filter Mutu -->
+            <select 
+              id="filterDataMutu" 
+              onchange="filterAndRenderResponses()"
+              class="px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600"
+            >
+              <option value="all">Semua Mutu</option>
+              <option value="A">Mutu A (Sangat Baik)</option>
+              <option value="B">Mutu B (Baik)</option>
+              <option value="C">Mutu C (Kurang Baik)</option>
+              <option value="D">Mutu D (Tidak Baik)</option>
+            </select>
+
+            <!-- Search Input -->
+            <div class="relative flex-1 sm:flex-none">
+              <input 
+                type="text" 
+                id="searchDataInput"
+                oninput="filterAndRenderResponses()"
+                placeholder="Cari nama, saran..."
+                class="w-full sm:w-48 pl-8 pr-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-600"
+              />
+              <span class="absolute left-2.5 top-2.5 text-slate-400 text-xs">🔍</span>
+            </div>
+
+            <!-- Tombol Ekspor CSV -->
+            <button 
+              onclick="exportToCSV()"
+              class="px-3 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition flex items-center gap-1 shadow-sm"
+              title="Download Data Masuk dalam format CSV"
+            >
+              ⬇️ CSV
+            </button>
+          </div>
+        </div>
+
+        <!-- Tabel Data Responden Lengkap -->
+        <div class="overflow-x-auto rounded-2xl border border-slate-200 shadow-2xs">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-100/90 text-slate-700 font-extrabold uppercase text-[10px] tracking-wider border-b border-slate-200">
+              <tr>
+                <th class="py-3 px-3.5">WAKTU (WITA)</th>
+                <th class="py-3 px-3.5">NAMA PASIEN</th>
+                <th class="py-3 px-3.5">USIA / JK</th>
+                <th class="py-3 px-3.5">UNIT LAYANAN</th>
+                <th class="py-3 px-3 text-center">SKOR (1-4)</th>
+                <th class="py-3 px-3 text-center">IKM (100)</th>
+                <th class="py-3 px-3 text-center">MUTU</th>
+                <th class="py-3 px-3.5">SARAN / MASUKAN</th>
+                <th class="py-3 px-3 text-center no-print">RINCIAN</th>
+              </tr>
+            </thead>
+            <tbody id="responseTableBody" class="divide-y divide-slate-100 text-slate-700">
+              <tr>
+                <td colspan="9" class="py-12 text-center text-slate-400">
+                  <div class="inline-block animate-spin w-5 h-5 border-2 border-rose-600 border-t-transparent rounded-full mb-2"></div>
+                  <p class="font-medium text-xs">Memuat seluruh data responden dari Google Sheet...</p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Tabel Footer Info -->
+        <div class="flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 pt-2 gap-2">
+          <span id="responseSummaryFooter">Menampilkan 0 data responden</span>
+          <div class="flex items-center gap-2">
+            <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Mutu A: &ge; 88.3
+            <span class="inline-block w-2.5 h-2.5 rounded-full bg-blue-500 ml-2"></span> Mutu B: &ge; 76.6
+            <span class="inline-block w-2.5 h-2.5 rounded-full bg-amber-500 ml-2"></span> Mutu C: &ge; 65.0
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- TAB 3: TERBITKAN & KELOLA PIN PASIEN (LENGKAP & CEPAT) -->
+    <!-- =================================================================== -->
+    <section id="panePins" class="hidden space-y-6">
+      
+      <!-- Highlight Banner -->
+      <div class="bg-white rounded-3xl p-5 border border-amber-200 shadow-sm card-watermark flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div class="space-y-1">
+          <div class="flex items-center gap-2">
+            <span class="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold text-sm">
+              🔑
+            </span>
+            <h2 class="text-base sm:text-lg font-extrabold text-slate-900">
+              Penerbitan &amp; Pengelolaan PIN Akses Pasien
+            </h2>
+          </div>
+          <p class="text-xs text-slate-600 leading-relaxed max-w-3xl">
+            Setiap PIN unik 6-digit berfungsi sebagai kunci verifikasi satu kali isi untuk pasien. PIN yang dibuat di sini <strong>langsung aktif</strong> di HP pasien dan <strong>tersimpan otomatis</strong> di tab <strong>PIN_PASIEN</strong>.
+          </p>
+        </div>
+
+        <!-- Tombol Batch Cepat -->
         <div class="flex items-center gap-2 flex-wrap w-full md:w-auto">
           <button 
             onclick="quickGeneratePins(1)"
-            class="px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-950 font-bold text-xs border border-blue-200 transition flex items-center gap-1.5"
+            class="px-3.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-950 font-bold text-xs border border-amber-300 transition"
           >
             ⚡ +1 PIN Cepat
           </button>
           <button 
             onclick="quickGeneratePins(5)"
-            class="px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-950 font-bold text-xs border border-blue-200 transition flex items-center gap-1.5"
+            class="px-3.5 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-950 font-bold text-xs border border-blue-200 transition"
           >
             ⚡ +5 PIN Bangsal
           </button>
           <button 
             onclick="quickGeneratePins(10)"
-            class="px-4 py-2 rounded-xl bg-blue-800 hover:bg-blue-900 text-white font-bold text-xs shadow-md transition flex items-center gap-1.5"
+            class="px-4 py-2 rounded-xl bg-rose-700 hover:bg-rose-800 text-white font-bold text-xs shadow-md transition"
           >
             ⚡ +10 PIN Sekaligus
           </button>
         </div>
       </div>
 
-      <!-- FORM PENERBITAN PIN BARU -->
-      <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+      <!-- FORM PENERBITAN PIN DENGAN NAMA PASIEN & KAMAR MAWAR -->
+      <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm card-watermark space-y-4">
         <div class="border-b border-slate-100 pb-3">
           <h3 class="text-sm font-extrabold text-slate-900 flex items-center gap-2">
             <span>Form Terbitkan PIN Pasien Baru</span>
@@ -227,9 +688,9 @@
                 type="text" 
                 id="inputPatientName"
                 placeholder="Contoh: CHATRINA HERLOFINA PANIE"
-                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold uppercase focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition"
+                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold uppercase focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
               />
-              <span class="text-[10px] text-slate-400 mt-1 block">Pasien tidak perlu mengetik nama lagi saat membuka survei</span>
+              <span class="text-[10px] text-slate-400 mt-1 block">Pasien tidak perlu mengetik nama lagi di smartphone mereka</span>
             </div>
 
             <!-- Layanan RSUD Aeramo -->
@@ -241,7 +702,7 @@
                 id="inputService"
                 class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white"
               >
-                <option value="Rawat Inap">Rawat Inap</option>
+                <option value="Rawat Inap">Rawat Inap (Kamar Mawar / Lainnya)</option>
                 <option value="Rawat Jalan / Poliklinik">Rawat Jalan / Poliklinik</option>
                 <option value="IGD (Instalasi Gawat Darurat)">IGD 24 Jam</option>
                 <option value="Kebidanan & Kandungan (Ruang Bersalin / VK)">Kebidanan &amp; Kandungan (VK)</option>
@@ -259,7 +720,7 @@
               <input 
                 type="text" 
                 id="inputRoom"
-                placeholder="Contoh: Kamar Mawar 102"
+                placeholder="Contoh: Ruang Mawar 102"
                 class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-blue-600"
               />
             </div>
@@ -290,7 +751,7 @@
                 type="text" 
                 id="inputCustomPin"
                 maxlength="6"
-                placeholder="Kosongkan untuk PIN acak otomatis"
+                placeholder="Kosongkan untuk PIN otomatis"
                 class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-600"
               />
             </div>
@@ -301,16 +762,13 @@
                 id="btnSubmitGenerate"
                 class="w-full py-2.5 px-4 rounded-xl bg-blue-800 hover:bg-blue-900 active:scale-98 text-white font-extrabold text-xs shadow-md transition flex items-center justify-center gap-2"
               >
-                <svg class="w-4 h-4 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                </svg>
                 <span>Terbitkan PIN Pasien</span>
               </button>
             </div>
           </div>
         </form>
 
-        <!-- KARTU HASIL TERBITAN TERAKHIR (JIKA BARU DITERBITKAN) -->
+        <!-- KARTU HASIL TERBITAN TERAKHIR -->
         <div id="newlyGeneratedCard" class="hidden p-4 rounded-2xl bg-amber-50 border border-amber-300/80 space-y-3">
           <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-amber-200 pb-2">
             <span class="text-xs font-extrabold text-amber-950 flex items-center gap-1.5">
@@ -323,10 +781,10 @@
             <div>
               <div class="flex items-baseline gap-3">
                 <span class="text-xs font-bold text-slate-500 uppercase">KODE PIN:</span>
-                <span id="newPinCode" class="text-3xl font-black text-blue-950 tracking-widest font-mono">123456</span>
+                <span id="newPinCode" class="text-3xl font-black text-rose-700 tracking-widest font-mono">123456</span>
               </div>
               <p id="newPinPatientDesc" class="text-xs text-slate-600 font-semibold mt-1">
-                Pasien: CHATRINA HERLOFINA PANIE (Rawat Inap - Kamar Mawar 102)
+                Pasien: CHATRINA HERLOFINA PANIE (Rawat Inap - Ruang Mawar 102)
               </p>
             </div>
 
@@ -356,7 +814,7 @@
       </div>
 
       <!-- TABEL DAFTAR PIN DI GOOGLE SHEET -->
-      <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+      <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm card-watermark space-y-4">
         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
           <div>
             <h3 class="text-sm font-extrabold text-slate-900 flex items-center gap-2">
@@ -367,7 +825,6 @@
           </div>
 
           <div class="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
-            <!-- Filter Status -->
             <select 
               id="filterPinStatus" 
               onchange="renderPinTable()"
@@ -379,7 +836,6 @@
               <option value="revoked">Nonaktif</option>
             </select>
 
-            <!-- Search PIN / Nama -->
             <input 
               type="text" 
               id="searchPinInput"
@@ -391,16 +847,13 @@
             <button 
               onclick="loadPinsFromSheet()"
               class="p-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 transition"
-              title="Refresh Data Sheet"
+              title="Refresh Data PIN"
             >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
+              🔄
             </button>
           </div>
         </div>
 
-        <!-- Tabel Container -->
         <div class="overflow-x-auto rounded-2xl border border-slate-100">
           <table class="w-full text-left text-xs">
             <thead class="bg-slate-100 text-slate-600 font-bold uppercase text-[10px] tracking-wider border-b border-slate-200">
@@ -416,10 +869,7 @@
             </thead>
             <tbody id="pinTableBody" class="divide-y divide-slate-100 text-slate-700">
               <tr>
-                <td colspan="7" class="py-8 text-center text-slate-400">
-                  <div class="inline-block animate-spin w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full mb-2"></div>
-                  <p>Memuat data PIN dari Google Sheet...</p>
-                </td>
+                <td colspan="7" class="py-8 text-center text-slate-400">Memuat data PIN dari Google Sheet...</td>
               </tr>
             </tbody>
           </table>
@@ -430,191 +880,69 @@
     </section>
 
     <!-- =================================================================== -->
-    <!-- TAB 2: DASHBOARD IKM REAL-TIME -->
+    <!-- TAB 4: TAUTAN SURVEI PASIEN & QR CODE -->
     <!-- =================================================================== -->
-    <section id="paneDashboard" class="hidden space-y-6">
-      
-      <!-- STATISTIK KARTU UTAMA -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <section id="paneLink" class="hidden space-y-6">
+      <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm card-watermark space-y-6">
         
-        <!-- Total Responden -->
-        <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex items-center justify-between">
-          <div>
-            <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Responden</span>
-            <h4 id="dashTotalResponden" class="text-3xl font-black text-slate-900 mt-1">0</h4>
-            <span class="text-[10px] text-emerald-700 font-semibold flex items-center gap-1 mt-0.5">
-              <span>●</span> Data Terverifikasi PIN
-            </span>
-          </div>
-          <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-800 flex items-center justify-center text-xl font-bold">
-            👥
-          </div>
-        </div>
-
-        <!-- Indeks IKM (Skala 100) -->
-        <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex items-center justify-between">
-          <div>
-            <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Indeks IKM (Skala 100)</span>
-            <h4 id="dashIkmScore" class="text-3xl font-black text-blue-900 mt-1">0.00</h4>
-            <span id="dashMutuBadge" class="inline-block px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-800 mt-0.5">
-              Menghitung...
-            </span>
-          </div>
-          <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-800 flex items-center justify-center text-xl font-bold">
-            📈
-          </div>
-        </div>
-
-        <!-- Rata-rata Skor (Skala 1-4) -->
-        <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex items-center justify-between">
-          <div>
-            <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Skor Rata-Rata (1-4)</span>
-            <h4 id="dashAvgScore" class="text-3xl font-black text-slate-900 mt-1">0.00</h4>
-            <span class="text-[10px] text-slate-500 mt-0.5 block">PermenPAN-RB No. 14 / 2017</span>
-          </div>
-          <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-800 flex items-center justify-center text-xl font-bold">
-            ⭐
-          </div>
-        </div>
-
-        <!-- Tingkat Kepuasan -->
-        <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex items-center justify-between">
-          <div>
-            <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Tingkat Kepuasan</span>
-            <h4 id="dashSatisfactionRate" class="text-3xl font-black text-emerald-700 mt-1">0%</h4>
-            <span class="text-[10px] text-slate-500 mt-0.5 block">Responden Puas &amp; Sangat Puas</span>
-          </div>
-          <div class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-800 flex items-center justify-center text-xl font-bold">
-            👍
-          </div>
-        </div>
-
-      </div>
-
-      <!-- GRAFIK 7 ASPEK UNSUR PELAYANAN -->
-      <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
-        <div class="border-b border-slate-100 pb-3 flex items-center justify-between">
-          <div>
-            <h3 class="text-sm font-extrabold text-slate-900">Nilai Rata-rata per Aspek Evaluasi Pelayanan</h3>
-            <p class="text-[11px] text-slate-500">Skala 1.00 (Kurang Puas) s/d 4.00 (Sangat Puas)</p>
-          </div>
-          <span class="text-xs font-bold text-blue-900">Target Mutu: &ge; 3.00 (Baik)</span>
-        </div>
-
-        <div id="unsurBarContainer" class="space-y-3 text-xs">
-          <!-- Diisi via JavaScript -->
-        </div>
-      </div>
-
-    </section>
-
-    <!-- =================================================================== -->
-    <!-- TAB 3: TABEL RIWAYAT RESPONDEN -->
-    <!-- =================================================================== -->
-    <section id="paneResponses" class="hidden space-y-6">
-      <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
-        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-          <div>
-            <h3 class="text-sm font-extrabold text-slate-900">Riwayat Pengisian Survei oleh Pasien</h3>
-            <p class="text-[11px] text-slate-500">Data masuk dari seluruh perangkat secara realtime</p>
-          </div>
-
-          <div class="flex items-center gap-2">
-            <button 
-              onclick="openActiveSpreadsheet()"
-              class="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-200 transition flex items-center gap-1.5"
-            >
-              📊 Lihat di Sheet
-            </button>
-            <button 
-              onclick="loadDashboardData()"
-              class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition flex items-center gap-1.5"
-            >
-              🔄 Refresh
-            </button>
-          </div>
-        </div>
-
-        <div class="overflow-x-auto rounded-2xl border border-slate-100">
-          <table class="w-full text-left text-xs">
-            <thead class="bg-slate-100 text-slate-600 font-bold uppercase text-[10px] tracking-wider border-b border-slate-200">
-              <tr>
-                <th class="py-3 px-4">WAKTU (WITA)</th>
-                <th class="py-3 px-4">NAMA PASIEN</th>
-                <th class="py-3 px-4">LAYANAN</th>
-                <th class="py-3 px-4 text-center">SKOR</th>
-                <th class="py-3 px-4 text-center">IKM</th>
-                <th class="py-3 px-4">MUTU</th>
-                <th class="py-3 px-4">SARAN / MASUKAN</th>
-              </tr>
-            </thead>
-            <tbody id="responseTableBody" class="divide-y divide-slate-100 text-slate-700">
-              <tr>
-                <td colspan="7" class="py-8 text-center text-slate-400">
-                  Memuat data tanggapan pasien...
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- =================================================================== -->
-    <!-- TAB 4: TAUTAN SURVEI PASIEN & INFO SISTEM -->
-    <!-- =================================================================== -->
-    <section id="paneSettings" class="hidden space-y-6">
-      <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-5">
         <div class="border-b border-slate-100 pb-3">
-          <h3 class="text-sm font-extrabold text-slate-900">Tautan &amp; Integrasi Survei Pasien RSUD Aeramo</h3>
-          <p class="text-[11px] text-slate-500">Konfigurasi alamat aplikasi survei untuk diberikan kepada pasien</p>
+          <h3 class="text-base font-extrabold text-slate-900">
+            Tautan Aplikasi Survei Pasien RSUD Aeramo
+          </h3>
+          <p class="text-xs text-slate-500">
+            Alamat web publik yang diberikan kepada pasien rawat inap / jalan untuk mengisi kuesioner
+          </p>
         </div>
 
-        <!-- Tautan Utama Aplikasi Pasien -->
-        <div class="p-4 rounded-2xl bg-blue-50/70 border border-blue-200/80 space-y-2">
-          <label class="block text-xs font-bold text-blue-950">
-            Tautan Aplikasi Survei Pasien (Diberikan ke Pasien / Dibuat QR Code):
+        <!-- Box URL Utama -->
+        <div class="p-5 rounded-2xl bg-blue-50/70 border border-blue-200 space-y-3">
+          <label class="block text-xs font-bold text-blue-950 uppercase tracking-wider">
+            Tautan Utama Aplikasi Pasien:
           </label>
-          <div class="flex items-center gap-2">
+          <div class="flex flex-col sm:flex-row items-center gap-2">
             <input 
               type="text" 
               id="appPatientUrl" 
               readonly
               value="https://ais-dev-yccl2mwm2caj7dw5hp4m7l-848831564581.asia-east1.run.app"
-              class="w-full p-2.5 rounded-xl border border-blue-300 text-xs font-mono bg-white text-blue-900 font-semibold"
+              class="w-full p-3 rounded-xl border border-blue-300 text-xs font-mono bg-white text-blue-950 font-bold shadow-2xs"
             />
             <button 
               onclick="copyAppUrl()"
-              class="px-4 py-2.5 rounded-xl bg-blue-800 hover:bg-blue-900 text-white text-xs font-bold transition whitespace-nowrap"
+              class="w-full sm:w-auto px-5 py-3 rounded-xl bg-blue-800 hover:bg-blue-900 text-white text-xs font-bold transition whitespace-nowrap shadow-sm"
             >
-              Salin URL
+              📋 Salin URL
             </button>
             <a 
-              id="linkTestApp"
               href="https://ais-dev-yccl2mwm2caj7dw5hp4m7l-848831564581.asia-east1.run.app"
               target="_blank"
-              class="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-blue-900 border border-blue-300 text-xs font-bold transition whitespace-nowrap"
+              class="w-full sm:w-auto px-5 py-3 rounded-xl bg-white hover:bg-slate-50 text-blue-900 border border-blue-300 text-xs font-bold transition whitespace-nowrap text-center"
             >
-              Buka Web
+              🚀 Buka Tampilan Pasien
             </a>
           </div>
           <p class="text-[11px] text-blue-900/80">
-            💡 Pasien cukup membuka link di atas dari smartphone mereka, memasukkan 6-digit PIN yang diberikan petugas, dan kuesioner akan terbuka.
+            💡 Pasien membuka alamat di atas dari smartphone mereka, memasukkan 6-digit PIN yang diterbitkan petugas, dan langsung dapat mengisi kuesioner tanpa perlu login akun Google.
           </p>
         </div>
 
-        <!-- Informasi Keamanan PIN -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-          <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5">
-            <h4 class="font-bold text-slate-900">🛡️ Proteksi Satu Kali Pengisian (Anti-Spam)</h4>
+        <!-- Panduan & QR Code Info -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+          <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+            <h4 class="font-extrabold text-slate-900 flex items-center gap-2">
+              <span>📱 QR Code di Meja Kasir / Kamar Pasien</span>
+            </h4>
             <p class="text-[11px] text-slate-600 leading-relaxed">
-              Satu nomor PIN hanya dapat digunakan untuk 1 kali pengisian kuesioner. Setelah pasien mengirimkan survei, status PIN di sheet akan berubah otomatis menjadi <strong>TERPAKAI</strong>.
+              Anda dapat mencetak QR Code yang mengarah ke link di atas dan menempelkannya di kamar rawat inap (Kamar Mawar, Melati, dll.) atau loket farmasi. Pasien cukup scan QR Code lalu memasukkan PIN yang diberikan petugas.
             </p>
           </div>
-          <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5">
-            <h4 class="font-bold text-slate-900">📁 Arsip &amp; Rotasi Otomatis</h4>
-            <p class="text-[11px] text-slate-600 leading-relaxed">
-              Google Apps Script memiliki sistem pemeliharaan otomatis yang mengarsipkan data secara periodik ke tab <strong>Arsip_Survei</strong> sehingga sheet tetap ringan dibuka.
+
+          <div class="p-5 rounded-2xl bg-rose-50/60 border border-rose-200 space-y-2">
+            <h4 class="font-extrabold text-rose-950 flex items-center gap-2">
+              <span>🌹 Standar Evaluasi Ruang Mawar RSUD Aeramo</span>
+            </h4>
+            <p class="text-[11px] text-rose-900 leading-relaxed">
+              Data evaluasi yang masuk akan langsung dikalkulasikan ke dalam grafik radar spider web dan skor IKM (0-100) guna pemenuhan standar akreditasi rumah sakit Kementerian Kesehatan RI.
             </p>
           </div>
         </div>
@@ -624,52 +952,135 @@
 
   </main>
 
-  <!-- FOOTER -->
-  <footer class="bg-white border-t border-slate-200/80 py-4 px-4 text-xs text-slate-500 no-print mt-auto">
+  <!-- ===================================================================== -->
+  <!-- MODAL DETAIL RESPONDEN (SKOR PERTANYAAN Q1 - Q7) -->
+  <!-- ===================================================================== -->
+  <div id="modalDetail" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 hidden no-print">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 card-watermark space-y-4 animate-in fade-in duration-200">
+      
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2">
+          <span class="w-8 h-8 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center font-bold text-sm">🌹</span>
+          <div>
+            <h3 class="font-black text-sm text-slate-900" id="modalPatientName">Nama Pasien</h3>
+            <p class="text-[11px] text-slate-500" id="modalMetaInfo">Waktu &amp; Layanan</p>
+          </div>
+        </div>
+        <button onclick="closeModalDetail()" class="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-700">✕</button>
+      </div>
+
+      <!-- Skor Ringkasan -->
+      <div class="grid grid-cols-3 gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-100 text-center">
+        <div>
+          <span class="text-[10px] text-slate-400 font-bold uppercase">Skor Rata-Rata</span>
+          <p id="modalAvgScore" class="text-xl font-black text-slate-900">0.00</p>
+        </div>
+        <div>
+          <span class="text-[10px] text-slate-400 font-bold uppercase">Nilai IKM</span>
+          <p id="modalIkm" class="text-xl font-black text-blue-900">0.00</p>
+        </div>
+        <div>
+          <span class="text-[10px] text-slate-400 font-bold uppercase">Predikat Mutu</span>
+          <p id="modalMutu" class="text-xs font-black text-emerald-800 mt-1">Sangat Baik</p>
+        </div>
+      </div>
+
+      <!-- Detail 7 Unsur Skor (1-4) -->
+      <div class="space-y-2">
+        <h4 class="text-[11px] font-bold text-slate-700 uppercase tracking-wider">Rincian Nilai 7 Unsur:</h4>
+        <div id="modalUnsurList" class="space-y-1.5 text-xs">
+          <!-- Diisi via JS -->
+        </div>
+      </div>
+
+      <!-- Saran Pasien -->
+      <div class="pt-2 border-t border-slate-100">
+        <span class="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1">Saran / Masukan:</span>
+        <div id="modalSaran" class="p-3 rounded-xl bg-slate-50 text-slate-700 text-xs italic border border-slate-100">
+          -
+        </div>
+      </div>
+
+      <div class="flex justify-end pt-2">
+        <button 
+          onclick="closeModalDetail()"
+          class="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition"
+        >
+          Tutup Rincian
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- FOOTER RSUD AERAMO -->
+  <!-- ===================================================================== -->
+  <footer class="bg-white border-t border-slate-200/80 py-4 px-4 text-xs text-slate-500 no-print mt-auto relative z-10">
     <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-      <div>
-        <span class="font-bold text-slate-800">RSUD Aeramo</span>
-        <span class="text-slate-400 mx-1.5">•</span>
-        <span>Kabupaten Nagekeo</span>
-        <span class="text-slate-400 mx-1.5">•</span>
-        <span>SISEKAR Evaluasi Pelayanan</span>
+      <div class="flex items-center gap-2">
+        <span class="font-bold text-slate-800">RSUD Aeramo Kabupaten Nagekeo</span>
+        <span class="text-slate-400">•</span>
+        <span class="text-rose-700 font-bold">🌹 Watermark Ruang Mawar</span>
+        <span class="text-slate-400">•</span>
+        <span>SISEKAR PermenPAN-RB No. 14 / 2017</span>
       </div>
       <div class="text-[11px] text-slate-400">
-        Google Apps Script Dashboard Dedicated Portal
+        Google Apps Script Dedicated Management Portal
       </div>
     </div>
   </footer>
 
-  <!-- SCRIPT LOGIC -->
+  <!-- ===================================================================== -->
+  <!-- JAVASCRIPT CORE: CHART.JS & GOOGLE.SCRIPT.RUN BINDINGS -->
+  <!-- ===================================================================== -->
   <script>
     // State Global
     var allPins = [];
+    var allResponses = [];
     var lastCreatedPin = null;
     var activeSpreadsheetUrl = "";
     var patientAppBaseUrl = "https://ais-dev-yccl2mwm2caj7dw5hp4m7l-848831564581.asia-east1.run.app";
 
-    // Inisialisasi Saat Halaman Dimuat
+    // Chart Instances
+    var chartRadar = null;
+    var chartDonut = null;
+    var chartBar = null;
+    var chartLine = null;
+
+    // Inisialisasi Saat Load
     window.onload = function() {
-      loadPinsFromSheet();
+      document.getElementById('printDate').innerText = new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' });
+      initEmptyCharts();
       loadDashboardData();
+      loadPinsFromSheet();
     };
 
     // Navigasi Tab
     function switchTab(tabName) {
-      var tabs = ['pins', 'dashboard', 'responses', 'settings'];
+      var tabs = ['analytics', 'data', 'pins', 'link'];
       tabs.forEach(function(t) {
         var pane = document.getElementById('pane' + t.charAt(0).toUpperCase() + t.slice(1));
         var btn = document.getElementById('tabBtn' + t.charAt(0).toUpperCase() + t.slice(1));
         if (pane && btn) {
           if (t === tabName) {
             pane.classList.remove('hidden');
-            btn.className = "px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-2 bg-blue-700 text-white shadow-sm whitespace-nowrap";
+            btn.className = "px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold transition flex items-center gap-2 bg-rose-600 text-white shadow-md whitespace-nowrap";
           } else {
             pane.classList.add('hidden');
-            btn.className = "px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-2 text-blue-200 hover:text-white hover:bg-white/10 whitespace-nowrap";
+            btn.className = "px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold transition flex items-center gap-2 text-slate-300 hover:text-white hover:bg-white/10 whitespace-nowrap";
           }
         }
       });
+
+      if (tabName === 'analytics') {
+        setTimeout(function() {
+          if (chartRadar) chartRadar.resize();
+          if (chartDonut) chartDonut.resize();
+          if (chartBar) chartBar.resize();
+          if (chartLine) chartLine.resize();
+        }, 100);
+      }
     }
 
     // Toast Notifikasi
@@ -682,7 +1093,7 @@
       toastMsg.innerText = msg;
       toastIcon.innerText = isError ? '⚠️' : '✓';
       toastContent.className = isError 
-        ? "bg-rose-900 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-rose-700 text-xs font-semibold"
+        ? "bg-rose-950 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-rose-700 text-xs font-semibold"
         : "bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-700 text-xs font-semibold";
 
       toast.classList.remove('translate-y-20', 'opacity-0');
@@ -691,23 +1102,410 @@
       }, 3500);
     }
 
-    // Buka Google Spreadsheet
-    function openActiveSpreadsheet() {
-      if (activeSpreadsheetUrl) {
-        window.open(activeSpreadsheetUrl, '_blank');
-      } else {
-        showToast("Memuat tautan Google Sheet...", false);
-        if (typeof google !== 'undefined' && google.script && google.script.run) {
-          google.script.run.withSuccessHandler(function(data) {
-            if (data && data.spreadsheetUrl) {
-              window.open(data.spreadsheetUrl, '_blank');
+    // Inisialisasi Chart.js Canvas
+    function initEmptyCharts() {
+      // 1. Radar Chart (7 Aspek)
+      var ctxRadar = document.getElementById('chartRadarUnsur').getContext('2d');
+      chartRadar = new Chart(ctxRadar, {
+        type: 'radar',
+        data: {
+          labels: [
+            '1. Kamar & Ranjang',
+            '2. Kebersihan Toilet',
+            '3. Fasilitas Ruangan',
+            '4. Ketenangan Bangsal',
+            '5. Kehadiran Dokter',
+            '6. Info Medis Jelas',
+            '7. Empati Perawat'
+          ],
+          datasets: [{
+            label: 'Skor Mutu Pelayanan (1-4)',
+            data: [0, 0, 0, 0, 0, 0, 0],
+            backgroundColor: 'rgba(225, 29, 72, 0.2)', // Rose Red translucent
+            borderColor: 'rgba(225, 29, 72, 0.9)',
+            pointBackgroundColor: '#be123c',
+            pointBorderColor: '#ffffff',
+            pointHoverBackgroundColor: '#ffffff',
+            pointHoverBorderColor: '#be123c',
+            borderWidth: 2.5
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            r: {
+              min: 1,
+              max: 4,
+              ticks: { stepSize: 1, backdropColor: 'transparent' },
+              grid: { color: 'rgba(0,0,0,0.06)' },
+              pointLabels: { font: { size: 10, weight: 'bold' }, color: '#334155' }
             }
-          }).getDashboardData();
+          },
+          plugins: {
+            legend: { display: false }
+          }
         }
+      });
+
+      // 2. Donut Chart (Mutu A, B, C, D)
+      var ctxDonut = document.getElementById('chartDonutMutu').getContext('2d');
+      chartDonut = new Chart(ctxDonut, {
+        type: 'doughnut',
+        data: {
+          labels: ['Mutu A (Sangat Baik)', 'Mutu B (Baik)', 'Mutu C (Kurang Baik)', 'Mutu D (Tidak Baik)'],
+          datasets: [{
+            data: [0, 0, 0, 0],
+            backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'],
+            borderWidth: 2,
+            borderColor: '#ffffff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '70%',
+          plugins: {
+            legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10, weight: 'bold' } } }
+          }
+        }
+      });
+
+      // 3. Horizontal Bar Chart (Layanan)
+      var ctxBar = document.getElementById('chartBarLayanan').getContext('2d');
+      chartBar = new Chart(ctxBar, {
+        type: 'bar',
+        data: {
+          labels: ['Rawat Inap', 'Rawat Jalan', 'IGD 24 Jam', 'Kebidanan / VK', 'Farmasi', 'Lab / Radiologi'],
+          datasets: [{
+            label: 'Jumlah Responden',
+            data: [0, 0, 0, 0, 0, 0],
+            backgroundColor: ['#e11d48', '#2563eb', '#0891b2', '#059669', '#d97706', '#7c3aed'],
+            borderRadius: 8
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { beginAtZero: true, ticks: { precision: 0 } },
+            y: { grid: { display: false }, ticks: { font: { weight: 'bold', size: 10 } } }
+          },
+          plugins: {
+            legend: { display: false }
+          }
+        }
+      });
+
+      // 4. Line Tren Chart (IKM Terbaru)
+      var ctxLine = document.getElementById('chartLineTren').getContext('2d');
+      chartLine = new Chart(ctxLine, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'Nilai IKM (0-100)',
+            data: [],
+            borderColor: '#2563eb',
+            backgroundColor: 'rgba(37, 99, 235, 0.1)',
+            fill: true,
+            tension: 0.35,
+            borderWidth: 2.5,
+            pointRadius: 4,
+            pointBackgroundColor: '#1d4ed8'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { min: 25, max: 100, ticks: { stepSize: 25 } },
+            x: { grid: { display: false }, ticks: { font: { size: 9 } } }
+          },
+          plugins: {
+            legend: { display: false }
+          }
+        }
+      });
+    }
+
+    // Ambil Data Dashboard dari Google Apps Script
+    function loadDashboardData() {
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(function(data) {
+            renderDashboard(data);
+          })
+          .withFailureHandler(function(err) {
+            showToast("Gagal memuat dashboard: " + err, true);
+          })
+          .getDashboardData();
+      } else {
+        // Mock fallback jika dibuka via preview biasa
+        fetch('/api/health').catch(function(){});
       }
     }
 
-    // Ambil Data PIN dari Sheet
+    // Render Metrik, Grafik, dan Tabel
+    function renderDashboard(data) {
+      if (!data) return;
+      if (data.spreadsheetUrl) activeSpreadsheetUrl = data.spreadsheetUrl;
+
+      // Update Metrik Utama
+      document.getElementById('dashTotalResponden').innerText = data.totalResponden || 0;
+      document.getElementById('badgeTabResponden').innerText = data.totalResponden || 0;
+      document.getElementById('dataCountBadge').innerText = (data.totalResponden || 0) + ' Responden';
+      document.getElementById('lastUpdatedTime').innerText = data.lastUpdated || 'Baru saja';
+
+      var ikmVal = data.avgIkm ? data.avgIkm.toFixed(2) : (data.avgScore ? (data.avgScore * 25).toFixed(2) : "0.00");
+      document.getElementById('dashIkmScore').innerText = ikmVal;
+      document.getElementById('dashAvgScore').innerText = data.avgScore ? data.avgScore.toFixed(2) : "0.00";
+      document.getElementById('dashSatisfactionRate').innerText = (data.kepuasanRate ? data.kepuasanRate.toFixed(1) : "0") + "%";
+      document.getElementById('dashMutuBadge').innerText = data.mutuPelayanan || "Menghitung...";
+
+      // Gender Stat
+      var g = data.genderDist || { L: 0, P: 0 };
+      document.getElementById('genderStat').innerText = 'L: ' + (g.L || 0) + ' | P: ' + (g.P || 0);
+
+      // Mutu Dist
+      var m = data.mutuDist || { a: 0, b: 0, c: 0, d: 0 };
+      document.getElementById('statMutuA').innerText = m.a || 0;
+      document.getElementById('statMutuB').innerText = m.b || 0;
+      document.getElementById('statMutuC').innerText = m.c || 0;
+      document.getElementById('statMutuD').innerText = m.d || 0;
+
+      // Update Radar Chart (7 Unsur)
+      var u = data.unsurScores || {};
+      if (chartRadar) {
+        chartRadar.data.datasets[0].data = [
+          u.q1 || 0,
+          u.q2 || 0,
+          u.q3 || 0,
+          u.q4 || 0,
+          u.q5 || 0,
+          u.q6 || 0,
+          u.q7 || 0
+        ];
+        chartRadar.update();
+      }
+
+      // Update Donut Chart
+      if (chartDonut) {
+        chartDonut.data.datasets[0].data = [m.a || 0, m.b || 0, m.c || 0, m.d || 0];
+        chartDonut.update();
+      }
+
+      // Update Bar Layanan
+      var lay = data.layananDist || {};
+      var layKeys = Object.keys(lay);
+      if (layKeys.length > 0 && chartBar) {
+        chartBar.data.labels = layKeys;
+        chartBar.data.datasets[0].data = layKeys.map(function(k) { return lay[k]; });
+        chartBar.update();
+      }
+
+      // Update Line Tren IKM
+      var recent = data.recentResponses || [];
+      allResponses = recent;
+      if (recent.length > 0 && chartLine) {
+        var sliceRecent = recent.slice(0, 15).reverse();
+        chartLine.data.labels = sliceRecent.map(function(r) { return r.namaPasien ? r.namaPasien.split(' ')[0] : 'P'; });
+        chartLine.data.datasets[0].data = sliceRecent.map(function(r) { return r.ikm100 || (r.avgScore ? r.avgScore * 25 : 0); });
+        chartLine.update();
+      }
+
+      // Render Saran / Masukan Pasien Terkini
+      renderLatestSaran(recent);
+
+      // Render Tabel Responden
+      filterAndRenderResponses();
+    }
+
+    // Render Kartu Testimoni Saran Pasien
+    function renderLatestSaran(responses) {
+      var container = document.getElementById('latestSaranContainer');
+      var withSaran = responses.filter(function(r) { return r.saran && r.saran.trim().length > 1; }).slice(0, 3);
+
+      if (withSaran.length === 0) {
+        container.innerHTML = '<div class="p-4 rounded-2xl bg-slate-50 border border-slate-100 text-slate-400 text-xs italic text-center py-6 col-span-3">Belum ada saran tertulis dari pasien.</div>';
+        return;
+      }
+
+      var html = '';
+      withSaran.forEach(function(r) {
+        var pName = r.namaPasien || 'Pasien Anonim';
+        var svc = r.jenisLayanan || 'Rawat Inap';
+        var score = r.avgScore ? r.avgScore.toFixed(2) : '-';
+        html += '<div class="p-4 rounded-2xl bg-rose-50/40 border border-rose-200/70 space-y-2 flex flex-col justify-between">';
+        html += '<p class="text-xs text-slate-700 italic font-medium leading-relaxed">"' + escapeHtml(r.saran) + '"</p>';
+        html += '<div class="pt-2 border-t border-rose-100 flex items-center justify-between text-[11px]">';
+        html += '<span class="font-bold text-rose-950 uppercase truncate max-w-[140px]">' + escapeHtml(pName) + '</span>';
+        html += '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white text-rose-700 border border-rose-200">⭐ ' + score + '</span>';
+        html += '</div>';
+        html += '</div>';
+      });
+      container.innerHTML = html;
+    }
+
+    // Filter & Render Tabel Responden Masuk
+    function filterAndRenderResponses() {
+      var filterLayanan = document.getElementById('filterDataLayanan').value;
+      var filterMutu = document.getElementById('filterDataMutu').value;
+      var searchQuery = (document.getElementById('searchDataInput').value || '').toLowerCase().trim();
+      var tbody = document.getElementById('responseTableBody');
+
+      var filtered = allResponses.filter(function(r) {
+        if (filterLayanan !== 'all' && (r.jenisLayanan || '').indexOf(filterLayanan) === -1) return false;
+        if (filterMutu !== 'all') {
+          var m = r.mutuLayanan || '';
+          if (filterMutu === 'A' && m.indexOf('A') === -1 && m.indexOf('Sangat Baik') === -1) return false;
+          if (filterMutu === 'B' && m.indexOf('B') === -1 && m.indexOf('Baik') === -1) return false;
+          if (filterMutu === 'C' && m.indexOf('C') === -1 && m.indexOf('Cukup') === -1) return false;
+          if (filterMutu === 'D' && m.indexOf('D') === -1 && m.indexOf('Kurang') === -1) return false;
+        }
+        if (searchQuery) {
+          var nameMatch = (r.namaPasien || '').toLowerCase().indexOf(searchQuery) > -1;
+          var saranMatch = (r.saran || '').toLowerCase().indexOf(searchQuery) > -1;
+          var svcMatch = (r.jenisLayanan || '').toLowerCase().indexOf(searchQuery) > -1;
+          return nameMatch || saranMatch || svcMatch;
+        }
+        return true;
+      });
+
+      document.getElementById('responseSummaryFooter').innerText = 'Menampilkan ' + filtered.length + ' dari ' + allResponses.length + ' tanggapan pasien';
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="py-10 text-center text-slate-400 font-medium">Tidak ada data responden yang sesuai dengan kriteria filter.</td></tr>';
+        return;
+      }
+
+      var html = '';
+      filtered.forEach(function(r, idx) {
+        var pName = r.namaPasien ? escapeHtml(r.namaPasien) : '<span class="text-slate-400 italic">(Anonim)</span>';
+        var usiaStr = (r.usia ? r.usia + ' th' : '-') + (r.jenisKelamin ? ' / ' + r.jenisKelamin : '');
+        var avgSc = r.avgScore ? Number(r.avgScore).toFixed(2) : '-';
+        var ikmSc = r.ikm100 ? Number(r.ikm100).toFixed(2) : (r.avgScore ? (r.avgScore * 25).toFixed(2) : '-');
+
+        var mutuBadge = '';
+        var mStr = r.mutuLayanan || '';
+        if (mStr.indexOf('A') !== -1 || mStr.indexOf('Sangat Baik') !== -1) {
+          mutuBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">A (Sangat Baik)</span>';
+        } else if (mStr.indexOf('B') !== -1 || mStr.indexOf('Baik') !== -1) {
+          mutuBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-800 border border-blue-200">B (Baik)</span>';
+        } else if (mStr.indexOf('C') !== -1 || mStr.indexOf('Cukup') !== -1) {
+          mutuBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-200">C (Kurang)</span>';
+        } else {
+          mutuBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-200">D (Tidak Baik)</span>';
+        }
+
+        var saranText = r.saran ? escapeHtml(r.saran) : '<span class="text-slate-300">-</span>';
+
+        html += '<tr class="hover:bg-rose-50/30 transition cursor-pointer" onclick="openModalDetail(' + idx + ')">';
+        html += '<td class="py-3 px-3.5 text-[11px] text-slate-500 font-mono">' + (r.timestamp || '-') + '</td>';
+        html += '<td class="py-3 px-3.5 font-bold text-slate-900 uppercase">' + pName + '</td>';
+        html += '<td class="py-3 px-3.5 text-slate-600">' + usiaStr + '</td>';
+        html += '<td class="py-3 px-3.5 text-xs font-medium">' + escapeHtml(r.jenisLayanan || 'Rawat Inap') + '</td>';
+        html += '<td class="py-3 px-3 text-center font-mono font-bold text-slate-800">' + avgSc + '</td>';
+        html += '<td class="py-3 px-3 text-center font-mono font-extrabold text-blue-900">' + ikmSc + '</td>';
+        html += '<td class="py-3 px-3 text-center">' + mutuBadge + '</td>';
+        html += '<td class="py-3 px-3.5 text-xs text-slate-600 truncate max-w-xs" title="' + (r.saran || '') + '">' + saranText + '</td>';
+        html += '<td class="py-3 px-3 text-center no-print">';
+        html += '<button class="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold" title="Lihat Nilai Q1-Q7">🔍 Rincian</button>';
+        html += '</td>';
+        html += '</tr>';
+      });
+
+      tbody.innerHTML = html;
+    }
+
+    // Modal Detail Jawaban Pasien (Q1 s/d Q7)
+    function openModalDetail(idx) {
+      var r = allResponses[idx];
+      if (!r) return;
+
+      document.getElementById('modalPatientName').innerText = r.namaPasien || 'Pasien Anonim';
+      document.getElementById('modalMetaInfo').innerText = (r.timestamp || '') + ' • ' + (r.jenisLayanan || 'Rawat Inap');
+      document.getElementById('modalAvgScore').innerText = r.avgScore ? Number(r.avgScore).toFixed(2) : '-';
+      document.getElementById('modalIkm').innerText = r.ikm100 ? Number(r.ikm100).toFixed(2) : '-';
+      document.getElementById('modalMutu').innerText = r.mutuLayanan || 'Baik';
+      document.getElementById('modalSaran').innerText = r.saran && r.saran.trim().length > 0 ? ('"' + r.saran + '"') : 'Tidak ada saran tambahan.';
+
+      var questions = [
+        { label: 'Q1. Kenyamanan Kamar & Tempat Tidur', val: r.q1 },
+        { label: 'Q2. Kebersihan Kamar & Toilet', val: r.q2 },
+        { label: 'Q3. Ketersediaan Fasilitas Kamar', val: r.q3 },
+        { label: 'Q4. Ketenangan & Keamanan Lingkungan', val: r.q4 },
+        { label: 'Q5. Kunjungan & Kehadiran Dokter', val: r.q5 },
+        { label: 'Q6. Kejelasan Informasi Medis Dokter', val: r.q6 },
+        { label: 'Q7. Kesiapan & Empati Perawat', val: r.q7 }
+      ];
+
+      var html = '';
+      questions.forEach(function(q) {
+        var sc = Number(q.val) || 0;
+        var star = sc >= 4 ? '⭐⭐⭐⭐ Sangat Puas (4)' : (sc >= 3 ? '⭐⭐⭐ Puas (3)' : (sc >= 2 ? '⭐⭐ Kurang Puas (2)' : '⭐ Tidak Puas (1)'));
+        var color = sc >= 3 ? 'text-emerald-700 font-bold' : 'text-amber-700 font-bold';
+        html += '<div class="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">';
+        html += '<span class="font-medium text-slate-700">' + q.label + '</span>';
+        html += '<span class="' + color + '">' + star + '</span>';
+        html += '</div>';
+      });
+
+      document.getElementById('modalUnsurList').innerHTML = html;
+      document.getElementById('modalDetail').classList.remove('hidden');
+    }
+
+    function closeModalDetail() {
+      document.getElementById('modalDetail').classList.add('hidden');
+    }
+
+    // Ekspor Data ke Format CSV
+    function exportToCSV() {
+      if (allResponses.length === 0) {
+        showToast("Belum ada data responden untuk diekspor.", true);
+        return;
+      }
+
+      var headers = ["Timestamp", "ID Survei", "Nama Pasien", "Jenis Kelamin", "Usia", "Layanan", "Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7", "Skor Rata-rata", "IKM (100)", "Mutu", "Saran"];
+      var csvRows = [headers.join(",")];
+
+      allResponses.forEach(function(r) {
+        var row = [
+          '"' + (r.timestamp || '') + '"',
+          '"' + (r.id || '') + '"',
+          '"' + (r.namaPasien || '') + '"',
+          '"' + (r.jenisKelamin || '') + '"',
+          r.usia || '',
+          '"' + (r.jenisLayanan || '') + '"',
+          r.q1 || 0,
+          r.q2 || 0,
+          r.q3 || 0,
+          r.q4 || 0,
+          r.q5 || 0,
+          r.q6 || 0,
+          r.q7 || 0,
+          r.avgScore || 0,
+          r.ikm100 || 0,
+          '"' + (r.mutuLayanan || '') + '"',
+          '"' + (r.saran || '').replace(/"/g, '""') + '"'
+        ];
+        csvRows.push(row.join(","));
+      });
+
+      var csvString = "\uFEFF" + csvRows.join("\n"); // UTF-8 BOM
+      var blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
+      var link = document.createElement("a");
+      var url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", "Laporan_Survei_IKM_RSUD_Aeramo_" + new Date().toISOString().slice(0,10) + ".csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast("File CSV Laporan berhasil diunduh!");
+    }
+
+    // Ambil Data PIN dari Google Sheet
     function loadPinsFromSheet() {
       if (typeof google !== 'undefined' && google.script && google.script.run) {
         google.script.run
@@ -715,30 +1513,12 @@
             if (res && res.success && Array.isArray(res.pins)) {
               allPins = res.pins;
               renderPinTable();
-              updatePinsBadge();
+              var activeCount = allPins.filter(function(p) { return p.status === 'active'; }).length;
+              document.getElementById('badgeActivePins').innerText = activeCount + ' Aktif';
             }
-          })
-          .withFailureHandler(function(err) {
-            showToast("Gagal memuat data PIN: " + (err.message || err), true);
           })
           .getAllPinsFromSheet();
-      } else {
-        // Fallback demo/mock jika dibuka di browser biasa
-        fetch(window.location.href + (window.location.href.indexOf('?') > -1 ? '&' : '?') + 'action=get_pins')
-          .then(function(r) { return r.json(); })
-          .then(function(res) {
-            if (res && res.success && Array.isArray(res.pins)) {
-              allPins = res.pins;
-              renderPinTable();
-              updatePinsBadge();
-            }
-          }).catch(function(e) { console.log('Mock/Offline mode', e); });
       }
-    }
-
-    function updatePinsBadge() {
-      var activeCount = allPins.filter(function(p) { return p.status === 'active'; }).length;
-      document.getElementById('badgeActivePins').innerText = activeCount + ' Aktif';
     }
 
     // Render Tabel PIN
@@ -750,41 +1530,30 @@
       var filtered = allPins.filter(function(p) {
         if (filterStatus !== 'all' && p.status !== filterStatus) return false;
         if (searchQuery) {
-          var pinMatch = (p.pin || '').indexOf(searchQuery) > -1;
-          var nameMatch = (p.registeredPatientName || '').toLowerCase().indexOf(searchQuery) > -1;
-          var svcMatch = (p.registeredService || '').toLowerCase().indexOf(searchQuery) > -1;
-          var roomMatch = (p.registeredRoom || '').toLowerCase().indexOf(searchQuery) > -1;
-          return pinMatch || nameMatch || svcMatch || roomMatch;
+          return (p.pin || '').indexOf(searchQuery) > -1 || (p.registeredPatientName || '').toLowerCase().indexOf(searchQuery) > -1;
         }
         return true;
       });
 
-      document.getElementById('pinTableSummary').innerText = "(Menampilkan " + filtered.length + " dari " + allPins.length + " PIN)";
+      document.getElementById('pinTableSummary').innerText = "(" + filtered.length + " dari " + allPins.length + " PIN)";
 
       if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="py-8 text-center text-slate-400 font-medium">Tidak ada data PIN yang cocok.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="py-8 text-center text-slate-400">Tidak ada data PIN yang sesuai.</td></tr>';
         return;
       }
 
       var html = '';
       filtered.forEach(function(item) {
-        var statusBadge = '';
-        if (item.status === 'active') {
-          statusBadge = '<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>AKTIF</span>';
-        } else if (item.status === 'used') {
-          statusBadge = '<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">TERPAKAI</span>';
-        } else {
-          statusBadge = '<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">NONAKTIF</span>';
-        }
+        var statusBadge = item.status === 'active' 
+          ? '<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">AKTIF</span>'
+          : (item.status === 'used' ? '<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">TERPAKAI</span>' : '<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">NONAKTIF</span>');
 
-        var pName = item.registeredPatientName || '<span class="text-slate-400 italic">(Belum Diatur)</span>';
-        var roomInfo = item.registeredRoom ? '<span class="text-slate-500 font-normal"> - ' + item.registeredRoom + '</span>' : '';
-        var svcInfo = (item.registeredService || 'Rawat Inap') + roomInfo;
-
+        var pName = item.registeredPatientName ? escapeHtml(item.registeredPatientName) : '<span class="text-slate-400 italic">(Belum Diatur)</span>';
+        var svcInfo = (item.registeredService || 'Rawat Inap') + (item.registeredRoom ? ' - ' + escapeHtml(item.registeredRoom) : '');
         var patientLink = patientAppBaseUrl + '?pin=' + item.pin;
 
         html += '<tr class="hover:bg-slate-50 transition">';
-        html += '<td class="py-3 px-4 font-mono font-extrabold text-blue-950 text-sm tracking-wider">' + item.pin + '</td>';
+        html += '<td class="py-3 px-4 font-mono font-black text-rose-700 text-sm tracking-wider">' + item.pin + '</td>';
         html += '<td class="py-3 px-4">' + statusBadge + '</td>';
         html += '<td class="py-3 px-4 font-bold text-slate-900 uppercase">' + pName + '</td>';
         html += '<td class="py-3 px-4 text-xs">' + svcInfo + '</td>';
@@ -792,12 +1561,9 @@
         html += '<td class="py-3 px-4 text-[11px] text-slate-500">' + (item.usedAt ? 'Dipakai: ' + item.usedAt : '-') + '</td>';
         html += '<td class="py-3 px-4 text-center">';
         html += '<div class="flex items-center justify-center gap-1.5">';
-        html += '<button onclick="copyText(\'' + item.pin + '\', \'PIN ' + item.pin + ' disalin!\')" class="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-xs" title="Salin PIN">📋</button>';
-        html += '<button onclick="copyText(\'' + patientLink + '\', \'Link survei pasien disalin!\')" class="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs" title="Salin Link Kuesioner Pasien">🔗</button>';
-        html += '<button onclick="shareWhatsApp(\'' + item.pin + '\', \'' + (item.registeredPatientName || '') + '\', \'' + (item.registeredService || '') + '\')" class="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs" title="Kirim ke WhatsApp">💬</button>';
-        if (item.status === 'active') {
-          html += '<button onclick="revokePin(\'' + item.pin + '\')" class="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs" title="Nonaktifkan PIN">🚫</button>';
-        }
+        html += '<button onclick="copyText(\'' + item.pin + '\', \'PIN disalin!\')" class="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-800 text-xs font-bold" title="Salin PIN">📋</button>';
+        html += '<button onclick="copyText(\'' + patientLink + '\', \'Link survei disalin!\')" class="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold" title="Salin Link">🔗</button>';
+        html += '<button onclick="shareWhatsApp(\'' + item.pin + '\', \'' + (item.registeredPatientName || '') + '\', \'' + (item.registeredService || '') + '\')" class="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold" title="Kirim WA">💬</button>';
         html += '</div>';
         html += '</td>';
         html += '</tr>';
@@ -806,7 +1572,7 @@
       tbody.innerHTML = html;
     }
 
-    // Tangani Submit Form Buat PIN
+    // Tangani Submit Buat PIN Pasien
     function handleFormGeneratePin(e) {
       e.preventDefault();
       var btn = document.getElementById('btnSubmitGenerate');
@@ -825,16 +1591,13 @@
         google.script.run
           .withSuccessHandler(function(res) {
             btn.disabled = false;
-            btn.innerHTML = '<span>Terbitkan PIN Pasien</span>';
+            btn.innerText = "Terbitkan PIN Pasien";
             if (res && res.success) {
               showToast(res.message || "PIN berhasil dibuat!");
               document.getElementById('inputPatientName').value = '';
               document.getElementById('inputRoom').value = '';
               document.getElementById('inputCustomPin').value = '';
-              
-              if (res.pins && res.pins.length > 0) {
-                showNewlyGeneratedCard(res.pins[0]);
-              }
+              if (res.pins && res.pins.length > 0) showNewlyGeneratedCard(res.pins[0]);
               loadPinsFromSheet();
             } else {
               showToast(res.message || "Gagal membuat PIN.", true);
@@ -842,209 +1605,86 @@
           })
           .withFailureHandler(function(err) {
             btn.disabled = false;
-            btn.innerHTML = '<span>Terbitkan PIN Pasien</span>';
-            showToast("Error: " + (err.message || err), true);
+            btn.innerText = "Terbitkan PIN Pasien";
+            showToast("Error: " + err, true);
           })
           .generatePinFromDashboard(payload);
-      } else {
-        btn.disabled = false;
-        btn.innerHTML = '<span>Terbitkan PIN Pasien</span>';
-        showToast("Simulasi Offline: PIN dibuat!", false);
       }
     }
 
-    // Tombol Batch Cepat (+1, +5, +10 PIN)
+    // Tombol Cepat Buat PIN (+1, +5, +10)
     function quickGeneratePins(count) {
       showToast("Menerbitkan " + count + " PIN cepat ke sheet...", false);
       if (typeof google !== 'undefined' && google.script && google.script.run) {
         google.script.run
           .withSuccessHandler(function(res) {
             if (res && res.success) {
-              showToast(res.message || "Berhasil menerbitkan PIN!");
-              if (res.pins && res.pins.length > 0) {
-                showNewlyGeneratedCard(res.pins[0]);
-              }
+              showToast(res.message);
+              if (res.pins && res.pins.length > 0) showNewlyGeneratedCard(res.pins[0]);
               loadPinsFromSheet();
             }
           })
-          .withFailureHandler(function(err) {
-            showToast("Gagal: " + (err.message || err), true);
-          })
-          .generatePinFromDashboard({
-            count: count,
-            registeredService: "Pelayanan RSUD Aeramo",
-            notes: "Batch " + count + " PIN dari Web Admin"
-          });
+          .generatePinFromDashboard({ count: count, registeredService: "Rawat Inap (Kamar Mawar)" });
       }
     }
 
-    // Tampilkan Kartu PIN yang Baru Dibuat
     function showNewlyGeneratedCard(pinObj) {
       lastCreatedPin = pinObj;
-      var card = document.getElementById('newlyGeneratedCard');
       document.getElementById('newPinCode').innerText = pinObj.pin;
       document.getElementById('newPinCreatedTime').innerText = pinObj.createdAt || 'Baru saja';
-      var pName = pinObj.registeredPatientName ? 'Pasien: ' + pinObj.registeredPatientName : 'Pasien Pelayanan';
-      var rDesc = pinObj.registeredRoom ? ' (' + pinObj.registeredRoom + ')' : '';
-      document.getElementById('newPinPatientDesc').innerText = pName + ' - ' + (pinObj.registeredService || 'Rawat Inap') + rDesc;
-      card.classList.remove('hidden');
+      var desc = (pinObj.registeredPatientName ? 'Pasien: ' + pinObj.registeredPatientName + ' - ' : '') + (pinObj.registeredService || 'Rawat Inap');
+      document.getElementById('newPinPatientDesc').innerText = desc;
+      document.getElementById('newlyGeneratedCard').classList.remove('hidden');
     }
 
-    function copyNewlyCreatedPin() {
-      if (lastCreatedPin) {
-        copyText(lastCreatedPin.pin, "PIN " + lastCreatedPin.pin + " berhasil disalin!");
-      }
+    function copyNewlyCreatedPin() { if (lastCreatedPin) copyText(lastCreatedPin.pin, "PIN " + lastCreatedPin.pin + " disalin!"); }
+    function copyNewlyCreatedLink() { if (lastCreatedPin) copyText(patientAppBaseUrl + '?pin=' + lastCreatedPin.pin, "Link survei disalin!"); }
+    function shareNewlyCreatedWhatsApp() { if (lastCreatedPin) shareWhatsApp(lastCreatedPin.pin, lastCreatedPin.registeredPatientName, lastCreatedPin.registeredService); }
+
+    function copyText(text, msg) {
+      navigator.clipboard.writeText(text).then(function() { showToast(msg || "Teks disalin!"); });
     }
 
-    function copyNewlyCreatedLink() {
-      if (lastCreatedPin) {
-        var link = patientAppBaseUrl + '?pin=' + lastCreatedPin.pin;
-        copyText(link, "Link survei pasien disalin!");
-      }
+    function copyAppUrl() {
+      copyText(patientAppBaseUrl, "Alamat aplikasi pasien disalin!");
     }
 
-    function shareNewlyCreatedWhatsApp() {
-      if (lastCreatedPin) {
-        shareWhatsApp(lastCreatedPin.pin, lastCreatedPin.registeredPatientName, lastCreatedPin.registeredService);
-      }
+    function shareWhatsApp(pin, name, service) {
+      var patientName = name || "Bapak/Ibu Pasien";
+      var svcName = service || "Pelayanan RSUD Aeramo";
+      var link = patientAppBaseUrl + "?pin=" + pin;
+      var text = "Halo Bapak/Ibu *" + patientName + "*,\n\nTerima kasih telah mempercayakan perawatan di *" + svcName + " RSUD Aeramo Kabupaten Nagekeo*.\n\nMohon kesediaan meluangkan waktu 1 menit untuk mengisi kuesioner evaluasi pelayanan melalui link berikut:\n👉 " + link + "\n\nKODE PIN AKSES: *" + pin + "*\n\nPenilaian Anda sangat berharga demi kemajuan mutu layanan kami.\n_RSUD Aeramo - Melayani dengan Kasih_";
+      window.open("https://api.whatsapp.com/send?text=" + encodeURIComponent(text), '_blank');
     }
 
-    // Nonaktifkan PIN
-    function revokePin(pin) {
-      if (confirm("Yakin ingin menonaktifkan PIN " + pin + "?")) {
+    function openActiveSpreadsheet() {
+      if (activeSpreadsheetUrl) {
+        window.open(activeSpreadsheetUrl, '_blank');
+      } else {
+        showToast("Membuka Google Sheet...", false);
         if (typeof google !== 'undefined' && google.script && google.script.run) {
-          google.script.run
-            .withSuccessHandler(function(res) {
-              showToast(res.message || "PIN dinonaktifkan.");
-              loadPinsFromSheet();
-            })
-            .revokePinFromSheet(pin);
+          google.script.run.withSuccessHandler(function(data) {
+            if (data && data.spreadsheetUrl) window.open(data.spreadsheetUrl, '_blank');
+          }).getDashboardData();
         }
       }
     }
 
-    // Helper Copy Clipboard
-    function copyText(text, successMsg) {
-      navigator.clipboard.writeText(text).then(function() {
-        showToast(successMsg || "Teks disalin ke clipboard!");
-      }).catch(function() {
-        var tempInput = document.createElement('input');
-        tempInput.value = text;
-        document.body.appendChild(tempInput);
-        tempInput.select();
-        document.execCommand('copy');
-        document.body.removeChild(tempInput);
-        showToast(successMsg || "Teks disalin ke clipboard!");
-      });
-    }
-
-    function copyAppUrl() {
-      copyText(patientAppBaseUrl, "Alamat aplikasi survei disalin!");
-    }
-
-    // Share WhatsApp
-    function shareWhatsApp(pin, name, service) {
-      var patientName = name || "Bapak/Ibu Pasien";
-      var svcName = service || "Pelayanan";
-      var link = patientAppBaseUrl + "?pin=" + pin;
-
-      var text = "Halo Bapak/Ibu *" + patientName + "*,\n\n" +
-        "Anda telah menyelesaikan layanan *" + svcName + "* di *RSUD Aeramo Kabupaten Nagekeo*.\n\n" +
-        "Silakan klik tautan di bawah ini untuk mengisi kuesioner singkat evaluasi kepuasan:\n" +
-        "👉 " + link + "\n\n" +
-        "Kode PIN Akses: *" + pin + "*\n\n" +
-        "Terima kasih atas partisipasi Anda demi peningkatan mutu layanan kami.\n" +
-        "_RSUD Aeramo - Melayani dengan Kasih_";
-
-      var waUrl = "https://api.whatsapp.com/send?text=" + encodeURIComponent(text);
-      window.open(waUrl, '_blank');
-    }
-
-    // Ambil Data Dashboard IKM
-    function loadDashboardData() {
-      if (typeof google !== 'undefined' && google.script && google.script.run) {
-        google.script.run
-          .withSuccessHandler(function(data) {
-            renderDashboard(data);
-          })
-          .getDashboardData();
-      }
-    }
-
-    function renderDashboard(data) {
-      if (!data) return;
-      if (data.spreadsheetUrl) activeSpreadsheetUrl = data.spreadsheetUrl;
-
-      document.getElementById('dashTotalResponden').innerText = data.totalResponden || 0;
-      document.getElementById('badgeTotalResponden').innerText = data.totalResponden || 0;
-      document.getElementById('dashIkmScore').innerText = (data.avgIkm ? data.avgIkm.toFixed(2) : (data.avgScore ? (data.avgScore * 25).toFixed(2) : "0.00"));
-      document.getElementById('dashAvgScore').innerText = (data.avgScore ? data.avgScore.toFixed(2) : "0.00");
-      document.getElementById('dashSatisfactionRate').innerText = (data.kepuasanRate ? data.kepuasanRate.toFixed(1) : "0") + "%";
-      document.getElementById('dashMutuBadge').innerText = data.mutuPelayanan || "Sangat Baik";
-
-      // Render Bar Unsur
-      var container = document.getElementById('unsurBarContainer');
-      var unsurNames = [
-        { key: 'q1', label: '1. Kenyamanan Kamar & Tempat Tidur' },
-        { key: 'q2', label: '2. Kebersihan Kamar & Kamar Mandi' },
-        { key: 'q3', label: '3. Ketersediaan Fasilitas Ruangan' },
-        { key: 'q4', label: '4. Ketenangan & Keamanan Lingkungan' },
-        { key: 'q5', label: '5. Kunjungan & Ketepatan Dokter' },
-        { key: 'q6', label: '6. Kejelasan Informasi Medis' },
-        { key: 'q7', label: '7. Kesiapan & Responsivitas Perawat' }
-      ];
-
-      var html = '';
-      var scores = data.unsurScores || {};
-      unsurNames.forEach(function(u) {
-        var score = scores[u.key] || 0;
-        var pct = (score / 4.0) * 100;
-        var color = score >= 3.5 ? 'bg-emerald-600' : (score >= 3.0 ? 'bg-blue-600' : 'bg-amber-500');
-
-        html += '<div>';
-        html += '<div class="flex justify-between font-bold text-slate-700 mb-1">';
-        html += '<span>' + u.label + '</span>';
-        html += '<span class="font-mono text-blue-900">' + score.toFixed(2) + ' / 4.00</span>';
-        html += '</div>';
-        html += '<div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">';
-        html += '<div class="' + color + ' h-2.5 rounded-full transition-all duration-500" style="width: ' + pct + '%"></div>';
-        html += '</div>';
-        html += '</div>';
-      });
-      container.innerHTML = html;
-
-      // Render Riwayat Responden
-      renderResponsesTable(data.recentResponses || []);
-    }
-
-    function renderResponsesTable(responses) {
-      var tbody = document.getElementById('responseTableBody');
-      if (responses.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="py-8 text-center text-slate-400">Belum ada survei yang masuk.</td></tr>';
-        return;
-      }
-
-      var html = '';
-      responses.forEach(function(r) {
-        html += '<tr class="hover:bg-slate-50 transition">';
-        html += '<td class="py-3 px-4 text-slate-500 text-[11px]">' + (r.timestamp || '-') + '</td>';
-        html += '<td class="py-3 px-4 font-bold text-slate-900 uppercase">' + (r.namaPasien || '(Anonim)') + '</td>';
-        html += '<td class="py-3 px-4">' + (r.jenisLayanan || 'Rawat Inap') + '</td>';
-        html += '<td class="py-3 px-4 font-mono font-bold text-center">' + (r.avgScore ? r.avgScore.toFixed(2) : '-') + '</td>';
-        html += '<td class="py-3 px-4 font-mono font-bold text-blue-900 text-center">' + (r.ikm100 ? r.ikm100.toFixed(2) : '-') + '</td>';
-        html += '<td class="py-3 px-4"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">' + (r.mutuLayanan || 'Baik') + '</span></td>';
-        html += '<td class="py-3 px-4 text-xs text-slate-600 max-w-xs truncate" title="' + (r.saran || '') + '">' + (r.saran || '-') + '</td>';
-        html += '</tr>';
-      });
-      tbody.innerHTML = html;
-    }
-
     function refreshAllData() {
-      showToast("Menyegarkan seluruh data...", false);
-      loadPinsFromSheet();
+      showToast("Menyegarkan data realtime...");
       loadDashboardData();
+      loadPinsFromSheet();
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
     }
   </script>
-
 </body>
 </html>

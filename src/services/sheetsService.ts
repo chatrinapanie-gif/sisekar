@@ -151,11 +151,20 @@ export async function syncPinsWithGoogleSheet(): Promise<{ success: boolean; cou
     if (res.ok) {
       const data = await res.json();
       if (data.success && Array.isArray(data.pins)) {
-        saveLocalPatientPins(data.pins);
+        const localList = loadLocalPatientPins();
+        const localMap = new Map(localList.map(p => [p.pin, p]));
+        const merged = data.pins.map((p: any) => {
+          const loc = localMap.get(p.pin);
+          if (loc && loc.status === 'used') {
+            return { ...p, status: 'used', usedAt: loc.usedAt || p.usedAt, usedBy: loc.usedBy || p.usedBy };
+          }
+          return p;
+        });
+        saveLocalPatientPins(merged);
         return {
           success: true,
-          count: data.pins.length,
-          message: data.message || `Berhasil mensinkronkan ${data.pins.length} PIN dengan Google Sheet!`
+          count: merged.length,
+          message: data.message || `Berhasil mensinkronkan ${merged.length} PIN dengan Google Sheet!`
         };
       }
     }
@@ -172,11 +181,20 @@ export async function syncPinsWithGoogleSheet(): Promise<{ success: boolean; cou
       if (directRes.ok) {
         const directData = await directRes.json();
         if (directData && Array.isArray(directData.pins)) {
-          saveLocalPatientPins(directData.pins);
+          const localList = loadLocalPatientPins();
+          const localMap = new Map(localList.map(p => [p.pin, p]));
+          const merged = directData.pins.map((p: any) => {
+            const loc = localMap.get(p.pin);
+            if (loc && loc.status === 'used') {
+              return { ...p, status: 'used', usedAt: loc.usedAt || p.usedAt, usedBy: loc.usedBy || p.usedBy };
+            }
+            return p;
+          });
+          saveLocalPatientPins(merged);
           return {
             success: true,
-            count: directData.pins.length,
-            message: `Berhasil mengambil ${directData.pins.length} PIN langsung dari Google Sheet!`
+            count: merged.length,
+            message: `Berhasil mengambil ${merged.length} PIN langsung dari Google Sheet!`
           };
         }
       }
@@ -203,6 +221,18 @@ export async function validatePatientPin(pin: string): Promise<{
       valid: false,
       status: 'invalid_format',
       message: 'Format PIN tidak valid. Masukkan 6 digit angka.',
+    };
+  }
+
+  // 0. Cek Penyimpanan Lokal Seketika: Jika sudah berstatus 'used', tolak langsung!
+  const localList = loadLocalPatientPins();
+  const localFound = localList.find(p => p.pin === cleanPin);
+  if (localFound && localFound.status === 'used') {
+    return {
+      valid: false,
+      status: 'used',
+      token: localFound,
+      message: `PIN ini sudah pernah digunakan pada ${localFound.usedAt ? new Date(localFound.usedAt).toLocaleString('id-ID') : 'sebelumnya'}. Sistem membatasi 1x pengisian per PIN demi keaslian data.`,
     };
   }
 
@@ -286,8 +316,8 @@ export async function validatePatientPin(pin: string): Promise<{
   }
 
   // 3. Fallback Local Storage jika seluruh koneksi internet/server offline
-  const localList = loadLocalPatientPins();
-  const found = localList.find(p => p.pin === cleanPin);
+  const fallbackList = loadLocalPatientPins();
+  const found = fallbackList.find(p => p.pin === cleanPin);
   if (!found) {
     return {
       valid: false,
@@ -415,7 +445,47 @@ export async function consumePatientPin(params: {
   const cleanPin = params.pin.trim().replace(/\D/g, '');
   if (!cleanPin) return false;
 
-  // 1. Update ke Server
+  const nowIso = new Date().toISOString();
+
+  // 1. Update status lokal SEKETIKA di browser pengguna
+  const localList = loadLocalPatientPins();
+  const idx = localList.findIndex(p => p.pin === cleanPin);
+  if (idx !== -1) {
+    localList[idx] = {
+      ...localList[idx],
+      status: 'used',
+      usedAt: nowIso,
+      usedBy: {
+        submissionId: params.submissionId,
+        namaPasien: params.namaPasien || localList[idx].registeredPatientName || 'Pasien Anonim',
+        jenisLayanan: params.jenisLayanan || localList[idx].registeredService || 'Pelayanan RSUD Aeramo',
+        ikmScore: params.ikmScore,
+      },
+    };
+  } else {
+    localList.unshift({
+      id: 'pin_' + cleanPin,
+      pin: cleanPin,
+      status: 'used',
+      createdAt: nowIso,
+      usedAt: nowIso,
+      registeredPatientName: params.namaPasien,
+      registeredService: params.jenisLayanan,
+      label: params.namaPasien ? `Pasien: ${params.namaPasien}` : 'Pasien RSUD Aeramo',
+      usedBy: {
+        submissionId: params.submissionId,
+        namaPasien: params.namaPasien || 'Pasien Anonim',
+        jenisLayanan: params.jenisLayanan || 'Pelayanan RSUD Aeramo',
+        ikmScore: params.ikmScore,
+      },
+    });
+  }
+  saveLocalPatientPins(localList);
+
+  // Bersihkan active session PIN dari storage agar tidak bisa dipakai submit lagi
+  setActiveSessionPatientPin(null);
+
+  // 2. Update ke Server Full-Stack
   try {
     await fetch('/api/patient-pins/consume', {
       method: 'POST',
@@ -426,22 +496,23 @@ export async function consumePatientPin(params: {
     console.warn('Error consuming PIN on server:', err);
   }
 
-  // 2. Update status lokal
-  const localList = loadLocalPatientPins();
-  const idx = localList.findIndex(p => p.pin === cleanPin);
-  if (idx !== -1) {
-    localList[idx] = {
-      ...localList[idx],
-      status: 'used',
-      usedAt: new Date().toISOString(),
-      usedBy: {
-        submissionId: params.submissionId,
-        namaPasien: params.namaPasien || 'Pasien Anonim',
-        jenisLayanan: params.jenisLayanan || 'Pelayanan RSUD Aeramo',
-        ikmScore: params.ikmScore,
-      },
-    };
-    saveLocalPatientPins(localList);
+  // 3. Teruskan ke Google Apps Script (Tab PIN_PASIEN) jika URL dikonfigurasi
+  const cfg = loadAppConfig();
+  if (cfg.appsScriptUrl) {
+    try {
+      fetch(cfg.appsScriptUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          action: 'consume_pin',
+          pin: cleanPin,
+          submissionId: params.submissionId,
+          namaPasien: params.namaPasien,
+          jenisLayanan: params.jenisLayanan,
+          ikmScore: params.ikmScore,
+        }),
+      }).catch(() => {});
+    } catch {}
   }
 
   return true;

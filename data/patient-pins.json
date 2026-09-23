@@ -1,13 +1,34 @@
 [
   {
+    "id": "pin_1790170099463_b07fw",
+    "pin": "889977",
+    "status": "used",
+    "createdAt": "2026-09-23T13:28:19.463Z",
+    "registeredPatientName": "Uji Status",
+    "registeredService": "Rawat Inap",
+    "label": "Pasien: Uji Status",
+    "usedAt": "2026-09-23T13:28:32.448Z",
+    "usedBy": {
+      "submissionId": "SRV_TEST_1",
+      "namaPasien": "Pasien Test Status",
+      "jenisLayanan": "Rawat Inap",
+      "ikmScore": 88.5
+    }
+  },
+  {
     "id": "pin_1790168159189_0_qpddq",
     "pin": "407200",
-    "status": "active",
+    "status": "used",
     "createdAt": "2026-09-23T12:55:59.189Z",
     "registeredPatientName": "Pasien Uji Web",
     "registeredService": "Rawat Inap",
     "registeredRoom": "Kamar Teratai 201",
-    "label": "Pasien: Pasien Uji Web"
+    "label": "Pasien: Pasien Uji Web",
+    "usedAt": "2026-09-23T13:20:49.598Z",
+    "usedBy": {
+      "namaPasien": "Pasien Anonim",
+      "jenisLayanan": "Pelayanan RSUD Aeramo"
+    }
   },
   {
     "id": "pin_268907",

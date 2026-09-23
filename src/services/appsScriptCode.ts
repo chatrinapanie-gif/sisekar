@@ -247,9 +247,23 @@ function doGet(e) {
   const action = params.action || "";
 
   // 1. Validasi PIN Pasien dari HP/Perangkat Mana Pun
-  if (action === "validate_pin" || params.pin) {
+  if (action === "validate_pin" || (params.pin && !action)) {
     const rawPin = String(params.pin || "").trim().replace(/\D/g, "");
     return ContentService.createTextOutput(JSON.stringify(validatePatientPinInSheet(rawPin)))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  // 1b. Tandai PIN sebagai Terpakai via GET (?action=consume_pin&pin=123456)
+  if (action === "consume_pin" || action === "mark_pin_used") {
+    const rawPin = String(params.pin || "").trim().replace(/\D/g, "");
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const result = markPinUsedInSheet(ss, rawPin, {
+      submissionId: params.submissionId || "",
+      namaPasien: params.namaPasien || "",
+      jenisLayanan: params.jenisLayanan || "",
+      ikmScore: params.ikmScore ? Number(params.ikmScore) : 0
+    });
+    return ContentService.createTextOutput(JSON.stringify(result || { success: true, message: "PIN " + rawPin + " berhasil ditandai sebagai TERPAKAI" }))
       .setMimeType(ContentService.MimeType.JSON);
   }
 
@@ -474,7 +488,7 @@ function validatePatientPinInSheet(rawPin) {
   for (let i = 0; i < values.length; i++) {
     const row = values[i];
     const pinInCell = String(row[0]).replace(/\D/g, "");
-    if (pinInCell === rawPin) {
+    if (pinInCell === rawPin || (rawPin.length === 6 && pinInCell.padStart(6, '0') === rawPin)) {
       const status = String(row[1] || "").toUpperCase().trim();
       const regPatientName = String(row[2] || "").trim();
       const regService = String(row[3] || "").trim() || "Rawat Inap";
@@ -483,7 +497,7 @@ function validatePatientPinInSheet(rawPin) {
       const usedAt = String(row[6] || "");
       const usedBy = String(row[7] || "");
 
-      if (status === "TERPAKAI" || status === "USED") {
+      if (status === "TERPAKAI" || status === "USED" || status.indexOf("TERPAKAI") > -1 || status.indexOf("USED") > -1) {
         return {
           valid: false,
           status: "used",
@@ -558,10 +572,13 @@ function getAllPinsFromSheet() {
       const regName = String(row[2] || "").trim();
       const regSvc = String(row[3] || "").trim();
       const regRoom = String(row[4] || "").trim();
+      const rawStatus = String(row[1] || "").toUpperCase().trim();
+      const isUsed = rawStatus === "TERPAKAI" || rawStatus === "USED" || rawStatus.indexOf("TERPAKAI") > -1 || rawStatus.indexOf("USED") > -1;
+      const isRevoked = rawStatus === "NONAKTIF" || rawStatus === "REVOKED";
       pins.push({
         id: "pin_sheet_" + (i + 2),
         pin: cleanPin,
-        status: String(row[1] || "").toUpperCase() === "TERPAKAI" ? "used" : (String(row[1] || "").toUpperCase() === "NONAKTIF" ? "revoked" : "active"),
+        status: isUsed ? "used" : (isRevoked ? "revoked" : "active"),
         registeredPatientName: regName,
         registeredService: regSvc,
         registeredRoom: regRoom,
@@ -609,6 +626,22 @@ function doPost(e) {
       const cleanPin = String(data.pin || "").replace(/\D/g, "");
       return ContentService.createTextOutput(JSON.stringify(validatePatientPinInSheet(cleanPin)))
         .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // A2. Tandai PIN sebagai Terpakai via POST (One-Time Consume Action)
+    if (action === "consume_pin" || action === "mark_pin_used") {
+      lock.releaseLock();
+      const cleanPin = String(data.pin || "").replace(/\D/g, "");
+      const result = markPinUsedInSheet(ss, cleanPin, {
+        submissionId: data.submissionId || "",
+        namaPasien: data.namaPasien || "",
+        jenisLayanan: data.jenisLayanan || "",
+        ikmScore: data.ikmScore ? Number(data.ikmScore) : 0
+      });
+      return ContentService.createTextOutput(JSON.stringify(result || {
+        success: true,
+        message: "PIN " + cleanPin + " berhasil ditandai sebagai TERPAKAI di Google Sheet."
+      })).setMimeType(ContentService.MimeType.JSON);
     }
 
     // B. Tambahkan PIN Baru ke Sheet dari Admin Portal
@@ -802,26 +835,52 @@ function doPost(e) {
 function markPinUsedInSheet(ss, cleanPin, info) {
   try {
     const pinSheet = ensurePinSheetExists(ss);
-    if (pinSheet.getLastRow() <= 1) return;
+    if (!cleanPin) return { success: false, message: "PIN kosong" };
 
-    const values = pinSheet.getRange(2, 1, pinSheet.getLastRow() - 1, 1).getValues();
+    const targetPin = String(cleanPin).replace(/\D/g, "");
     const nowStr = Utilities.formatDate(new Date(), "Asia/Makassar", "yyyy-MM-dd HH:mm:ss 'WITA'");
+    let found = false;
 
-    for (let i = 0; i < values.length; i++) {
-      const pinInCell = String(values[i][0]).replace(/\D/g, "");
-      if (pinInCell === cleanPin) {
-        const rowIdx = i + 2;
-        pinSheet.getRange(rowIdx, 2).setValue("TERPAKAI"); // Kolom 2: STATUS
-        pinSheet.getRange(rowIdx, 7).setValue(nowStr); // Kolom 7: DIGUNAKAN_PADA
-        pinSheet.getRange(rowIdx, 8).setValue(info.namaPasien || "-"); // Kolom 8: NAMA_RESPONDEN_SURVEI
-        pinSheet.getRange(rowIdx, 9).setValue(info.jenisLayanan || "-"); // Kolom 9: LAYANAN_SURVEI
-        pinSheet.getRange(rowIdx, 10).setValue(info.ikmScore || ""); // Kolom 10: SKOR_IKM
-        pinSheet.getRange(rowIdx, 11).setValue(info.submissionId || ""); // Kolom 11: SUBMISSION_ID
-        break;
+    if (pinSheet.getLastRow() > 1) {
+      const values = pinSheet.getRange(2, 1, pinSheet.getLastRow() - 1, 1).getValues();
+      for (let i = 0; i < values.length; i++) {
+        const pinInCell = String(values[i][0]).replace(/\D/g, "");
+        if (pinInCell === targetPin || (targetPin.length === 6 && pinInCell.padStart(6, '0') === targetPin)) {
+          const rowIdx = i + 2;
+          pinSheet.getRange(rowIdx, 2).setValue("TERPAKAI"); // Kolom 2: STATUS
+          pinSheet.getRange(rowIdx, 7).setValue(nowStr); // Kolom 7: DIGUNAKAN_PADA
+          pinSheet.getRange(rowIdx, 8).setValue((info && info.namaPasien) || "-"); // Kolom 8: NAMA_RESPONDEN_SURVEI
+          pinSheet.getRange(rowIdx, 9).setValue((info && info.jenisLayanan) || "-"); // Kolom 9: LAYANAN_SURVEI
+          pinSheet.getRange(rowIdx, 10).setValue((info && info.ikmScore) || ""); // Kolom 10: SKOR_IKM
+          pinSheet.getRange(rowIdx, 11).setValue((info && info.submissionId) || ""); // Kolom 11: SUBMISSION_ID
+          found = true;
+          break;
+        }
       }
     }
+
+    if (!found) {
+      const newRow = [
+        "'" + targetPin,
+        "TERPAKAI",
+        (info && info.namaPasien) || "Pasien Terdaftar",
+        (info && info.jenisLayanan) || "Rawat Inap",
+        "-",
+        nowStr,
+        nowStr,
+        (info && info.namaPasien) || "-",
+        (info && info.jenisLayanan) || "-",
+        (info && info.ikmScore) || "",
+        (info && info.submissionId) || "",
+        "Otomatis dicatat saat pengisian survei"
+      ];
+      pinSheet.appendRow(newRow);
+    }
+
+    return { success: true, pin: targetPin, status: "TERPAKAI", message: "PIN " + targetPin + " berhasil ditandai sebagai TERPAKAI di Google Sheet." };
   } catch (err) {
     Logger.log("Error marking PIN used in sheet: " + err);
+    return { success: false, error: String(err) };
   }
 }
 

@@ -46,7 +46,7 @@ import {
   AppConfig,
   PatientPinToken
 } from '../types';
-import { sendSurveyToGoogleSheet, saveOneTimeLock, consumePatientPin, getActiveSessionPatientPin } from '../services/sheetsService';
+import { sendSurveyToGoogleSheet, saveOneTimeLock, consumePatientPin } from '../services/sheetsService';
 
 interface SurveyFormProps {
   config: AppConfig;
@@ -345,24 +345,21 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
       saran: saran.trim() || undefined,
       status: 'pending',
       devicePlatform: platform,
-      patientPin: patientPin || patientPinToken?.pin || getActiveSessionPatientPin() || undefined,
+      patientPin: patientPin || undefined,
     };
 
-    const effectivePatientPin = submission.patientPin;
+    const res = await sendSurveyToGoogleSheet(submission, config.appsScriptUrl);
 
-    // KONSUMSI PIN SEKETIKA: Langsung ubah status PIN menjadi 'used' (terpakai) secara lokal dan di server
-    // sehingga jika koneksi ke Google Apps Script lambat/tertunda, PIN sudah pasti hangus dan tidak bisa dipakai ulang
-    if (effectivePatientPin) {
+    // Jika pengisian menggunakan PIN pasien, konsumsi PIN tersebut sehingga tidak bisa dipakai ulang
+    if (patientPin) {
       await consumePatientPin({
-        pin: effectivePatientPin,
+        pin: patientPin,
         submissionId: submission.id,
         namaPasien: submission.namaPasien,
         jenisLayanan: submission.jenisLayanan,
         ikmScore: submission.ikmScore,
       });
     }
-
-    const res = await sendSurveyToGoogleSheet(submission, config.appsScriptUrl);
 
     // Kunci aplikasi secara permanen (One-Time Access Lock) agar tidak bisa diisi ulang
     saveOneTimeLock(submission);

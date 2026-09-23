@@ -4,8 +4,7 @@ import {
   WifiOff, 
   HelpCircle, 
   FileText,
-  Heart,
-  Lock
+  Heart
 } from 'lucide-react';
 import { NagekeoLogo } from './NagekeoLogo';
 import { PWAInstallButton } from './PWAInstallButton';

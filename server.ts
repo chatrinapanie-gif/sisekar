@@ -7,17 +7,6 @@ import { createServer as createViteServer } from 'vite';
 const app = express();
 const PORT = 3000;
 
-// Universal CORS Middleware untuk komunikasi aman dari Google Apps Script Web App / external dashboard
-app.use((req: Request, res: Response, next: NextFunction) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
-  }
-  next();
-});
-
 app.use(express.json({ limit: '1mb' }));
 
 // =============================================================================
@@ -75,49 +64,39 @@ const SYSTEM_DEFAULT_PINS: ServerPatientPin[] = [
     pin: '582049',
     status: 'active',
     createdAt: '2026-09-23T01:00:00.000Z',
-    registeredPatientName: 'CHATRINA HERLOFINA PANIE',
-    registeredService: 'Rawat Inap',
-    registeredRoom: 'Kamar Mawar 102',
-    label: 'Pasien: CHATRINA HERLOFINA PANIE',
+    registeredPatientName: 'Pasien Poli Umum',
+    registeredService: 'Rawat Jalan / Poliklinik',
+    registeredRoom: 'Poli Umum',
+    label: 'Pasien Poli Umum / Rawat Jalan',
   },
   {
     id: 'pin_746193',
     pin: '746193',
     status: 'active',
     createdAt: '2026-09-23T01:00:00.000Z',
-    registeredPatientName: 'Pasien Poliklinik',
-    registeredService: 'Rawat Jalan / Poliklinik',
-    registeredRoom: 'Poli Penyakit Dalam',
-    label: 'Pasien Poliklinik',
+    registeredPatientName: 'Pasien IGD 24 Jam',
+    registeredService: 'IGD (Instalasi Gawat Darurat)',
+    registeredRoom: 'Bed Triase',
+    label: 'Pasien IGD 24 Jam',
   },
   {
     id: 'pin_391824',
     pin: '391824',
     status: 'active',
     createdAt: '2026-09-23T01:00:00.000Z',
-    registeredPatientName: 'Pasien Gawat Darurat',
-    registeredService: 'IGD 24 Jam',
-    registeredRoom: 'Bed 03',
-    label: 'Pasien Gawat Darurat',
+    registeredPatientName: 'Pasien Farmasi / Apotek',
+    registeredService: 'Farmasi / Apotek',
+    label: 'Pasien Farmasi',
   },
   {
     id: 'pin_829104',
     pin: '829104',
     status: 'active',
     createdAt: '2026-09-23T01:00:00.000Z',
-    registeredPatientName: 'Ibu & Anak',
-    registeredService: 'Kebidanan & Kandungan (VK)',
+    registeredPatientName: 'Ibu & Anak (VK)',
+    registeredService: 'Kebidanan & Kandungan (Ruang Bersalin / VK)',
     registeredRoom: 'Kamar Bersalin',
     label: 'Pasien VK / Bersalin',
-  },
-  {
-    id: 'pin_615284',
-    pin: '615284',
-    status: 'active',
-    createdAt: '2026-09-23T01:00:00.000Z',
-    registeredPatientName: 'Pasien Umum',
-    registeredService: 'Pelayanan RSUD Aeramo',
-    label: 'Pasien Umum RSUD Aeramo',
   },
 ];
 
@@ -167,75 +146,6 @@ function savePatientPins(pins: ServerPatientPin[]): void {
   } catch (err) {
     console.error('[Server Storage] Gagal menyimpan patient-pins.json:', err);
   }
-}
-
-/**
- * Helper terpusat untuk menandai PIN sebagai 'used' (terpakai) secara permanen
- * di database server dan meneruskannya ke Google Sheet (Tab PIN_PASIEN).
- */
-function markPinAsUsedServer(cleanPin: string, info: {
-  submissionId?: string;
-  namaPasien?: string;
-  jenisLayanan?: string;
-  ikmScore?: number;
-}): boolean {
-  if (!cleanPin) return false;
-  const existing = loadPatientPins();
-  const index = existing.findIndex(p => p.pin === cleanPin);
-  const nowIso = new Date().toISOString();
-
-  if (index !== -1) {
-    existing[index] = {
-      ...existing[index],
-      status: 'used',
-      usedAt: nowIso,
-      usedBy: {
-        submissionId: info.submissionId || undefined,
-        namaPasien: info.namaPasien || existing[index].registeredPatientName || 'Pasien Anonim',
-        jenisLayanan: info.jenisLayanan || existing[index].registeredService || 'Pelayanan RSUD Aeramo',
-        ikmScore: typeof info.ikmScore === 'number' ? info.ikmScore : undefined,
-      },
-    };
-  } else {
-    existing.unshift({
-      id: 'pin_' + cleanPin,
-      pin: cleanPin,
-      status: 'used',
-      createdAt: nowIso,
-      usedAt: nowIso,
-      registeredPatientName: info.namaPasien || undefined,
-      registeredService: info.jenisLayanan || undefined,
-      label: info.namaPasien ? `Pasien: ${info.namaPasien}` : 'Pasien RSUD Aeramo',
-      usedBy: {
-        submissionId: info.submissionId || undefined,
-        namaPasien: info.namaPasien || 'Pasien Anonim',
-        jenisLayanan: info.jenisLayanan || 'Pelayanan RSUD Aeramo',
-        ikmScore: typeof info.ikmScore === 'number' ? info.ikmScore : undefined,
-      },
-    });
-  }
-  savePatientPins(existing);
-
-  // Teruskan pembaruan status ke Google Sheet (Tab PIN_PASIEN) via Google Apps Script
-  if (RUNTIME_APPS_SCRIPT_URL) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
-    fetch(RUNTIME_APPS_SCRIPT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({
-        action: 'consume_pin',
-        pin: cleanPin,
-        submissionId: info.submissionId || '',
-        namaPasien: info.namaPasien || '',
-        jenisLayanan: info.jenisLayanan || '',
-        ikmScore: info.ikmScore || 0,
-      }),
-      signal: controller.signal
-    }).catch(() => {}).finally(() => clearTimeout(timeoutId));
-  }
-
-  return true;
 }
 
 // Inisialisasi daftar PIN awal jika belum ada
@@ -439,14 +349,6 @@ function sanitizeData(input: any): any {
 // API ROUTES
 // =============================================================================
 
-app.get('/apps-script-index.html', (_req, res) => {
-  const filePath = path.join(process.cwd(), 'google_apps_script_index.html');
-  if (fs.existsSync(filePath)) {
-    return res.sendFile(filePath);
-  }
-  return res.status(404).send('File not found');
-});
-
 // 1. Health check
 app.get('/api/health', (req: Request, res: Response) => {
   res.json({
@@ -570,19 +472,6 @@ app.post('/api/survey/submit', async (req: Request, res: Response) => {
     // Sanitasi semua teks yang diinput pasien
     const sanitizedSubmission = sanitizeData(rawData);
 
-    // 1. SEGERA DAN OTOMATIS KONSUMSI PIN DI DATABASE SERVER
-    // Menjamin status PIN berubah menjadi 'used' tanpa bergantung pada respons Google Apps Script
-    const rawPin = rawData.patientPin || rawData.pin;
-    const pinToConsume = rawPin ? String(rawPin).trim().replace(/\D/g, '') : '';
-    if (pinToConsume) {
-      markPinAsUsedServer(pinToConsume, {
-        submissionId: sanitizedSubmission.id,
-        namaPasien: sanitizedSubmission.namaPasien,
-        jenisLayanan: sanitizedSubmission.jenisLayanan,
-        ikmScore: sanitizedSubmission.ikmScore,
-      });
-    }
-
     // Ambil target URL Google Apps Script dari konfigurasi server atau fallback payload
     const targetUrl = RUNTIME_APPS_SCRIPT_URL || (typeof rawData.scriptUrl === 'string' ? rawData.scriptUrl.trim() : '');
 
@@ -594,25 +483,15 @@ app.post('/api/survey/submit', async (req: Request, res: Response) => {
       });
     }
 
-    // Teruskan secara aman dari Server -> Google Apps Script
-    // Pasang batas waktu (timeout 6 detik) dengan AbortController agar jika Apps Script lambat, proses pasien tidak macet
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 6000);
-
-    try {
-      await fetch(targetUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'text/plain;charset=utf-8',
-        },
-        body: JSON.stringify(sanitizedSubmission),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-    } catch (fetchErr: any) {
-      clearTimeout(timeoutId);
-      console.warn('[Security Proxy] Forwarding Apps Script timeout/error (data aman lokal):', fetchErr?.message);
-    }
+    // Teruskan secara rahasia dari Server -> Google Apps Script
+    // Browser pasien TIDAK BISA melihat URL Google Apps Script ini!
+    const response = await fetch(targetUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8',
+      },
+      body: JSON.stringify(sanitizedSubmission),
+    });
 
     return res.json({
       success: true,
@@ -651,54 +530,6 @@ app.get('/api/patient-pins', (req: Request, res: Response) => {
     success: true,
     pins,
   });
-});
-
-// 6a-2. Sinkronisasi Massal PIN dari Google Sheet / Dashboard Apps Script
-app.post('/api/patient-pins/sync', (req: Request, res: Response) => {
-  try {
-    const { pins } = req.body;
-    if (!Array.isArray(pins)) {
-      return res.status(400).json({ error: 'Array pins diperlukan.' });
-    }
-    const existing = loadPatientPins();
-    const existingMap = new Map(existing.map(p => [p.pin, p]));
-
-    for (const p of pins) {
-      const pinCode = String(p.pin || p).trim().replace(/\D/g, '');
-      if (!pinCode) continue;
-
-      const current = existingMap.get(pinCode);
-      if (!current) {
-        const newPin: ServerPatientPin = {
-          id: p.id || ('pin_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6)),
-          pin: pinCode,
-          status: p.status === 'used' ? 'used' : (p.status === 'revoked' ? 'revoked' : 'active'),
-          createdAt: p.createdAt || new Date().toISOString(),
-          registeredPatientName: p.registeredPatientName || undefined,
-          registeredService: p.registeredService || undefined,
-          registeredRoom: p.registeredRoom || undefined,
-          label: p.label || (p.registeredPatientName ? `Pasien: ${p.registeredPatientName}` : undefined),
-          usedAt: p.usedAt || undefined,
-        };
-        existing.unshift(newPin);
-        existingMap.set(pinCode, newPin);
-      } else {
-        if (current.status !== 'used') {
-          if (p.registeredPatientName) current.registeredPatientName = p.registeredPatientName;
-          if (p.registeredService) current.registeredService = p.registeredService;
-          if (p.registeredRoom) current.registeredRoom = p.registeredRoom;
-          if (p.status === 'used') {
-            current.status = 'used';
-            current.usedAt = p.usedAt || new Date().toISOString();
-          }
-        }
-      }
-    }
-    savePatientPins(existing);
-    return res.json({ success: true, count: existing.length });
-  } catch (err: any) {
-    return res.status(500).json({ error: 'Gagal sinkronisasi PIN: ' + err.message });
-  }
 });
 
 // 6b. Generate Batch / Single PIN Akses Pasien
@@ -741,7 +572,7 @@ app.post('/api/patient-pins/generate', async (req: Request, res: Response) => {
         if (RUNTIME_APPS_SCRIPT_URL) {
           fetch(RUNTIME_APPS_SCRIPT_URL, {
             method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'create_pins', pins: [newPin] }),
           }).catch(e => console.warn('[PIN Sync] Warning pushing custom PIN to Google Sheet:', e));
         }
@@ -775,7 +606,7 @@ app.post('/api/patient-pins/generate', async (req: Request, res: Response) => {
     if (RUNTIME_APPS_SCRIPT_URL) {
       fetch(RUNTIME_APPS_SCRIPT_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'create_pins', pins: generated }),
       }).catch(e => console.warn('[PIN Sync] Warning pushing generated PINs to Google Sheet:', e));
     }
@@ -791,7 +622,7 @@ app.post('/api/patient-pins/generate', async (req: Request, res: Response) => {
   }
 });
 
-// 6c. Validasi PIN Pasien saat Membuka Form Survei (Cek Google Sheet & Database Lokal)
+// 6c. Validasi PIN Pasien saat Membuka Form Survei (Cek Google Sheet Terlebih Dahulu)
 app.post('/api/patient-pins/validate', async (req: Request, res: Response) => {
   const { pin } = req.body;
   if (!pin || typeof pin !== 'string') {
@@ -800,71 +631,11 @@ app.post('/api/patient-pins/validate', async (req: Request, res: Response) => {
 
   const cleanPin = pin.trim().replace(/\D/g, '');
 
-  // 0. CEK DATABASE LOKAL DULU: Jika sudah 'used', tolak seketika!
-  // Menjamin PIN yang sudah pernah dipakai TIDAK AKAN PERNAH dianggap 'active' lagi,
-  // meskipun respon dari Google Sheet belum tersinkronisasi.
-  const localList = loadPatientPins();
-  const localFound = localList.find(p => p.pin === cleanPin);
-
-  if (localFound && localFound.status === 'used') {
-    // Beritahu Google Sheet di latar belakang agar juga segera berstatus TERPAKAI
-    if (RUNTIME_APPS_SCRIPT_URL) {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
-      fetch(RUNTIME_APPS_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          action: 'consume_pin',
-          pin: cleanPin,
-          submissionId: localFound.usedBy?.submissionId || '',
-          namaPasien: localFound.usedBy?.namaPasien || '',
-          jenisLayanan: localFound.usedBy?.jenisLayanan || '',
-          ikmScore: localFound.usedBy?.ikmScore || 0,
-        }),
-        signal: controller.signal
-      }).catch(() => {}).finally(() => clearTimeout(timeoutId));
-    }
-
-    return res.status(403).json({
-      valid: false,
-      status: 'used',
-      token: localFound,
-      usedAt: localFound.usedAt,
-      usedBy: localFound.usedBy,
-      message: `PIN ini sudah pernah digunakan pada ${localFound.usedAt ? new Date(localFound.usedAt).toLocaleString('id-ID') : 'sebelumnya'}. Sistem membatasi 1x pengisian per PIN demi keaslian data.`,
-    });
-  }
-
-  if (localFound && localFound.status === 'revoked') {
-    return res.status(403).json({
-      valid: false,
-      status: 'revoked',
-      token: localFound,
-      message: 'PIN ini telah dinonaktifkan oleh petugas. Silakan hubungi petugas untuk PIN baru.',
-    });
-  }
-
-  // Jika PIN ditemukan di server lokal dan berstatus aktif, langsung izinkan (instan tanpa delay)
-  if (localFound && localFound.status === 'active') {
-    return res.json({
-      valid: true,
-      status: 'active',
-      token: localFound,
-      registeredPatientName: localFound.registeredPatientName,
-      registeredService: localFound.registeredService,
-      registeredRoom: localFound.registeredRoom,
-      label: localFound.label,
-      createdAt: localFound.createdAt,
-      message: 'PIN valid dan siap digunakan.',
-    });
-  }
-
-  // 1. Cek Google Sheet via Apps Script jika URL aktif (untuk PIN yang baru dibuat di sheet tapi belum disinkronkan)
+  // 1. Cek Google Sheet via Apps Script jika URL aktif
   if (RUNTIME_APPS_SCRIPT_URL) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 7000);
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
       const sheetCheckUrl = `${RUNTIME_APPS_SCRIPT_URL}${RUNTIME_APPS_SCRIPT_URL.includes('?') ? '&' : '?'}action=validate_pin&pin=${cleanPin}`;
       
       const sheetRes = await fetch(sheetCheckUrl, {
@@ -880,23 +651,12 @@ app.post('/api/patient-pins/validate', async (req: Request, res: Response) => {
         try {
           sheetData = JSON.parse(rawText);
         } catch {
-          // Google Apps Script mengembalikan HTML
+          // Google Apps Script mengembalikan HTML (belum deploy 'Versi Baru' dengan validate_pin)
         }
 
         if (sheetData && typeof sheetData.valid === 'boolean') {
           const existing = loadPatientPins();
           const idx = existing.findIndex(p => p.pin === cleanPin);
-
-          // Jika di server lokal PIN ini sudah berstatus 'used', jangan biarkan sheet menjadikannya 'active' lagi!
-          if (idx !== -1 && existing[idx].status === 'used') {
-            return res.status(403).json({
-              valid: false,
-              status: 'used',
-              token: existing[idx],
-              message: `PIN ini sudah pernah digunakan pada ${existing[idx].usedAt ? new Date(existing[idx].usedAt).toLocaleString('id-ID') : 'sebelumnya'}.`,
-            });
-          }
-
           if (sheetData.valid && sheetData.status === 'active') {
             if (idx === -1) {
               existing.unshift({
@@ -916,22 +676,10 @@ app.post('/api/patient-pins/validate', async (req: Request, res: Response) => {
               if (sheetData.registeredRoom) existing[idx].registeredRoom = sheetData.registeredRoom;
               savePatientPins(existing);
             }
-          } else if (sheetData.status === 'used') {
-            if (idx !== -1) {
-              existing[idx].status = 'used';
-              existing[idx].usedAt = sheetData.usedAt || new Date().toISOString();
-              savePatientPins(existing);
-            } else {
-              existing.unshift({
-                id: 'pin_sheet_' + Date.now(),
-                pin: cleanPin,
-                status: 'used',
-                createdAt: new Date().toISOString(),
-                usedAt: sheetData.usedAt || new Date().toISOString(),
-                label: 'Google Sheet (Terpakai)'
-              });
-              savePatientPins(existing);
-            }
+          } else if (sheetData.status === 'used' && idx !== -1) {
+            existing[idx].status = 'used';
+            existing[idx].usedAt = sheetData.usedAt || new Date().toISOString();
+            savePatientPins(existing);
           }
 
           if (!sheetData.valid) {
@@ -946,10 +694,10 @@ app.post('/api/patient-pins/validate', async (req: Request, res: Response) => {
   }
 
   // 2. Fallback Database Lokal Server
-  const existingFinal = loadPatientPins();
-  const foundFinal = existingFinal.find(p => p.pin === cleanPin);
+  const existing = loadPatientPins();
+  const found = existing.find(p => p.pin === cleanPin);
 
-  if (!foundFinal) {
+  if (!found) {
     return res.status(404).json({
       valid: false,
       status: 'not_found',
@@ -957,22 +705,20 @@ app.post('/api/patient-pins/validate', async (req: Request, res: Response) => {
     });
   }
 
-  if (foundFinal.status === 'used') {
+  if (found.status === 'used') {
     return res.status(403).json({
       valid: false,
       status: 'used',
-      token: foundFinal,
-      usedAt: foundFinal.usedAt,
-      usedBy: foundFinal.usedBy,
-      message: `PIN ini sudah pernah digunakan pada ${foundFinal.usedAt ? new Date(foundFinal.usedAt).toLocaleString('id-ID') : 'sebelumnya'}. Sistem membatasi 1x pengisian per PIN demi keaslian data.`,
+      usedAt: found.usedAt,
+      usedBy: found.usedBy,
+      message: `PIN ini sudah pernah digunakan pada ${found.usedAt ? new Date(found.usedAt).toLocaleString('id-ID') : 'sebelumnya'}. Sistem membatasi 1x pengisian per PIN demi keaslian data.`,
     });
   }
 
-  if (foundFinal.status === 'revoked') {
+  if (found.status === 'revoked') {
     return res.status(403).json({
       valid: false,
       status: 'revoked',
-      token: foundFinal,
       message: 'PIN ini telah dinonaktifkan oleh petugas. Silakan hubungi petugas untuk PIN baru.',
     });
   }
@@ -980,7 +726,7 @@ app.post('/api/patient-pins/validate', async (req: Request, res: Response) => {
   return res.json({
     valid: true,
     status: 'active',
-    token: foundFinal,
+    token: found,
     message: 'PIN valid dan siap digunakan.',
   });
 });
@@ -993,14 +739,25 @@ app.post('/api/patient-pins/consume', (req: Request, res: Response) => {
   }
 
   const cleanPin = pin.trim().replace(/\D/g, '');
-  markPinAsUsedServer(cleanPin, {
-    submissionId,
-    namaPasien,
-    jenisLayanan,
-    ikmScore,
-  });
+  const existing = loadPatientPins();
+  const index = existing.findIndex(p => p.pin === cleanPin);
 
-  return res.json({ success: true, message: `PIN ${cleanPin} berhasil ditandai sebagai terpakai.` });
+  if (index !== -1) {
+    existing[index] = {
+      ...existing[index],
+      status: 'used',
+      usedAt: new Date().toISOString(),
+      usedBy: {
+        submissionId: submissionId || undefined,
+        namaPasien: namaPasien || 'Pasien Anonim',
+        jenisLayanan: jenisLayanan || 'Pelayanan RSUD Aeramo',
+        ikmScore: typeof ikmScore === 'number' ? ikmScore : undefined,
+      },
+    };
+    savePatientPins(existing);
+  }
+
+  return res.json({ success: true, message: 'PIN berhasil ditandai sebagai terpakai.' });
 });
 
 // 6e. Sinkronisasi Dua Arah PIN dengan Google Sheet (Tab PIN_PASIEN)
@@ -1016,20 +773,7 @@ app.post('/api/patient-pins/sync-sheet', async (req: Request, res: Response) => 
       throw new Error(`Google Apps Script merespons status ${response.status}`);
     }
 
-    const rawText = await response.text();
-    let data: any = null;
-    try {
-      data = JSON.parse(rawText);
-    } catch {
-      if (rawText.includes('<!DOCTYPE') || rawText.includes('<html') || rawText.includes('drive.google.com')) {
-        return res.status(400).json({
-          error: 'Google Apps Script merespons tampilan Web (HTML) alih-alih data JSON. Pastikan kode Code.gs terbaru sudah di-Deploy ulang sebagai "Versi Baru (New Version)" dengan hak akses "Siapa Saja (Anyone)".',
-          isHtmlResponse: true,
-        });
-      }
-      return res.status(400).json({ error: 'Format respons tidak valid: ' + rawText.substring(0, 120) });
-    }
-
+    const data = await response.json();
     if (data && Array.isArray(data.pins)) {
       const serverPins = loadPatientPins();
       const serverMap = new Map(serverPins.map(p => [p.pin, p]));
@@ -1039,15 +783,10 @@ app.post('/api/patient-pins/sync-sheet', async (req: Request, res: Response) => 
         if (cleanP) {
           const existing = serverMap.get(cleanP);
           if (existing) {
-            // PERTAHANKAN status 'used': Jika di server sudah terpakai, JANGAN biarkan status di sheet membalikkan ke aktif!
-            if (existing.status === 'used') {
-              // Tetap used
-            } else if (sheetPin.status === 'used') {
+            if (sheetPin.status === 'used') {
               existing.status = 'used';
               existing.usedAt = sheetPin.usedAt || existing.usedAt;
               if (sheetPin.usedBy) existing.usedBy = sheetPin.usedBy;
-            } else if (sheetPin.status === 'revoked') {
-              existing.status = 'revoked';
             }
             if (sheetPin.registeredPatientName) existing.registeredPatientName = sheetPin.registeredPatientName;
             if (sheetPin.registeredService) existing.registeredService = sheetPin.registeredService;
@@ -1085,72 +824,6 @@ app.post('/api/patient-pins/sync-sheet', async (req: Request, res: Response) => 
   } catch (err: any) {
     return res.status(500).json({ error: 'Gagal mensinkronkan PIN dengan Google Sheet: ' + err?.message });
   }
-});
-
-// 6e2. Impor / Tempel PIN Langsung dari Google Sheet (Manual Backup)
-app.post('/api/patient-pins/import-pins', checkAdminAuth, (req: Request, res: Response) => {
-  const { rawText, pins: explicitPins } = req.body;
-  const existing = loadPatientPins();
-  const existingMap = new Map(existing.map(p => [p.pin, p]));
-  let importedCount = 0;
-
-  if (Array.isArray(explicitPins)) {
-    explicitPins.forEach((p: any) => {
-      const cleanP = String(p.pin || p).replace(/\D/g, '');
-      if (cleanP && cleanP.length >= 4) {
-        if (!existingMap.has(cleanP)) {
-          existingMap.set(cleanP, {
-            id: 'pin_' + cleanP,
-            pin: cleanP,
-            status: p.status === 'used' ? 'used' : (p.status === 'revoked' ? 'revoked' : 'active'),
-            createdAt: p.createdAt || new Date().toISOString(),
-            registeredPatientName: p.registeredPatientName,
-            registeredService: p.registeredService || 'Rawat Inap',
-            registeredRoom: p.registeredRoom,
-            label: p.registeredPatientName ? `Pasien: ${p.registeredPatientName}` : 'Impor Sheet',
-          });
-          importedCount++;
-        }
-      }
-    });
-  } else if (typeof rawText === 'string' && rawText.trim()) {
-    const lines = rawText.split('\n');
-    lines.forEach(line => {
-      const parts = line.split('\t').map(s => s.trim());
-      const rawPin = parts[0]?.replace(/\D/g, '') || '';
-      if (rawPin.length >= 4 && rawPin.length <= 8) {
-        const statusRaw = parts[1]?.toUpperCase() || '';
-        const status = statusRaw.includes('TERPAKAI') || statusRaw.includes('USED') ? 'used' : 'active';
-        const name = parts[2] || undefined;
-        const svc = parts[3] || 'Rawat Inap';
-        const room = parts[4] || undefined;
-
-        if (!existingMap.has(rawPin)) {
-          existingMap.set(rawPin, {
-            id: 'pin_' + rawPin,
-            pin: rawPin,
-            status,
-            createdAt: new Date().toISOString(),
-            registeredPatientName: name,
-            registeredService: svc,
-            registeredRoom: room,
-            label: name ? `Pasien: ${name}` : 'Impor Sheet',
-          });
-          importedCount++;
-        }
-      }
-    });
-  }
-
-  const updated = Array.from(existingMap.values());
-  savePatientPins(updated);
-  return res.json({
-    success: true,
-    importedCount,
-    totalPins: updated.length,
-    message: `Berhasil mengimpor ${importedCount} PIN baru ke dalam sistem!`,
-    pins: updated,
-  });
 });
 
 // 6f. Cabut / Hapus PIN Pasien (Oleh Petugas)

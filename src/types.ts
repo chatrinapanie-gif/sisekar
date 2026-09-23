@@ -75,6 +75,23 @@ export interface SurveySubmission {
   syncedAt?: string;
   errorMessage?: string;
   devicePlatform: string;
+  patientPin?: string;
+}
+
+export interface PatientPinToken {
+  id: string;
+  pin: string; // 6 digit unik, misal: '849102'
+  status: 'active' | 'used' | 'revoked';
+  createdAt: string;
+  usedAt?: string;
+  usedBy?: {
+    namaPasien?: string;
+    jenisLayanan?: string;
+    submissionId?: string;
+    ikmScore?: number;
+  };
+  label?: string; // misal: "Pasien Kamar 203" / "Poli Penyakit Dalam"
+  notes?: string;
 }
 
 export interface AppConfig {
@@ -83,6 +100,7 @@ export interface AppConfig {
   hospitalSubTitle: string;
   kioskMode: boolean;
   autoResetSeconds: number;
+  requirePatientPin: boolean; // Mengharuskan PIN satu kali pakai untuk setiap pasien
 }
 
 export interface OneTimeSubmissionLock {
@@ -93,5 +111,6 @@ export interface OneTimeSubmissionLock {
   jenisLayanan?: string;
   mutuLayanan?: string;
   ikmScore?: number;
+  usedPin?: string;
 }
 

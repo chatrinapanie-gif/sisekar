@@ -23,12 +23,14 @@ import {
   Shield,
   Link2,
   Share2,
-  QrCode
+  QrCode,
+  Users
 } from 'lucide-react';
-import { AppConfig, SurveySubmission } from '../types';
+import { AppConfig, SurveySubmission, PatientPinToken } from '../types';
 import { ADMIN_CONFIG } from '../surveyConfig';
-import { exportToCSV, testAppsScriptConnection } from '../services/sheetsService';
+import { exportToCSV, testAppsScriptConnection, fetchPatientPins } from '../services/sheetsService';
 import { GOOGLE_APPS_SCRIPT_CODE } from '../services/appsScriptCode';
+import { AdminPatientPinsTab } from './AdminPatientPinsTab';
 import { 
   getSecurityStatus, 
   recordFailedAttempt, 
@@ -73,7 +75,8 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
   const [pinError, setPinError] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [securityStatus, setSecurityStatus] = useState<SecurityStatus>(getSecurityStatus());
-  const [activeAdminTab, setActiveAdminTab] = useState<'history' | 'url_config' | 'script'>('history');
+  const [activeAdminTab, setActiveAdminTab] = useState<'patient_pins' | 'history' | 'url_config' | 'script'>('patient_pins');
+  const [patientPins, setPatientPins] = useState<PatientPinToken[]>([]);
   const [copied, setCopied] = useState(false);
   const [customUrl, setCustomUrl] = useState(config.appsScriptUrl || '');
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -81,6 +84,24 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
   const [isTestingUrl, setIsTestingUrl] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [copiedShareLink, setCopiedShareLink] = useState(false);
+  const [toastMsg, setToastMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const showToast = (type: 'success' | 'error', text: string) => {
+    setToastMsg({ type, text });
+    setTimeout(() => setToastMsg(null), 3500);
+  };
+
+  const refreshPatientPins = async () => {
+    const data = await fetchPatientPins();
+    setPatientPins(data);
+  };
+
+  useEffect(() => {
+    if (isOpen && isAuthenticated) {
+      refreshPatientPins();
+    }
+  }, [isOpen, isAuthenticated]);
+
 
   // Selalu sinkronkan customUrl jika config berubah dari sinkronisasi server
   useEffect(() => {
@@ -428,8 +449,30 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
           /* Body Admin Terverifikasi */
           <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
             
+            {/* Toast Notification */}
+            {toastMsg && (
+              <div className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 animate-in fade-in duration-200 ${
+                toastMsg.type === 'success' ? 'bg-emerald-100 text-emerald-900 border border-emerald-300' : 'bg-rose-100 text-rose-900 border border-rose-300'
+              }`}>
+                {toastMsg.type === 'success' ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />}
+                <span>{toastMsg.text}</span>
+              </div>
+            )}
+
             {/* Navigasi Tab Admin */}
             <div className="flex items-center gap-2 border-b border-slate-200 pb-3 overflow-x-auto">
+              <button
+                onClick={() => setActiveAdminTab('patient_pins')}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+                  activeAdminTab === 'patient_pins'
+                    ? 'bg-blue-800 text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                <KeyRound className="w-4 h-4 text-amber-300" />
+                <span>PIN Akses Pasien ({patientPins.filter(p => p.status === 'active').length} Aktif)</span>
+              </button>
+
               <button
                 onClick={() => setActiveAdminTab('history')}
                 className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
@@ -466,6 +509,16 @@ export const AdminPortalModal: React.FC<AdminPortalModalProps> = ({
                 <span>Salin Script (Code.gs)</span>
               </button>
             </div>
+
+            {/* TAB 0: MANAJEMEN PIN AKSES PASIEN */}
+            {activeAdminTab === 'patient_pins' && (
+              <AdminPatientPinsTab
+                pins={patientPins}
+                onRefresh={refreshPatientPins}
+                adminToken={sessionToken}
+                onToast={showToast}
+              />
+            )}
 
             {/* TAB 1: REKAP RIWAYAT SURVEI */}
             {activeAdminTab === 'history' && (

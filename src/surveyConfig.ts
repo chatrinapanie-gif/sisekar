@@ -25,6 +25,7 @@ export const ADMIN_CONFIG = {
 
   hospitalName: 'RSUD Aeramo',
   hospitalSubTitle: 'Pemerintah Kabupaten Nagekeo - Dinas Kesehatan',
+  requirePatientPin: true, // Wajibkan PIN Satu Kali Pakai untuk Setiap Pasien
 };
 
 /**

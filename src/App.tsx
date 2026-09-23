@@ -4,7 +4,9 @@ import { Header } from './components/Header';
 import { SurveyForm } from './components/SurveyForm';
 import { PatientGuideView } from './components/PatientGuideView';
 import { ThankYouLockedView } from './components/ThankYouLockedView';
+import { PatientPinGate } from './components/PatientPinGate';
 import { AdminPortalModal } from './components/AdminPortalModal';
+import { RoseWatermarkBackground } from './components/RoseWatermark';
 import { 
   loadAppConfig, 
   saveAppConfig, 
@@ -13,7 +15,9 @@ import {
   syncAllPendingQueue,
   fetchServerConfig,
   getOneTimeLock,
-  clearOneTimeLock
+  clearOneTimeLock,
+  getActiveSessionPatientPin,
+  setActiveSessionPatientPin
 } from './services/sheetsService';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
 import { AppConfig, SurveySubmission, OneTimeSubmissionLock } from './types';
@@ -33,11 +37,29 @@ export default function App() {
   // Status Kunci Satu Kali Pakai (One-Time Submission Access Lock)
   const [oneTimeLock, setOneTimeLock] = useState<OneTimeSubmissionLock | null>(() => getOneTimeLock());
 
-  // Sinkronisasi otomatis konfigurasi dari server agar aktif di semua perangkat (HP, Laptop, Tablet, Kiosk)
+  // Status PIN Akses Pasien yang Terverifikasi
+  const [verifiedPatientPin, setVerifiedPatientPin] = useState<string | null>(() => getActiveSessionPatientPin());
+  const [initialUrlPin, setInitialUrlPin] = useState<string>('');
+
+  // Sinkronisasi otomatis konfigurasi dari server & deteksi parameter link pasien (?pin=...)
   useEffect(() => {
     let isMounted = true;
     const syncServerConfig = async () => {
-      // 1. Deteksi Tautan Aktivasi Cepat jika ada parameter ?scriptUrl=
+      // 1. Deteksi Parameter PIN Pasien jika dibagikan via Link / WhatsApp (?pin=123456)
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const pinParam = params.get('pin') || params.get('token');
+        if (pinParam && pinParam.trim()) {
+          const cleanPin = pinParam.trim().replace(/\D/g, '');
+          if (cleanPin.length >= 4) {
+            setInitialUrlPin(cleanPin);
+          }
+        }
+      } catch (err) {
+        console.warn('Gagal membaca parameter pin:', err);
+      }
+
+      // 2. Deteksi Tautan Aktivasi Cepat Google Apps Script jika ada parameter ?scriptUrl=
       try {
         const params = new URLSearchParams(window.location.search);
         const paramUrl = params.get('scriptUrl') || params.get('url');
@@ -56,14 +78,13 @@ export default function App() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ appsScriptUrl: cleanParamUrl, pin: '1987' }),
           }).catch(() => {});
-          window.history.replaceState({}, document.title, window.location.pathname);
           return;
         }
       } catch (err) {
         console.warn('Gagal membaca parameter tautan:', err);
       }
 
-      // 2. Ambil konfigurasi global yang tersimpan di server jika ada
+      // 3. Ambil konfigurasi global yang tersimpan di server jika ada
       const serverConfig = await fetchServerConfig();
       if (isMounted && serverConfig && serverConfig.appsScriptUrl) {
         setConfig(serverConfig);
@@ -137,9 +158,19 @@ export default function App() {
     }
   };
 
+  // Handler saat PIN pasien berhasil diverifikasi
+  const handlePinVerified = (token: any, pinString: string) => {
+    setVerifiedPatientPin(pinString);
+    setActiveSessionPatientPin(pinString);
+    setActiveTab('survey');
+    showToast('success', `✓ PIN ${pinString} terverifikasi! Selamat mengisi survei.`);
+  };
+
   // Handler saat survei berhasil disubmit oleh pasien
   const handleSubmissionSuccess = (submission: SurveySubmission) => {
     refreshData();
+    setVerifiedPatientPin(null);
+    setActiveSessionPatientPin(null);
     setOneTimeLock({
       isSubmitted: true,
       submissionId: submission.id,
@@ -148,22 +179,38 @@ export default function App() {
       jenisLayanan: submission.jenisLayanan,
       mutuLayanan: submission.mutuLayanan,
       ikmScore: submission.ikmScore,
+      usedPin: submission.patientPin,
     });
     showToast('success', '✓ Survei berhasil terkirim! Akses formulir telah ditutup otomatis.');
+  };
+
+  // Handler persiapan pengisian untuk pasien baru dengan PIN berbeda
+  const handleNewPatientPinSession = () => {
+    clearOneTimeLock();
+    setOneTimeLock(null);
+    setVerifiedPatientPin(null);
+    setActiveSessionPatientPin(null);
+    setActiveTab('survey');
+    showToast('success', 'Silakan masukkan PIN akses pasien baru.');
   };
 
   // Handler pembukaan kunci oleh petugas / admin rumah sakit
   const handleUnlockDevice = () => {
     clearOneTimeLock();
     setOneTimeLock(null);
+    setVerifiedPatientPin(null);
+    setActiveSessionPatientPin(null);
     setActiveTab('survey');
     setIsAdminModalOpen(false);
     showToast('success', '✓ Kunci akses dibuka. Formulir survei baru siap digunakan!');
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col relative">
       
+      {/* Latar Belakang Watermark Mawar Elegan */}
+      <RoseWatermarkBackground />
+
       {/* Header — Menampilkan Info RSUD Aeramo & Status Jaringan */}
       <Header
         config={config}
@@ -198,12 +245,21 @@ export default function App() {
           <ThankYouLockedView
             lockInfo={oneTimeLock}
             onAdminUnlockRequest={() => setIsAdminModalOpen(true)}
+            onNewPatientPinRequest={handleNewPatientPinSession}
+          />
+        ) : config.requirePatientPin && !verifiedPatientPin ? (
+          /* GERBANG PIN AKSES SATU KALI PAKAI PASIEN (PATIENT PIN GATE) */
+          <PatientPinGate
+            onPinVerified={handlePinVerified}
+            onOpenStaffLogin={() => setIsAdminModalOpen(true)}
+            initialPinFromUrl={initialUrlPin}
           />
         ) : activeTab === 'survey' ? (
           /* FORMULIR SURVEI RESMI DOKUMEN RSUD AERAMO */
           <SurveyForm
             config={config}
             isOnline={isOnline}
+            patientPin={verifiedPatientPin || undefined}
             onSubmissionSuccess={handleSubmissionSuccess}
             onOpenGuide={() => setActiveTab('guide')}
           />
@@ -229,10 +285,10 @@ export default function App() {
           <div className="flex items-center gap-2.5">
             <span 
               className="inline-flex items-center gap-1 text-[11px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/80 font-medium select-none"
-              title="Sistem Keamanan Siber Aktif: Anti-Inspeksi Kiosk &amp; Webhook Terenkripsi"
+              title="Sistem Keamanan Siber Aktif: PIN Pasien Sekali Pakai &amp; Webhook Terenkripsi"
             >
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Sistem Terlindungi</span>
+              <span>Sistem Terlindungi PIN Pasien</span>
             </span>
 
             {/* Tombol Akses Petugas / Admin (Hanya untuk staf rumah sakit) */}
@@ -243,7 +299,7 @@ export default function App() {
               title="Akses khusus petugas RSUD Aeramo"
             >
               <Lock className="w-3 h-3" />
-              <span>Akses Petugas</span>
+              <span>Portal Petugas</span>
             </button>
           </div>
         </div>
@@ -268,3 +324,4 @@ export default function App() {
     </div>
   );
 }
+

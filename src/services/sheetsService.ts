@@ -1,4 +1,4 @@
-import { AppConfig, SurveySubmission, OneTimeSubmissionLock } from '../types';
+import { AppConfig, SurveySubmission, OneTimeSubmissionLock, PatientPinToken } from '../types';
 import { ADMIN_CONFIG } from '../surveyConfig';
 import { sanitizeInput } from '../utils/security';
 
@@ -7,7 +7,318 @@ const STORAGE_KEYS = {
   SUBMISSIONS: 'sisekar_aeramo_submissions',
   PENDING_QUEUE: 'sisekar_aeramo_pending_queue',
   ONE_TIME_LOCK: 'sisekar_aeramo_onetime_lock_v1',
+  PATIENT_PINS: 'sisekar_aeramo_patient_pins_v1',
+  ACTIVE_PATIENT_PIN: 'sisekar_aeramo_active_patient_pin',
 };
+
+// =============================================================================
+// MANAJEMEN PIN AKSES SATU KALI PAKAI PASIEN (ONE-TIME PIN SYSTEM)
+// =============================================================================
+
+export function getActiveSessionPatientPin(): string | null {
+  try {
+    return sessionStorage.getItem(STORAGE_KEYS.ACTIVE_PATIENT_PIN) || 
+           localStorage.getItem(STORAGE_KEYS.ACTIVE_PATIENT_PIN) || null;
+  } catch {
+    return null;
+  }
+}
+
+export function setActiveSessionPatientPin(pin: string | null): void {
+  try {
+    if (pin) {
+      sessionStorage.setItem(STORAGE_KEYS.ACTIVE_PATIENT_PIN, pin);
+      localStorage.setItem(STORAGE_KEYS.ACTIVE_PATIENT_PIN, pin);
+    } else {
+      sessionStorage.removeItem(STORAGE_KEYS.ACTIVE_PATIENT_PIN);
+      localStorage.removeItem(STORAGE_KEYS.ACTIVE_PATIENT_PIN);
+    }
+  } catch (err) {
+    console.warn('Failed to set active patient pin:', err);
+  }
+}
+
+export function loadLocalPatientPins(): PatientPinToken[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.PATIENT_PINS);
+    if (!raw) return [];
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
+
+export function saveLocalPatientPins(pins: PatientPinToken[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEYS.PATIENT_PINS, JSON.stringify(pins));
+  } catch (err) {
+    console.error('Failed to save local patient pins:', err);
+  }
+}
+
+/**
+ * Mengambil daftar seluruh PIN Pasien dari server atau fallback lokal
+ */
+export async function fetchPatientPins(): Promise<PatientPinToken[]> {
+  try {
+    const res = await fetch('/api/patient-pins');
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && Array.isArray(data.pins)) {
+        saveLocalPatientPins(data.pins);
+        return data.pins;
+      }
+    }
+  } catch (err) {
+    console.warn('Server fetch patient pins error, fallback to local:', err);
+  }
+  return loadLocalPatientPins();
+}
+
+/**
+ * Validasi 6-digit PIN Pasien (Server-Side + Local Offline Fallback)
+ */
+export async function validatePatientPin(pin: string): Promise<{
+  valid: boolean;
+  status: 'active' | 'used' | 'revoked' | 'not_found' | 'invalid_format';
+  token?: PatientPinToken;
+  message: string;
+}> {
+  const cleanPin = pin.trim().replace(/\D/g, '');
+  if (!cleanPin || cleanPin.length < 4) {
+    return {
+      valid: false,
+      status: 'invalid_format',
+      message: 'Format PIN tidak valid. Masukkan 6 digit angka.',
+    };
+  }
+
+  // Coba validasi via Server
+  try {
+    const res = await fetch('/api/patient-pins/validate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin: cleanPin }),
+    });
+
+    const data = await res.json();
+    if (res.ok && data.valid) {
+      return {
+        valid: true,
+        status: 'active',
+        token: data.token,
+        message: data.message || 'PIN valid.',
+      };
+    } else if (data.status) {
+      return {
+        valid: false,
+        status: data.status,
+        token: data.token,
+        message: data.message || 'PIN tidak dapat digunakan.',
+      };
+    }
+  } catch (err) {
+    console.warn('Network error while validating PIN on server, using local fallback:', err);
+  }
+
+  // Fallback Local Storage jika server offline
+  const localList = loadLocalPatientPins();
+  const found = localList.find(p => p.pin === cleanPin);
+  if (!found) {
+    return {
+      valid: false,
+      status: 'not_found',
+      message: 'PIN tidak ditemukan. Pastikan nomor PIN benar sesuai yang diberikan petugas RSUD Aeramo.',
+    };
+  }
+
+  if (found.status === 'used') {
+    return {
+      valid: false,
+      status: 'used',
+      token: found,
+      message: `PIN ini sudah pernah digunakan pada ${found.usedAt ? new Date(found.usedAt).toLocaleString('id-ID') : 'sebelumnya'}. Sistem membatasi 1x pengisian per PIN demi keaslian data.`,
+    };
+  }
+
+  if (found.status === 'revoked') {
+    return {
+      valid: false,
+      status: 'revoked',
+      token: found,
+      message: 'PIN ini telah dinonaktifkan oleh petugas.',
+    };
+  }
+
+  return {
+    valid: true,
+    status: 'active',
+    token: found,
+    message: 'PIN valid dan siap digunakan.',
+  };
+}
+
+/**
+ * Buat PIN Pasien Baru (Single atau Batch)
+ */
+export async function generatePatientPins(params: {
+  count?: number;
+  label?: string;
+  notes?: string;
+  customPin?: string;
+  adminToken?: string;
+}): Promise<PatientPinToken[]> {
+  try {
+    const res = await fetch('/api/patient-pins/generate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(params.adminToken ? { Authorization: `Bearer ${params.adminToken}` } : {}),
+      },
+      body: JSON.stringify(params),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && Array.isArray(data.pins)) {
+        const current = loadLocalPatientPins();
+        const merged = [...data.pins, ...current];
+        saveLocalPatientPins(merged);
+        return data.pins;
+      }
+    }
+  } catch (err) {
+    console.warn('Generate PIN via server error, fallback local generation:', err);
+  }
+
+  // Fallback lokal
+  const num = Math.min(Math.max(1, params.count || 1), 50);
+  const current = loadLocalPatientPins();
+  const existingSet = new Set(current.map(p => p.pin));
+  const newPins: PatientPinToken[] = [];
+
+  for (let i = 0; i < num; i++) {
+    let pinCode = Math.floor(100000 + Math.random() * 900000).toString();
+    while (existingSet.has(pinCode)) {
+      pinCode = Math.floor(100000 + Math.random() * 900000).toString();
+    }
+    existingSet.add(pinCode);
+    newPins.push({
+      id: 'pin_' + Date.now() + '_' + i,
+      pin: pinCode,
+      status: 'active',
+      createdAt: new Date().toISOString(),
+      label: params.label || undefined,
+      notes: params.notes || undefined,
+    });
+  }
+
+  const updated = [...newPins, ...current];
+  saveLocalPatientPins(updated);
+  return newPins;
+}
+
+/**
+ * Tandai PIN Pasien telah digunakan (One-Time Consume)
+ */
+export async function consumePatientPin(params: {
+  pin: string;
+  submissionId: string;
+  namaPasien?: string;
+  jenisLayanan?: string;
+  ikmScore?: number;
+}): Promise<boolean> {
+  const cleanPin = params.pin.trim().replace(/\D/g, '');
+  if (!cleanPin) return false;
+
+  // 1. Update ke Server
+  try {
+    await fetch('/api/patient-pins/consume', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...params, pin: cleanPin }),
+    });
+  } catch (err) {
+    console.warn('Error consuming PIN on server:', err);
+  }
+
+  // 2. Update status lokal
+  const localList = loadLocalPatientPins();
+  const idx = localList.findIndex(p => p.pin === cleanPin);
+  if (idx !== -1) {
+    localList[idx] = {
+      ...localList[idx],
+      status: 'used',
+      usedAt: new Date().toISOString(),
+      usedBy: {
+        submissionId: params.submissionId,
+        namaPasien: params.namaPasien || 'Pasien Anonim',
+        jenisLayanan: params.jenisLayanan || 'Pelayanan RSUD Aeramo',
+        ikmScore: params.ikmScore,
+      },
+    };
+    saveLocalPatientPins(localList);
+  }
+
+  return true;
+}
+
+/**
+ * Cabut / Nonaktifkan PIN Pasien
+ */
+export async function revokePatientPin(id: string, adminToken?: string): Promise<boolean> {
+  try {
+    await fetch('/api/patient-pins/revoke', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(adminToken ? { Authorization: `Bearer ${adminToken}` } : {}),
+      },
+      body: JSON.stringify({ id }),
+    });
+  } catch (err) {
+    console.warn('Revoke PIN server error:', err);
+  }
+
+  const localList = loadLocalPatientPins();
+  const updated = localList.map(p => p.id === id ? { ...p, status: 'revoked' as const } : p);
+  saveLocalPatientPins(updated);
+  return true;
+}
+
+/**
+ * Hapus PIN Pasien
+ */
+export async function deletePatientPin(
+  params: { id?: string; allUsed?: boolean; all?: boolean }, 
+  adminToken?: string
+): Promise<boolean> {
+  try {
+    await fetch('/api/patient-pins/delete', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(adminToken ? { Authorization: `Bearer ${adminToken}` } : {}),
+      },
+      body: JSON.stringify(params),
+    });
+  } catch (err) {
+    console.warn('Delete PIN server error:', err);
+  }
+
+  let localList = loadLocalPatientPins();
+  if (params.all) {
+    saveLocalPatientPins([]);
+  } else if (params.allUsed) {
+    localList = localList.filter(p => p.status !== 'used');
+    saveLocalPatientPins(localList);
+  } else if (params.id) {
+    localList = localList.filter(p => p.id !== params.id);
+    saveLocalPatientPins(localList);
+  }
+  return true;
+}
+
 
 /**
  * Cek status apakah perangkat ini sudah pernah mengisi survei (One-Time Access Lock)
@@ -60,6 +371,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   hospitalSubTitle: ADMIN_CONFIG.hospitalSubTitle || 'Pemerintah Kabupaten Nagekeo - Dinas Kesehatan',
   kioskMode: false,
   autoResetSeconds: 8,
+  requirePatientPin: ADMIN_CONFIG.requirePatientPin ?? true,
 };
 
 export function loadAppConfig(): AppConfig {

@@ -24,6 +24,8 @@ import {
   Camera
 } from 'lucide-react';
 import { NagekeoLogo } from './NagekeoLogo';
+import { HospitalBannerSlider } from './HospitalBannerSlider';
+import { RoseWatermarkIcon } from './RoseWatermark';
 import { 
   HOSPITAL_HEADER_INFO, 
   SKALA_OPTIONS, 
@@ -43,13 +45,14 @@ import {
   SurveySubmission, 
   AppConfig 
 } from '../types';
-import { sendSurveyToGoogleSheet, saveOneTimeLock } from '../services/sheetsService';
+import { sendSurveyToGoogleSheet, saveOneTimeLock, consumePatientPin } from '../services/sheetsService';
 
 interface SurveyFormProps {
   config: AppConfig;
   isOnline: boolean;
   onSubmissionSuccess: (submission: SurveySubmission) => void;
   onOpenGuide: () => void;
+  patientPin?: string;
 }
 
 const getOptionColors = (val: 1 | 2 | 3 | 4, isSelected: boolean) => {
@@ -98,6 +101,7 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
   isOnline,
   onSubmissionSuccess,
   onOpenGuide,
+  patientPin,
 }) => {
   // Profil Responden (Gambar 2)
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -293,9 +297,21 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
       saran: saran.trim() || undefined,
       status: 'pending',
       devicePlatform: platform,
+      patientPin: patientPin || undefined,
     };
 
     const res = await sendSurveyToGoogleSheet(submission, config.appsScriptUrl);
+
+    // Jika pengisian menggunakan PIN pasien, konsumsi PIN tersebut sehingga tidak bisa dipakai ulang
+    if (patientPin) {
+      await consumePatientPin({
+        pin: patientPin,
+        submissionId: submission.id,
+        namaPasien: submission.namaPasien,
+        jenisLayanan: submission.jenisLayanan,
+        ikmScore: submission.ikmScore,
+      });
+    }
 
     // Kunci aplikasi secara permanen (One-Time Access Lock) agar tidak bisa diisi ulang
     saveOneTimeLock(submission);
@@ -372,11 +388,20 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
     <div className="max-w-4xl mx-auto py-4 sm:py-8 px-3 sm:px-6">
       
       {/* Top Utility Bar (Panduan Pengisian & Cetak Fisik) */}
-      <div className="flex items-center justify-between mb-4 print:hidden">
-        <span className="text-xs text-slate-500 font-medium flex items-center gap-1.5">
-          <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-          <span>Format Resmi Dokumen RSUD Aeramo • Nagekeo</span>
-        </span>
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4 print:hidden">
+        <div className="flex items-center gap-2">
+          {patientPin ? (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-900 text-xs font-bold shadow-xs">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
+              <span>PIN Akses: <strong className="font-mono">{patientPin}</strong> (1x Pakai)</span>
+            </span>
+          ) : (
+            <span className="text-xs text-slate-500 font-medium flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+              <span>Format Resmi Dokumen RSUD Aeramo • Nagekeo</span>
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -400,13 +425,37 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
         </div>
       </div>
 
+      {/* BANNER SLIDESHOW 10 GAMBAR RSUD AERAMO (TAMPILAN INTERAKTIF PASIEN) */}
+      <div className="mb-6 print:hidden">
+        <HospitalBannerSlider />
+      </div>
+
       {/* KERTAS FORMULIR RESMI DENGAN KOP SURAT (SESUAI GAMBAR 1 & GAMBAR 2) */}
-      <form onSubmit={handleSubmit} className="bg-white rounded-3xl p-5 sm:p-10 shadow-lg border border-slate-200 text-slate-900 print:shadow-none print:p-0 print:border-none">
+      <form onSubmit={handleSubmit} className="relative overflow-hidden bg-white rounded-3xl p-5 sm:p-10 shadow-lg border border-slate-200 text-slate-900 print:shadow-none print:p-0 print:border-none">
+        
+        {/* WATERMARK MAWAR ELEGAN DI TENGAH KERTAS KUESIONER (WATERMARK DOKUMEN RESMI) */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0 overflow-hidden">
+          <div className="text-rose-900/40 opacity-[0.04] sm:opacity-[0.045] print:opacity-[0.06] transform rotate-12 scale-110 sm:scale-125">
+            <RoseWatermarkIcon className="w-[500px] h-[500px] sm:w-[650px] sm:h-[650px]" opacity="opacity-100" />
+          </div>
+        </div>
+
+        {/* WATERMARK MAWAR DI SUDUT KANAN ATAS FORMULIR */}
+        <div className="absolute -top-16 -right-16 pointer-events-none select-none z-0 text-rose-800 opacity-[0.035] transform -rotate-15">
+          <RoseWatermarkIcon className="w-64 h-64 sm:w-80 sm:h-80" opacity="opacity-100" />
+        </div>
+
+        {/* WATERMARK MAWAR DI SUDUT KIRI BAWAH FORMULIR */}
+        <div className="absolute -bottom-16 -left-16 pointer-events-none select-none z-0 text-rose-800 opacity-[0.035] transform rotate-45">
+          <RoseWatermarkIcon className="w-64 h-64 sm:w-80 sm:h-80" opacity="opacity-100" />
+        </div>
+        
+        <div className="relative z-10 space-y-6 sm:space-y-8">
         
         {/* ========================================================================= */}
-        {/* KOP SURAT RESMI (PERSIS SEPERTI GAMBAR 1)                                   */}
+        {/* KOP SURAT KHUSUS CETAK FISIK (HANYA MUNCUL KETIKA PRINT)                  */}
         {/* ========================================================================= */}
-        <div className="relative pb-3 border-b-[3px] border-black">
+        <div className="hidden print:block relative pb-3 border-b-[3px] border-black">
           <div className="flex items-center justify-between gap-3 sm:gap-6">
             
             {/* Logo Kabupaten Nagekeo */}
@@ -442,16 +491,26 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
         </div>
 
         {/* ========================================================================= */}
-        {/* JUDUL DOKUMEN                                                             */}
+        {/* JUDUL DOKUMEN & IDENTITAS SURVEI                                          */}
         {/* ========================================================================= */}
-        <div className="text-center mt-6 mb-5">
-          <h2 className="text-sm sm:text-lg font-extrabold uppercase tracking-wide font-serif underline underline-offset-4 decoration-2 text-slate-950">
+        <div className="text-center mt-2 sm:mt-4 mb-6">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-900 text-xs font-bold uppercase tracking-wider mb-2.5 print:hidden">
+            <Sparkles className="w-3.5 h-3.5 text-blue-700" />
+            <span>Kuesioner Resmi Rumah Sakit</span>
+          </div>
+
+          <h2 className="text-base sm:text-xl font-extrabold uppercase tracking-wide font-serif underline underline-offset-4 decoration-2 text-slate-950 leading-snug">
             KUESIONER SURVEY KEPUASAN PASIEN
             <br />
             PELAYANAN {activeServiceOption.label.toUpperCase()}
             <br />
-            RSUD AERAMO - KABUPATEN NAGEKEO
+            <span className="text-sm sm:text-lg text-slate-800 font-bold font-sans">
+              RSUD AERAMO - KABUPATEN NAGEKEO
+            </span>
           </h2>
+          <p className="text-xs text-slate-500 mt-1.5 font-sans print:hidden">
+            Mohon berikan penilaian objektif Anda untuk peningkatan mutu pelayanan kami
+          </p>
         </div>
 
         {/* ========================================================================= */}
@@ -1169,6 +1228,8 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
               </>
             )}
           </button>
+        </div>
+
         </div>
 
       </form>

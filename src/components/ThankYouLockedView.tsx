@@ -1,17 +1,20 @@
 import React from 'react';
 import { CheckCircle2, ShieldCheck, HeartHandshake, Lock, Clock, FileCheck, Building2 } from 'lucide-react';
 import { NagekeoLogo } from './NagekeoLogo';
+import { RoseWatermarkIcon } from './RoseWatermark';
 import { HOSPITAL_HEADER_INFO } from '../surveyConfig';
 import { OneTimeSubmissionLock } from '../types';
 
 interface ThankYouLockedViewProps {
   lockInfo: OneTimeSubmissionLock | null;
   onAdminUnlockRequest?: () => void;
+  onNewPatientPinRequest?: () => void;
 }
 
 export const ThankYouLockedView: React.FC<ThankYouLockedViewProps> = ({
   lockInfo,
   onAdminUnlockRequest,
+  onNewPatientPinRequest,
 }) => {
   const formattedDate = lockInfo?.submittedAt
     ? new Date(lockInfo.submittedAt).toLocaleDateString('id-ID', {
@@ -62,7 +65,14 @@ export const ThankYouLockedView: React.FC<ThankYouLockedViewProps> = ({
         </div>
 
         {/* Isi Pesan & Konfirmasi Kunci Satu Kali Pengisian */}
-        <div className="p-6 sm:p-8 space-y-6">
+        <div className="p-6 sm:p-8 space-y-6 relative overflow-hidden">
+          
+          {/* Watermark Mawar di latar belakang tanda terima */}
+          <div className="absolute right-0 bottom-0 pointer-events-none select-none z-0 text-rose-800 opacity-[0.03] transform rotate-12 translate-x-12 translate-y-12">
+            <RoseWatermarkIcon className="w-96 h-96" opacity="opacity-100" />
+          </div>
+
+          <div className="relative z-10 space-y-6">
           
           {/* Box Ucapan Apresiasi */}
           <div className="p-4 sm:p-5 rounded-2xl bg-emerald-50/80 border border-emerald-200/90 text-emerald-950 flex items-start gap-3.5">
@@ -137,6 +147,20 @@ export const ThankYouLockedView: React.FC<ThankYouLockedViewProps> = ({
             </div>
           </div>
 
+          {/* Tombol Aksi untuk Pasien Lain dengan PIN Baru */}
+          {onNewPatientPinRequest && (
+            <div className="pt-2 text-center">
+              <button
+                type="button"
+                onClick={onNewPatientPinRequest}
+                className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-blue-800 hover:bg-blue-900 text-white font-bold text-xs shadow-md shadow-blue-900/20 transition flex items-center justify-center gap-2 mx-auto active:scale-98"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span>Isi Survei Pasien Baru dengan PIN Lain</span>
+              </button>
+            </div>
+          )}
+
           {/* Footer Card Informasi Keamanan */}
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-slate-500">
             <div className="flex items-center gap-1.5 text-emerald-700">
@@ -153,6 +177,8 @@ export const ThankYouLockedView: React.FC<ThankYouLockedViewProps> = ({
                 Akses Petugas / Reset Kiosk
               </button>
             )}
+          </div>
+
           </div>
 
         </div>

@@ -508,7 +508,7 @@ export async function consumePatientPin(params: {
     console.warn('Error consuming PIN on server:', err);
   }
 
-  // 3. Teruskan ke Google Apps Script (Tab PIN_PASIEN) jika URL dikonfigurasi
+  // 3. Update status PIN di Google Apps Script (Tab PIN_PASIEN) jika URL dikonfigurasi
   const cfg = loadAppConfig();
   if (cfg.appsScriptUrl) {
     try {

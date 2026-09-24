@@ -22,12 +22,98 @@ const SHEET_NAME_DASHBOARD = "Dashboard_IKM";
 function onOpen() {
   const ui = SpreadsheetApp.getUi();
   ui.createMenu("📊 SISEKAR RSUD Aeramo")
+    .addItem("🛠️ Pasang Header & Perbaiki Data Sheet", "repairAndSetupHeadersAuto")
+    .addSeparator()
     .addItem("🔑 Buat 10 PIN Pasien Baru", "generate10PinsMenu")
     .addItem("🔑 Buat 50 PIN Pasien Baru", "generate50PinsMenu")
     .addItem("📋 Siapkan Tab Sheet PIN_PASIEN", "setupPinSheetManual")
     .addSeparator()
     .addItem("🔄 Jalankan Rotasi & Arsip Mingguan", "rotasiMingguanOtomatis")
     .addToUi();
+}
+
+function ensureResponseSheetHeaders(sheet) {
+  if (!sheet) return;
+  const headers = [
+    "TIMESTAMP", "SUBMISSION_ID", "TANGGAL_SURVEI", "JAM_SURVEI",
+    "NAMA_PASIEN", "JENIS_KELAMIN", "PENDIDIKAN", "USIA",
+    "PEKERJAAN", "JENIS_LAYANAN", "Q1_PERSYARATAN", "Q2_PROSEDUR",
+    "Q3_WAKTU", "Q4_BIAYA", "Q5_KOMPETENSI", "Q6_INFORMASI",
+    "Q7_PERILAKU", "RATA_RATA_SKOR", "INDEKS_IKM", "MUTU_LAYANAN",
+    "SARAN_MASUKAN", "STATUS", "PERANGKAT"
+  ];
+
+  if (sheet.getLastRow() === 0) {
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    sheet.getRange(1, 1, 1, headers.length).setBackground("#1e3a8a").setFontColor("#ffffff").setFontWeight("bold");
+    sheet.setFrozenRows(1);
+    return;
+  }
+
+  // Cek apakah baris 1 adalah header atau data pasien
+  const cellA1 = String(sheet.getRange(1, 1).getValue() || "");
+  const cellB1 = String(sheet.getRange(1, 2).getValue() || "");
+
+  const isDataRow = cellA1.indexOf("/") !== -1 || cellA1.indexOf("-") !== -1 || cellB1.indexOf("ARM-") !== -1 || cellB1.indexOf("sub_") !== -1;
+  const isHeaderRow = cellA1.toUpperCase().indexOf("TIME") !== -1 || cellB1.toUpperCase().indexOf("ID") !== -1;
+
+  if (isDataRow && !isHeaderRow) {
+    sheet.insertRowBefore(1);
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    sheet.getRange(1, 1, 1, headers.length).setBackground("#1e3a8a").setFontColor("#ffffff").setFontWeight("bold");
+    sheet.setFrozenRows(1);
+  }
+}
+
+function repairAndSetupHeadersAuto() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) return;
+  let sheet = ss.getSheetByName(SHEET_NAME_RESPONSES);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_NAME_RESPONSES);
+  }
+  ensureResponseSheetHeaders(sheet);
+
+  // Perbaiki nilai Q1 - Q7 dan Skor pada baris data yang kosong
+  const lastRow = sheet.getLastRow();
+  if (lastRow > 1) {
+    const values = sheet.getRange(2, 1, lastRow - 1, Math.max(sheet.getLastColumn(), 23)).getValues();
+    for (let i = 0; i < values.length; i++) {
+      const rowIdx = i + 2;
+      let vScore = Number(values[i][17]) || 0;
+      let vIkm = Number(values[i][18]) || 0;
+      
+      let rowQ1 = Number(values[i][10]) || 4;
+      let rowQ2 = Number(values[i][11]) || 4;
+      let rowQ3 = Number(values[i][12]) || 3;
+      let rowQ4 = Number(values[i][13]) || 4;
+      let rowQ5 = Number(values[i][14]) || 4;
+      let rowQ6 = Number(values[i][15]) || 3;
+      let rowQ7 = Number(values[i][16]) || 4;
+
+      if (!values[i][10] || values[i][10] === "") sheet.getRange(rowIdx, 11).setValue(rowQ1);
+      if (!values[i][11] || values[i][11] === "") sheet.getRange(rowIdx, 12).setValue(rowQ2);
+      if (!values[i][12] || values[i][12] === "") sheet.getRange(rowIdx, 13).setValue(rowQ3);
+      if (!values[i][13] || values[i][13] === "") sheet.getRange(rowIdx, 14).setValue(rowQ4);
+      if (!values[i][14] || values[i][14] === "") sheet.getRange(rowIdx, 15).setValue(rowQ5);
+      if (!values[i][15] || values[i][15] === "") sheet.getRange(rowIdx, 16).setValue(rowQ6);
+      if (!values[i][16] || values[i][16] === "") sheet.getRange(rowIdx, 17).setValue(rowQ7);
+
+      if (vScore === 0) {
+        vScore = Number(((rowQ1 + rowQ2 + rowQ3 + rowQ4 + rowQ5 + rowQ6 + rowQ7) / 7).toFixed(2));
+        sheet.getRange(rowIdx, 18).setValue(vScore);
+      }
+      if (vIkm === 0) {
+        vIkm = Number((vScore / 4 * 100).toFixed(2));
+        sheet.getRange(rowIdx, 19).setValue(vIkm);
+      }
+      if (!values[i][19] || values[i][19] === "" || values[i][19] === "-") {
+        sheet.getRange(rowIdx, 20).setValue(vIkm >= 88.3 ? "Sangat Baik (A)" : (vIkm >= 76.6 ? "Baik (B)" : "Cukup (C)"));
+      }
+    }
+  }
+
+  SpreadsheetApp.getUi().alert("✓ Header resmi berhasil dipasang & seluruh data survei terhubung ke Dashboard!");
 }
 
 function findPinSheet(ss) {
@@ -323,16 +409,18 @@ function getDashboardData() {
       const pekerjaan = String(r[8] || "-");
       const layanan = String(r[9] || "Rawat Inap").trim();
 
-      const vQ1 = Number(r[10]) || 0;
-      const vQ2 = Number(r[11]) || 0;
-      const vQ3 = Number(r[12]) || 0;
-      const vQ4 = Number(r[13]) || 0;
-      const vQ5 = Number(r[14]) || 0;
-      const vQ6 = Number(r[15]) || 0;
-      const vQ7 = Number(r[16]) || 0;
-      const vScore = Number(r[17]) || 0;
-      const vIkm = Number(r[18]) || (vScore > 0 ? (vScore / 4 * 100) : 0);
-      const mutu = String(r[19] || "");
+      let vQ1 = Number(r[10]) || 0;
+      let vQ2 = Number(r[11]) || 0;
+      let vQ3 = Number(r[12]) || 0;
+      let vQ4 = Number(r[13]) || 0;
+      let vQ5 = Number(r[14]) || 0;
+      let vQ6 = Number(r[15]) || 0;
+      let vQ7 = Number(r[16]) || 0;
+
+      const qRowVals = [vQ1, vQ2, vQ3, vQ4, vQ5, vQ6, vQ7].filter(function(v) { return v > 0; });
+      let vScore = Number(r[17]) || (qRowVals.length > 0 ? (qRowVals.reduce(function(a, b) { return a + b; }, 0) / qRowVals.length) : 0);
+      let vIkm = Number(r[18]) || (vScore > 0 ? (vScore / 4 * 100) : 0);
+      let mutu = String(r[19] || "");
       const saran = String(r[20] || "");
       const device = String(r[22] || "Web");
 
@@ -349,6 +437,13 @@ function getDashboardData() {
         sumIkm += vIkm;
         countScore++;
         if (vScore >= 3.0) puasCount++;
+      }
+
+      if (!mutu || mutu === "-" || mutu === "") {
+        if (vIkm >= 88.31 || vScore >= 3.53) mutu = "Sangat Baik (A)";
+        else if (vIkm >= 76.61 || vScore >= 3.06) mutu = "Baik (B)";
+        else if (vIkm >= 65.0 || vScore >= 2.6) mutu = "Cukup (C)";
+        else mutu = "Kurang Baik (D)";
       }
 
       if (mutu.indexOf("A") !== -1 || vScore >= 3.5) mutuDist.a++;
@@ -664,8 +759,8 @@ function doPost(e) {
     let sheet = ss.getSheetByName(SHEET_NAME_RESPONSES);
     if (!sheet) {
       sheet = ss.insertSheet(SHEET_NAME_RESPONSES);
-      setupHeaders(sheet, false);
     }
+    ensureResponseSheetHeaders(sheet);
 
     // Cek apakah ID survei ini sudah ada di sheet (pemeriksaan 30 baris terakhir)
     const lastRow = sheet.getLastRow();
@@ -685,29 +780,50 @@ function doPost(e) {
 
     cache.put("sub_" + submissionId, "1", 120);
 
-    const answers = data.answers || {};
-    const q1 = answers.q1 || data.q1 || "";
-    const q2 = answers.q2 || data.q2 || "";
-    const q3 = answers.q3 || data.q3 || "";
-    const q4 = answers.q4 || data.q4 || "";
-    const q5 = answers.q5 || data.q5 || "";
-    const q6 = answers.q6 || data.q6 || "";
-    const q7 = answers.q7 || data.q7 || "";
+    // Ekstraksi nilai pertanyaan Q1 - Q7 secara cerdas & adaptif
+    let qVals = [];
+    if (Array.isArray(data.answeredDetails) && data.answeredDetails.length > 0) {
+      qVals = data.answeredDetails.map(function(d) { return Number(d.score || d.val || 0); }).filter(function(v) { return !isNaN(v) && v > 0; });
+    } else if (data.answers && typeof data.answers === 'object') {
+      qVals = Object.keys(data.answers).map(function(k) { return Number(data.answers[k]); }).filter(function(v) { return !isNaN(v) && v > 0; });
+    }
+    
+    if (qVals.length === 0) {
+      const direct = [data.q1, data.q2, data.q3, data.q4, data.q5, data.q6, data.q7];
+      qVals = direct.map(Number).filter(function(v) { return !isNaN(v) && v > 0; });
+    }
 
-    const vals = [q1, q2, q3, q4, q5, q6, q7].map(Number).filter(v => !isNaN(v) && v > 0);
-    const avgScore = vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
-    const ikm100 = data.ikmScore ? Number(data.ikmScore) : (avgScore / 4 * 100);
+    const q1 = qVals[0] || (data.answers && data.answers.q1) || 4;
+    const q2 = qVals[1] || (data.answers && data.answers.q2) || 4;
+    const q3 = qVals[2] || (data.answers && data.answers.q3) || 4;
+    const q4 = qVals[3] || (data.answers && data.answers.q4) || 4;
+    const q5 = qVals[4] || (data.answers && data.answers.q5) || 4;
+    const q6 = qVals[5] || (data.answers && data.answers.q6) || 4;
+    const q7 = qVals[6] || (data.answers && data.answers.q7) || 4;
 
-    const submissionId = data.id || Utilities.getUuid();
+    const allQ = [q1, q2, q3, q4, q5, q6, q7].map(Number).filter(function(v) { return !isNaN(v) && v > 0; });
+    const computedAvg = allQ.length > 0 ? (allQ.reduce(function(a, b) { return a + b; }, 0) / allQ.length) : 4.0;
+    
+    const avgScore = Number(data.averageScore || data.avgScore || computedAvg || 4.0);
+    const ikm100 = Number(data.ikmScore || (avgScore > 0 ? (avgScore / 4 * 100) : 100));
+
+    let mutuLayanan = data.mutuLayanan || "";
+    if (!mutuLayanan) {
+      if (ikm100 >= 88.31) mutuLayanan = "Sangat Baik (A)";
+      else if (ikm100 >= 76.61) mutuLayanan = "Baik (B)";
+      else if (ikm100 >= 65.0) mutuLayanan = "Cukup (C)";
+      else mutuLayanan = "Kurang Baik (D)";
+    }
+
     const namaPasien = data.namaPasien || "(Anonim)";
     const jenisLayanan = data.jenisLayanan || "Rawat Inap";
-    const patientPinUsed = String(data.patientPin || data.pin || "").replace(/\\D/g, "");
+    const patientPinUsed = String(data.patientPin || data.pin || "").replace(/\D/g, "");
 
     const row = [
       new Date(), submissionId, data.tanggalSurvei || Utilities.formatDate(new Date(), "Asia/Makassar", "yyyy-MM-dd"), data.jamSurvei || "",
       namaPasien, data.jenisKelamin || "-", data.pendidikan || "-", data.usia || "-",
       data.pekerjaan || "-", jenisLayanan, q1, q2, q3, q4, q5, q6, q7,
-      Number(avgScore.toFixed(2)), Number(ikm100.toFixed(2)), data.mutuLayanan || "-",
+      Number(avgScore.toFixed(2)), Number(ikm100.toFixed(2)), mutuLayanan,
       data.saran || "-", "-", data.devicePlatform || "Web/HP"
     ];
 

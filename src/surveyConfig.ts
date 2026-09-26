@@ -412,73 +412,73 @@ export const SERVICE_QUESTIONS: Record<ServiceKey, QuestionSection[]> = {
     {
       id: 'ri_bagian_1',
       title: 'Bagian 1 : Kenyamanan, Kualitas, Keramahan, Kerapihan NAKES dan Fasilitas Kamar Rawat Inap',
-      description: 'Penilaian terhadap fasilitas, kebersihan, dan kenyamanan kamar rawat inap (Untuk Saat Ini hanya disediakan Survey Kepuasan RAWAT JALAN)',
+      description: 'Penilaian terhadap fasilitas, kebersihan, dan kenyamanan kamar rawat inap',
       questions: [
         {
           id: 'ri_q1_keterpenuhan_pelayanan',
           aspek: 'Aspek Keterpenuhan Pelayanan Pasien Rawat Inap',
           uraian: 'Menurut Bapak/Ibu, apakah persyaratan untuk mendapatkan pelayanan di Rumah Sakit ini mudah dipenuhi dan sesuai dengan pelayanan yang dibutuhkan?',
-          targetPoint: 'q2',
+          targetPoint: 'q1', // -> Masuk ke Q1 (Persyaratan Pelayanan)
           options: OPSI_KESESUAIAN,
         },
         {
           id: 'ri_q2_kemudahan_prosedur',
           aspek: 'Aspek Kemudahan Akses dan Prosedur',
           uraian: 'Menurut Bapak/Ibu, apakah prosedur untuk mendapatkan pelayanan di ruangan/unit ini mudah dipahami dan dilakukan?',
-          targetPoint: 'q1',
+          targetPoint: 'q2', // -> Masuk ke Q2 (Kemudahan Prosedur)
           options: OPSI_KEMUDAHAN,
         },
         {
           id: 'ri_q3_kecepatan_pelayanan',
           aspek: 'Aspek Kecepatan Pelayanan',
           uraian: 'Menurut Bapak/Ibu, apakah pelayanan yang diberikan kepada pasien dilakukan dengan cepat?',
-          targetPoint: 'q3',
+          targetPoint: 'q3', // -> Masuk ke Q3 (Kecepatan Pelayanan)
           options: OPSI_KECEPATAN,
         },
         {
           id: 'ri_q4_kewajaran_biaya',
           aspek: 'Aspek Biaya',
           uraian: 'Menurut Bapak/Ibu, apakah biaya yang harus dibayar untuk mendapatkan pelayanan di Rumah Sakit ini sudah sesuai dan wajar?',
-          targetPoint: 'q4',
+          targetPoint: 'q4', // -> Masuk ke Q4 (Kewajaran Biaya / Tarif)
           options: OPSI_BIAYA_TARIF,
         },
         {
           id: 'ri_q5_Kemampuan_pengetahuan',
           aspek: 'Aspek Kualitas NAKES',
           uraian: 'Menurut Bapak/Ibu, apakah petugas memiliki kemampuan dan pengetahuan yang baik dalam memberikan pelayanan kepada pasien?',
-          targetPoint: 'q5',
+          targetPoint: 'q5', // -> Masuk ke Q5 (Kompetensi / Kualitas NAKES)
           options: OPSI_KUALITAS_BAIK,
         },
         {
           id: 'ri_q6_informasi_media',
-          aspek: 'Aspek Pelayanan informasi',
+          aspek: 'Aspek Pelayanan Informasi',
           uraian: 'Menurut Bapak/Ibu, apakah petugas menjelaskan kondisi pasien dengan jelas dan mudah dipahami?',
-          targetPoint: 'q6',
+          targetPoint: 'q6', // -> Masuk ke Q6 (Pelayanan Informasi Medis)
           options: OPSI_KUALITAS_BAIK,
         },
         {
           id: 'ri_q7_keramahan_kerapihan',
           aspek: 'Aspek Keramahan Pelayanan dan Kerapihan',
           uraian: 'Menurut Bapak/Ibu, apakah petugas melayani pasien dengan sopan, ramah, dan berpenampilan rapi?',
+          targetPoint: 'q7', // -> Masuk ke Q7 (Perilaku & Keramahan Petugas)
           options: OPSI_KESOPANAN_KERAMAHAN,
         },
         {
           id: 'ri_q8_fasilitas_sarana',
           aspek: 'Aspek Fasilitas Sarana/Prasarana',
           uraian: 'Menurut Bapak/Ibu, apakah fasilitas dan perlengkapan yang tersedia di Rumah Sakit ini cukup baik dan dapat digunakan dengan baik?',
-          targetPoint: 'q7',
+          targetPoint: 'q1', // -> Dirata-ratakan bersama Q1 (Kualitas Fasilitas & Persyaratan Layanan)
           options: OPSI_SARANA_PRASARANA,
         },
         {
           id: 'ri_q9_pelayanan_pengaduan',
           aspek: 'Aspek Keluhan dan Pengaduan Pelayanan',
           uraian: 'Menurut Bapak/Ibu, apakah Rumah Sakit menyediakan tempat atau cara untuk menyampaikan keluhan, dan apakah keluhan tersebut ditanggapi dengan baik?',
-          targetPoint: 'q6',
+          targetPoint: 'q6', // -> Dirata-ratakan bersama Q6 (Layanan Informasi & Respons Pengaduan)
           options: OPSI_PENANGANAN_PENGADUAN,
         },
       ],
     },
-    
   ],
 
   // 2. POLIKLINIK RAWAT JALAN

@@ -258,15 +258,19 @@ export async function validatePatientPin(pin: string): Promise<{
 
     const data = await res.json();
     if (res.ok && data.valid) {
-      const token: PatientPinToken = data.token || {
-        id: 'pin_' + cleanPin,
+      const regName = data.registeredPatientName || data.patientName || data.token?.registeredPatientName || data.token?.patientName || '';
+      const regSvc = data.registeredService || data.service || data.token?.registeredService || data.token?.service || 'Rawat Inap';
+      const regRoom = data.registeredRoom || data.room || data.token?.registeredRoom || data.token?.room || '';
+
+      const token: PatientPinToken = {
+        id: data.token?.id || ('pin_' + cleanPin),
         pin: cleanPin,
         status: 'active',
-        registeredPatientName: data.registeredPatientName,
-        registeredService: data.registeredService,
-        registeredRoom: data.registeredRoom,
-        createdAt: data.createdAt || new Date().toISOString(),
-        label: data.label
+        registeredPatientName: regName || undefined,
+        registeredService: regSvc || undefined,
+        registeredRoom: regRoom || undefined,
+        createdAt: data.token?.createdAt || data.createdAt || new Date().toISOString(),
+        label: data.token?.label || data.label || (regName ? `Pasien: ${regName}` : undefined),
       };
       return {
         valid: true,
@@ -296,15 +300,19 @@ export async function validatePatientPin(pin: string): Promise<{
         const directData = await directRes.json();
         if (directData && typeof directData.valid === 'boolean') {
           if (directData.valid) {
-            const token: PatientPinToken = directData.token || {
-              id: 'pin_' + cleanPin,
+            const regName = directData.registeredPatientName || directData.patientName || directData.token?.registeredPatientName || directData.token?.patientName || '';
+            const regSvc = directData.registeredService || directData.service || directData.token?.registeredService || directData.token?.service || 'Rawat Inap';
+            const regRoom = directData.registeredRoom || directData.room || directData.token?.registeredRoom || directData.token?.room || '';
+
+            const token: PatientPinToken = {
+              id: directData.token?.id || ('pin_' + cleanPin),
               pin: cleanPin,
               status: 'active',
-              registeredPatientName: directData.registeredPatientName,
-              registeredService: directData.registeredService,
-              registeredRoom: directData.registeredRoom,
-              createdAt: directData.createdAt || new Date().toISOString(),
-              label: directData.label
+              registeredPatientName: regName || undefined,
+              registeredService: regSvc || undefined,
+              registeredRoom: regRoom || undefined,
+              createdAt: directData.token?.createdAt || directData.createdAt || new Date().toISOString(),
+              label: directData.token?.label || directData.label || (regName ? `Pasien: ${regName}` : undefined),
             };
             return {
               valid: true,

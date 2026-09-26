@@ -124,6 +124,7 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
   const [tanggalSurvei, setTanggalSurvei] = useState<string>(todayStr);
   const [jamSurvei, setJamSurvei] = useState<JamSurvei>('08.00 – 14.00 WITA');
   const [namaPasien, setNamaPasien] = useState<string>(patientPinToken?.registeredPatientName || '');
+  const [ruangan, setRuangan] = useState<string>(patientPinToken?.registeredRoom || '');
   const [jenisKelamin, setJenisKelamin] = useState<JenisKelamin>('L');
   const [pendidikan, setPendidikan] = useState<Pendidikan>('SMA');
   const [usia, setUsia] = useState<string>('32');
@@ -145,6 +146,9 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
     if (patientPinToken) {
       if (patientPinToken.registeredPatientName) {
         setNamaPasien(patientPinToken.registeredPatientName);
+      }
+      if (patientPinToken.registeredRoom) {
+        setRuangan(patientPinToken.registeredRoom);
       }
       if (patientPinToken.registeredService) {
         const matchedKey = mapServiceTextToKey(patientPinToken.registeredService);
@@ -403,6 +407,7 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
       pekerjaan,
       pekerjaanLainnya: pekerjaan === 'LAINNYA' ? pekerjaanLainnya : undefined,
       jenisLayanan,
+      ruangan: ruangan.trim() || undefined,
       answers,
       answeredDetails,
       q1,
@@ -711,14 +716,52 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
 
           {/* Nama Pasien (Opsional) */}
           <div className="grid grid-cols-1 sm:grid-cols-3 items-center gap-2 pt-2 border-t border-slate-200/60">
-            <span className="font-bold text-slate-800">Nama Pasien (Opsional) :</span>
-            <div className="sm:col-span-2">
+            <div className="flex flex-col">
+              <span className="font-bold text-slate-800">Nama Pasien :</span>
+              {patientPinToken?.registeredPatientName && (
+                <span className="text-[10px] font-bold text-emerald-700 flex items-center gap-1 mt-0.5">
+                  <CheckCircle2 className="w-3 h-3" />
+                  <span>Terverifikasi dari PIN</span>
+                </span>
+              )}
+            </div>
+            <div className="sm:col-span-2 space-y-1">
               <input
                 type="text"
                 placeholder="Boleh dikosongkan jika ingin anonim..."
                 value={namaPasien}
                 onChange={e => setNamaPasien(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl border border-slate-300 bg-white text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 placeholder:text-slate-400"
+                className={`w-full px-3.5 py-2 rounded-xl border text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 placeholder:text-slate-400 ${
+                  patientPinToken?.registeredPatientName
+                    ? 'bg-emerald-50/50 border-emerald-300 font-semibold text-emerald-950'
+                    : 'border-slate-300 bg-white'
+                }`}
+              />
+            </div>
+          </div>
+
+          {/* Kamar / Ruangan Pasien (Otomatis dari PIN) */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 items-center gap-2 pt-2 border-t border-slate-200/60">
+            <div className="flex flex-col">
+              <span className="font-bold text-slate-800">Kamar / Ruangan :</span>
+              {patientPinToken?.registeredRoom && (
+                <span className="text-[10px] font-bold text-emerald-700 flex items-center gap-1 mt-0.5">
+                  <CheckCircle2 className="w-3 h-3" />
+                  <span>Terverifikasi dari PIN</span>
+                </span>
+              )}
+            </div>
+            <div className="sm:col-span-2 space-y-1">
+              <input
+                type="text"
+                placeholder="Contoh: Kamar Mawar 102, Poli Penyakit Dalam, dll..."
+                value={ruangan}
+                onChange={e => setRuangan(e.target.value)}
+                className={`w-full px-3.5 py-2 rounded-xl border text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 placeholder:text-slate-400 ${
+                  patientPinToken?.registeredRoom
+                    ? 'bg-emerald-50/50 border-emerald-300 font-semibold text-emerald-950'
+                    : 'border-slate-300 bg-white'
+                }`}
               />
             </div>
           </div>

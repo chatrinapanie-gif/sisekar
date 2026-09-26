@@ -61,6 +61,7 @@ export interface SurveySubmission {
   pekerjaan: Pekerjaan;
   pekerjaanLainnya?: string;
   jenisLayanan: string; // misal: Rawat Inap, Rawat Jalan, Farmasi, dll.
+  ruangan?: string; // misal: Kamar Mawar 102, Poli Dalam, Bed 03
   
   // Jawaban Aspek Survei:
   answers: Record<string, SkalaKepuasan>; // map question id -> skala (1..4)

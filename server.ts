@@ -838,6 +838,10 @@ app.post('/api/patient-pins/validate', async (req: Request, res: Response) => {
         }
 
         if (sheetData && typeof sheetData.valid === 'boolean') {
+          const regName = sheetData.registeredPatientName || sheetData.patientName || sheetData.token?.registeredPatientName || sheetData.token?.patientName || '';
+          const regSvc = sheetData.registeredService || sheetData.service || sheetData.token?.registeredService || sheetData.token?.service || 'Rawat Inap';
+          const regRoom = sheetData.registeredRoom || sheetData.room || sheetData.token?.registeredRoom || sheetData.token?.room || '';
+
           const existing = loadPatientPins();
           const idx = existing.findIndex(p => p.pin === cleanPin);
           if (sheetData.valid && sheetData.status === 'active') {
@@ -847,16 +851,16 @@ app.post('/api/patient-pins/validate', async (req: Request, res: Response) => {
                 pin: cleanPin,
                 status: 'active',
                 createdAt: sheetData.createdAt || new Date().toISOString(),
-                registeredPatientName: sheetData.registeredPatientName || sheetData.token?.registeredPatientName,
-                registeredService: sheetData.registeredService || sheetData.token?.registeredService,
-                registeredRoom: sheetData.registeredRoom || sheetData.token?.registeredRoom,
-                label: sheetData.label || 'Dari Google Sheet'
+                registeredPatientName: regName || undefined,
+                registeredService: regSvc || undefined,
+                registeredRoom: regRoom || undefined,
+                label: sheetData.label || (regName ? `Pasien: ${regName}` : 'Dari Google Sheet')
               });
               savePatientPins(existing);
             } else {
-              if (sheetData.registeredPatientName) existing[idx].registeredPatientName = sheetData.registeredPatientName;
-              if (sheetData.registeredService) existing[idx].registeredService = sheetData.registeredService;
-              if (sheetData.registeredRoom) existing[idx].registeredRoom = sheetData.registeredRoom;
+              if (regName) existing[idx].registeredPatientName = regName;
+              if (regSvc) existing[idx].registeredService = regSvc;
+              if (regRoom) existing[idx].registeredRoom = regRoom;
               savePatientPins(existing);
             }
           } else if (sheetData.status === 'used' && idx !== -1) {
@@ -868,7 +872,23 @@ app.post('/api/patient-pins/validate', async (req: Request, res: Response) => {
           if (!sheetData.valid) {
             return res.status(sheetData.status === 'not_found' ? 404 : 403).json(sheetData);
           }
-          return res.json(sheetData);
+          
+          return res.json({
+            ...sheetData,
+            registeredPatientName: regName || undefined,
+            registeredService: regSvc || undefined,
+            registeredRoom: regRoom || undefined,
+            token: {
+              id: 'pin_' + cleanPin,
+              pin: cleanPin,
+              status: 'active',
+              registeredPatientName: regName || undefined,
+              registeredService: regSvc || undefined,
+              registeredRoom: regRoom || undefined,
+              createdAt: sheetData.createdAt || new Date().toISOString(),
+              label: sheetData.label || (regName ? `Pasien: ${regName}` : undefined),
+            }
+          });
         }
       }
     } catch (err) {

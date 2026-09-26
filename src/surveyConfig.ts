@@ -11,7 +11,7 @@ import { QuestionSection } from './types';
  */
 export const ADMIN_CONFIG = {
   // Masukkan URL Google Apps Script Web App Anda di sini (atau biarkan kosong untuk diisi via Portal Petugas Terproteksi):
-  appsScriptUrl: 'https://script.google.com/macros/s/AKfycbx5IPyL_DxUjxyf1ebihl5mkhRdOFi4MlZps-uwwSJy7IzKdRkYITszNVAIY4Ae2KmGwQ/exec', // Web App RSUD Aeramo
+  appsScriptUrl: 'https://script.google.com/macros/s/AKfycbx1D4bKq6D2c1ICYIwSKtYlFDd05VXH28iZ4vQ896rAAHJPhrVU4rnYH3XOd1l38iB36g/exec', // Web App RSUD Aeramo
   
   /**
    * PENGATURAN LOGO RESMI:

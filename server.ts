@@ -619,7 +619,7 @@ app.post('/api/survey/submit', async (req: Request, res: Response) => {
 
     // Teruskan secara rahasia dari Server -> Google Apps Script TEPAT 1 KALI
     // Browser pasien TIDAK BISA melihat URL Google Apps Script ini
-    await fetch(targetUrl, {
+    const appsScriptRes = await fetch(targetUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'text/plain;charset=utf-8',
@@ -628,17 +628,29 @@ app.post('/api/survey/submit', async (req: Request, res: Response) => {
       redirect: 'follow',
     });
 
+    const appsScriptData = await appsScriptRes.json().catch(() => null);
+
+    if (appsScriptData && appsScriptData.status === 'error') {
+      console.error('[Security Proxy] Apps Script returned error:', appsScriptData.message);
+      return res.status(500).json({
+        success: false,
+        error: appsScriptData.message,
+        message: 'Google Apps Script melaporkan kendala: ' + appsScriptData.message,
+      });
+    }
+
     return res.json({
       success: true,
       mode: 'online',
-      message: 'Terima kasih! Survei kepuasan Anda berhasil diverifikasi dan dicatat ke Google Sheets RSUD Aeramo.',
+      message: (appsScriptData && appsScriptData.message) || 'Terima kasih! Survei kepuasan Anda berhasil diverifikasi dan dicatat ke Google Sheets RSUD Aeramo.',
+      surveyId: (appsScriptData && appsScriptData.surveyId) || sanitizedSubmission.id,
     });
   } catch (error: any) {
     console.warn('[Security Proxy] Forwarding error to Apps Script:', error?.message);
-    return res.json({
-      success: true,
+    return res.status(500).json({
+      success: false,
       mode: 'offline_saved',
-      message: 'Jaringan eksternal terganggu. Data berhasil diamankan dan akan disinkronkan kembali.',
+      message: 'Jaringan eksternal terganggu: ' + (error?.message || 'Gagal menghubungi Google Apps Script'),
     });
   }
 });

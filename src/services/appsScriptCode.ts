@@ -808,12 +808,37 @@ function doPost(e) {
       })).setMimeType(ContentService.MimeType.JSON);
     }
 
-    // Simpan Respon Survei ke Sheet
-    let sheet = ss.getSheetByName(SHEET_NAME_RESPONSES);
+    // Simpan Respon Survei ke Sheet (Resilient & Self-Contained)
+    var respSheetName = (typeof SHEET_NAME_RESPONSES !== 'undefined' && SHEET_NAME_RESPONSES) ? SHEET_NAME_RESPONSES : "DATA_SURVEI";
+    var sheet = ss.getSheetByName(respSheetName) || 
+                ss.getSheetByName("DATA_SURVEI") || 
+                ss.getSheetByName("Respon Survei") || 
+                ss.getSheetByName("Form Responses 1") ||
+                ss.getSheets()[0];
     if (!sheet) {
-      sheet = ss.insertSheet(SHEET_NAME_RESPONSES);
+      sheet = ss.insertSheet(respSheetName);
     }
-    ensureResponseSheetHeaders(sheet);
+
+    // Inisialisasi header secara mandiri dan aman tanpa crash
+    if (typeof ensureResponseSheetHeaders === 'function') {
+      try { ensureResponseSheetHeaders(sheet); } catch(e) {}
+    } else {
+      if (sheet.getLastRow() === 0) {
+        var defaultHeaders = [
+          "TIMESTAMP", "SUBMISSION_ID", "TANGGAL_SURVEI", "JAM_SURVEI",
+          "NAMA_PASIEN", "JENIS_KELAMIN", "PENDIDIKAN", "USIA",
+          "PEKERJAAN", "JENIS_LAYANAN", "Q1_PERSYARATAN", "Q2_PROSEDUR",
+          "Q3_WAKTU", "Q4_BIAYA", "Q5_KOMPETENSI", "Q6_INFORMASI",
+          "Q7_PERILAKU", "RATA_RATA_SKOR", "INDEKS_IKM", "MUTU_LAYANAN",
+          "SARAN_MASUKAN", "STATUS", "PERANGKAT"
+        ];
+        sheet.getRange(1, 1, 1, defaultHeaders.length).setValues([defaultHeaders]);
+        try {
+          sheet.getRange(1, 1, 1, defaultHeaders.length).setBackground("#1e3a8a").setFontColor("#ffffff").setFontWeight("bold");
+          sheet.setFrozenRows(1);
+        } catch(e) {}
+      }
+    }
 
     // 3. Cek apakah ID survei ini sudah ada di sheet (pemeriksaan 60 baris terakhir)
     const lastRow = sheet.getLastRow();
@@ -889,7 +914,13 @@ function doPost(e) {
 
     // Otomatis NON-AKTIFKAN PIN jika menggunakan PIN
     if (patientPinUsed) {
-      const pinSheet = findPinSheet(ss);
+      var pinSheet = null;
+      if (typeof findPinSheet === 'function') {
+        try { pinSheet = findPinSheet(ss); } catch(e) {}
+      }
+      if (!pinSheet) {
+        pinSheet = ss.getSheetByName("PIN_PASIEN") || ss.getSheetByName("DATA_PIN") || ss.getSheetByName("PIN");
+      }
       if (pinSheet) {
         const nowStr = Utilities.formatDate(new Date(), "Asia/Makassar", "yyyy-MM-dd HH:mm:ss 'WITA'");
         let pinFound = false;

@@ -809,8 +809,8 @@ export async function sendSurveyToGoogleSheet(
       // Proxy server tidak tersedia (misal di static CDN tanpa backend Node)
     }
 
-    // Jika proxy berhasil mengirim atau server proxy merespons, SELESAI. JANGAN mengirim lagi via direct fetch!
-    if (proxySucceeded || proxyAttempted) {
+    // Jika proxy berhasil mengirim, SELESAI. JANGAN mengirim lagi via direct fetch!
+    if (proxySucceeded) {
       const syncedItem: SurveySubmission = {
         ...sanitizedSubmission,
         status: 'synced',

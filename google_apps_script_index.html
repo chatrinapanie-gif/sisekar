@@ -1233,18 +1233,64 @@
 
     // Ambil Data Dashboard dari Google Apps Script
     function loadDashboardData() {
+      var isLoaded = false;
+      var failsafeTimer = setTimeout(function() {
+        if (!isLoaded) {
+          isLoaded = true;
+          // Failsafe agar tampilan tidak stuck loading jika koneksi sheet lambat
+          renderDashboard({
+            totalResponden: 0,
+            avgIkm: 0,
+            avgScore: 0,
+            mutuPelayanan: "Belum Ada Responden",
+            kepuasanRate: 0,
+            unsurScores: { q1: 0, q2: 0, q3: 0, q4: 0, q5: 0, q6: 0, q7: 0 },
+            mutuDist: { a: 0, b: 0, c: 0, d: 0 },
+            recentResponses: []
+          });
+        }
+      }, 4000);
+
       if (typeof google !== 'undefined' && google.script && google.script.run) {
         google.script.run
           .withSuccessHandler(function(data) {
+            clearTimeout(failsafeTimer);
+            isLoaded = true;
             renderDashboard(data);
           })
           .withFailureHandler(function(err) {
+            clearTimeout(failsafeTimer);
+            isLoaded = true;
             showToast("Gagal memuat dashboard: " + err, true);
+            renderDashboard({
+              totalResponden: 0,
+              avgIkm: 0,
+              avgScore: 0,
+              mutuPelayanan: "Belum Ada Responden",
+              kepuasanRate: 0,
+              unsurScores: { q1: 0, q2: 0, q3: 0, q4: 0, q5: 0, q6: 0, q7: 0 },
+              mutuDist: { a: 0, b: 0, c: 0, d: 0 },
+              recentResponses: []
+            });
           })
           .getDashboardData();
       } else {
-        // Mock fallback jika dibuka via preview biasa
-        fetch('/api/health').catch(function(){});
+        clearTimeout(failsafeTimer);
+        fetch('?action=get_dashboard')
+          .then(function(res) { return res.json(); })
+          .then(function(data) { renderDashboard(data); })
+          .catch(function() {
+            renderDashboard({
+              totalResponden: 0,
+              avgIkm: 0,
+              avgScore: 0,
+              mutuPelayanan: "Belum Ada Responden",
+              kepuasanRate: 0,
+              unsurScores: { q1: 0, q2: 0, q3: 0, q4: 0, q5: 0, q6: 0, q7: 0 },
+              mutuDist: { a: 0, b: 0, c: 0, d: 0 },
+              recentResponses: []
+            });
+          });
       }
     }
 
@@ -1297,8 +1343,12 @@
         chartDonut.update();
       }
 
-      // Update Bar Layanan
+      // Update Bar Layanan (Mendukung layananDist & unitBreakdown)
       var lay = data.layananDist || {};
+      if ((!lay || Object.keys(lay).length === 0) && Array.isArray(data.unitBreakdown)) {
+        lay = {};
+        data.unitBreakdown.forEach(function(ub) { lay[ub.unit] = ub.respondents; });
+      }
       var layKeys = Object.keys(lay);
       if (layKeys.length > 0 && chartBar) {
         chartBar.data.labels = layKeys;

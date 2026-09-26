@@ -508,24 +508,9 @@ export async function consumePatientPin(params: {
     console.warn('Error consuming PIN on server:', err);
   }
 
-  // 3. Update status PIN di Google Apps Script (Tab PIN_PASIEN) jika URL dikonfigurasi
-  const cfg = loadAppConfig();
-  if (cfg.appsScriptUrl) {
-    try {
-      fetch(cfg.appsScriptUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          action: 'consume_pin',
-          pin: cleanPin,
-          submissionId: params.submissionId,
-          namaPasien: params.namaPasien,
-          jenisLayanan: params.jenisLayanan,
-          ikmScore: params.ikmScore,
-        }),
-      }).catch(() => {});
-    } catch {}
-  }
+  // Catatan: Pembaruan status PIN di Google Apps Script (Tab PIN_PASIEN) dijalankan
+  // secara otomatis dan bersamaan saat submit survei dikirim, sehingga TIDAK PERLU
+  // mengirimkan request HTTP terpisah yang menyebabkan data ganda.
 
   return true;
 }
@@ -747,130 +732,160 @@ export function removeFromPendingQueue(id: string): void {
   }
 }
 
+// Set deduplikasi pengiriman aktif untuk mencegah pengiriman ganda pada waktu yang sama
+const activeSubmissionInFlight = new Set<string>();
+
 /**
- * Kirim data survei ke Google Apps Script Web App dengan proteksi keamanan siber
+ * Kirim data survei ke Google Apps Script Web App dengan proteksi ketat anti-data ganda
  */
 export async function sendSurveyToGoogleSheet(
   submission: SurveySubmission,
   scriptUrl: string
 ): Promise<{ success: boolean; mode: 'online' | 'offline_saved'; message: string }> {
-  // 1. Sanitasi seluruh input pasien (Anti-XSS & Anti-Spreadsheet Injection)
-  const sanitizedSubmission: SurveySubmission = {
-    ...submission,
-    namaPasien: sanitizeInput(submission.namaPasien || ''),
-    pekerjaanLainnya: sanitizeInput(submission.pekerjaanLainnya || ''),
-    jenisLayanan: sanitizeInput(submission.jenisLayanan || ''),
-    saran: sanitizeInput(submission.saran || ''),
-  };
-
-  // 2. Jika offline di browser
-  if (typeof navigator !== 'undefined' && !navigator.onLine) {
-    const offlineItem: SurveySubmission = {
-      ...sanitizedSubmission,
-      status: 'pending',
-      errorMessage: 'Perangkat offline (tidak ada sinyal internet).',
-    };
-    saveSubmissionLocally(offlineItem);
-    addToPendingQueue(offlineItem);
-    return {
-      success: true,
-      mode: 'offline_saved',
-      message: 'Sedang offline. Data tersimpan aman di antrean perangkat dan otomatis terkirim saat online kembali.',
-    };
-  }
-
-  // 3. Coba kirim via Security Proxy Server (/api/survey/submit) agar URL asli tidak terlihat di devtools
-  try {
-    const proxyRes = await fetch('/api/survey/submit', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        ...sanitizedSubmission,
-        scriptUrl: scriptUrl?.trim() || '',
-      }),
-    });
-
-    if (proxyRes.ok) {
-      const resJson = await proxyRes.json();
-      if (resJson.success) {
-        const syncedItem: SurveySubmission = {
-          ...sanitizedSubmission,
-          status: 'synced',
-          syncedAt: new Date().toISOString(),
-          errorMessage: undefined,
-        };
-        saveSubmissionLocally(syncedItem);
-        removeFromPendingQueue(sanitizedSubmission.id);
-
-        return {
-          success: true,
-          mode: 'online',
-          message: resJson.message || 'Survei kepuasan Anda berhasil dicatat dan diamankan.',
-        };
-      }
-    }
-  } catch (proxyErr) {
-    console.info('Proxy server unreachable, attempting direct fallback...');
-  }
-
-  // 4. Fallback jika proxy server tidak merespons (misal static PWA)
-  if (!scriptUrl || scriptUrl.trim() === '') {
-    const localItem: SurveySubmission = {
-      ...sanitizedSubmission,
-      status: 'pending',
-      errorMessage: 'URL Google Apps Script belum dikonfigurasi.',
-    };
-    saveSubmissionLocally(localItem);
-    addToPendingQueue(localItem);
-    return {
-      success: true,
-      mode: 'offline_saved',
-      message: 'Survei tersimpan aman di memori perangkat lokal RSUD Aeramo.',
-    };
-  }
-
-  try {
-    const cleanUrl = scriptUrl.trim();
-    await fetch(cleanUrl, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: {
-        'Content-Type': 'text/plain;charset=utf-8',
-      },
-      body: JSON.stringify(sanitizedSubmission),
-    });
-
-    const syncedItem: SurveySubmission = {
-      ...sanitizedSubmission,
-      status: 'synced',
-      syncedAt: new Date().toISOString(),
-      errorMessage: undefined,
-    };
-    saveSubmissionLocally(syncedItem);
-    removeFromPendingQueue(sanitizedSubmission.id);
-
+  // Cegah pengiriman ganda jika ID survei ini sedang dalam proses kirim
+  if (activeSubmissionInFlight.has(submission.id)) {
+    console.warn('[SISEKAR] Pengiriman ID ' + submission.id + ' sedang berlangsung. Permintaan duplikat dicegah.');
     return {
       success: true,
       mode: 'online',
-      message: 'Terima kasih! Survei kepuasan Anda berhasil dicatat ke Google Sheet RSUD Aeramo.',
+      message: 'Survei Anda telah berhasil dikirim dan diamankan.',
     };
-  } catch (error) {
-    console.warn('Network error, saving to pending queue:', error);
-    const failedItem: SurveySubmission = {
-      ...sanitizedSubmission,
-      status: 'pending',
-      errorMessage: error instanceof Error ? error.message : 'Gagal mengirim ke Google Apps Script',
-    };
-    saveSubmissionLocally(failedItem);
-    addToPendingQueue(failedItem);
+  }
+  activeSubmissionInFlight.add(submission.id);
 
-    return {
-      success: true,
-      mode: 'offline_saved',
-      message: 'Jaringan terganggu. Data berhasil diamankan di penyimpanan lokal dan siap dikirim ulang.',
+  try {
+    // 1. Sanitasi seluruh input pasien (Anti-XSS & Anti-Spreadsheet Injection)
+    const sanitizedSubmission: SurveySubmission = {
+      ...submission,
+      namaPasien: sanitizeInput(submission.namaPasien || ''),
+      pekerjaanLainnya: sanitizeInput(submission.pekerjaanLainnya || ''),
+      jenisLayanan: sanitizeInput(submission.jenisLayanan || ''),
+      saran: sanitizeInput(submission.saran || ''),
     };
+
+    // 2. Jika offline di browser
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      const offlineItem: SurveySubmission = {
+        ...sanitizedSubmission,
+        status: 'pending',
+        errorMessage: 'Perangkat offline (tidak ada sinyal internet).',
+      };
+      saveSubmissionLocally(offlineItem);
+      addToPendingQueue(offlineItem);
+      return {
+        success: true,
+        mode: 'offline_saved',
+        message: 'Sedang offline. Data tersimpan aman di antrean perangkat dan otomatis terkirim saat online kembali.',
+      };
+    }
+
+    // 3. Kirim via Security Proxy Server (/api/survey/submit)
+    let proxySucceeded = false;
+    let proxyMessage = '';
+
+    try {
+      const proxyRes = await fetch('/api/survey/submit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...sanitizedSubmission,
+          scriptUrl: scriptUrl?.trim() || '',
+        }),
+      });
+
+      if (proxyRes.ok) {
+        const resJson = await proxyRes.json().catch(() => null);
+        if (resJson && resJson.success) {
+          proxySucceeded = true;
+          proxyMessage = resJson.message || 'Survei kepuasan Anda berhasil dicatat dan diamankan.';
+        }
+      }
+    } catch {
+      // Proxy server tidak tersedia (misal di static CDN tanpa backend Node)
+    }
+
+    // Jika proxy berhasil mengirim, SELESAI. JANGAN mengirim lagi via direct fetch!
+    if (proxySucceeded) {
+      const syncedItem: SurveySubmission = {
+        ...sanitizedSubmission,
+        status: 'synced',
+        syncedAt: new Date().toISOString(),
+        errorMessage: undefined,
+      };
+      saveSubmissionLocally(syncedItem);
+      removeFromPendingQueue(sanitizedSubmission.id);
+
+      return {
+        success: true,
+        mode: 'online',
+        message: proxyMessage,
+      };
+    }
+
+    // 4. Fallback HANYA jika proxy server mati/tidak ada (misal static PWA)
+    if (!scriptUrl || scriptUrl.trim() === '') {
+      const localItem: SurveySubmission = {
+        ...sanitizedSubmission,
+        status: 'pending',
+        errorMessage: 'URL Google Apps Script belum dikonfigurasi.',
+      };
+      saveSubmissionLocally(localItem);
+      addToPendingQueue(localItem);
+      return {
+        success: true,
+        mode: 'offline_saved',
+        message: 'Survei tersimpan aman di memori perangkat lokal RSUD Aeramo.',
+      };
+    }
+
+    try {
+      const cleanUrl = scriptUrl.trim();
+      await fetch(cleanUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8',
+        },
+        body: JSON.stringify(sanitizedSubmission),
+      });
+
+      const syncedItem: SurveySubmission = {
+        ...sanitizedSubmission,
+        status: 'synced',
+        syncedAt: new Date().toISOString(),
+        errorMessage: undefined,
+      };
+      saveSubmissionLocally(syncedItem);
+      removeFromPendingQueue(sanitizedSubmission.id);
+
+      return {
+        success: true,
+        mode: 'online',
+        message: 'Terima kasih! Survei kepuasan Anda berhasil dicatat ke Google Sheet RSUD Aeramo.',
+      };
+    } catch (error) {
+      console.warn('Network error, saving to pending queue:', error);
+      const failedItem: SurveySubmission = {
+        ...sanitizedSubmission,
+        status: 'pending',
+        errorMessage: error instanceof Error ? error.message : 'Gagal mengirim ke Google Apps Script',
+      };
+      saveSubmissionLocally(failedItem);
+      addToPendingQueue(failedItem);
+
+      return {
+        success: true,
+        mode: 'offline_saved',
+        message: 'Jaringan terganggu. Data berhasil diamankan di penyimpanan lokal dan siap dikirim ulang.',
+      };
+    }
+  } finally {
+    // Biarkan ID tetap di cache lock selama 10 detik untuk mencegah re-submit cepat
+    setTimeout(() => {
+      activeSubmissionInFlight.delete(submission.id);
+    }, 10000);
   }
 }
 

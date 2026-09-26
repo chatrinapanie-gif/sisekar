@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Send, 
   RotateCcw, 
@@ -296,16 +296,25 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
     return { avg, ikm, mutu };
   };
 
+  const isSubmittingRef = useRef(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Proteksi ganda anti-double click / double tap di HP maupun Web
+    if (isSubmittingRef.current || isSubmitting) {
+      console.warn('[SISEKAR] Pengiriman survei sedang berjalan, klik ganda diabaikan.');
+      return;
+    }
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
 
     const { avg, ikm, mutu } = calculateStatistics();
     const now = new Date();
     const submissionId = `ARM-${Date.now().toString().slice(-6)}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`;
 
-    const isAndroid = typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent);
-    const platform = isAndroid ? 'Android PWA' : 'Web Browser';
+    // Deteksi satu label perangkat yang jelas dan seragam (HP atau Web)
+    const isMobileDevice = typeof navigator !== 'undefined' && /android|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile/i.test(navigator.userAgent);
+    const platform = isMobileDevice ? 'Smartphone (HP)' : 'Komputer (Web)';
 
     const answeredDetails = currentSections.flatMap(sec => sec.questions).map((q, idx) => {
       const val = answers[q.id];
@@ -350,8 +359,8 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
 
     const effectivePatientPin = submission.patientPin;
 
-    // KONSUMSI PIN SEKETIKA: Langsung ubah status PIN menjadi 'used' (terpakai) secara lokal dan di server
-    // sehingga jika koneksi ke Google Apps Script lambat/tertunda, PIN sudah pasti hangus dan tidak bisa dipakai ulang
+    // KONSUMSI PIN LOKAL: Tandai PIN sebagai terpakai di memori lokal perangkat & database server
+    // (TIDAK mengirim HTTP POST terpisah ke Apps Script untuk mencegah entri ganda ke Google Sheet)
     if (effectivePatientPin) {
       await consumePatientPin({
         pin: effectivePatientPin,
@@ -362,12 +371,14 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
       });
     }
 
+    // Kirim survei tepat SATU KALI ke Google Sheet (Apps Script akan sekaligus menonaktifkan PIN pada baris survei tersebut)
     const res = await sendSurveyToGoogleSheet(submission, config.appsScriptUrl);
 
     // Kunci aplikasi secara permanen (One-Time Access Lock) agar tidak bisa diisi ulang
     saveOneTimeLock(submission);
 
     setIsSubmitting(false);
+    isSubmittingRef.current = false;
     // Tampilkan Modal Konfirmasi Hasil Pengisian Survei
     setSubmittedModalData(submission);
   };

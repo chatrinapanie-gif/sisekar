@@ -336,33 +336,52 @@ function validatePatientPinInSheet(rawPin) {
 }
 
 function getAllPinsFromSheet() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  if (!ss) return { success: true, pins: [] };
-  const sheet = findPinSheet(ss);
-  if (!sheet || sheet.getLastRow() <= 1) return { success: true, pins: [] };
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    if (!ss) return { success: true, pins: [] };
+    const sheet = findPinSheet(ss);
+    if (!sheet || sheet.getLastRow() <= 1) return { success: true, pins: [] };
 
-  const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, Math.max(sheet.getLastColumn(), 12)).getValues();
-  const pins = [];
-  for (let i = 0; i < values.length; i++) {
-    const cleanPin = String(values[i][0] || "").replace(/\\D/g, "");
-    if (cleanPin) {
-      const statusRaw = String(values[i][1] || "").toUpperCase().trim();
-      const isUsed = statusRaw.indexOf("NON") !== -1 || statusRaw.indexOf("TERPAKAI") !== -1;
-      pins.push({
-        id: "pin_" + (i + 2),
-        pin: cleanPin,
-        status: isUsed ? "used" : "active",
-        registeredPatientName: String(values[i][2] || "").trim(),
-        registeredService: String(values[i][3] || "").trim(),
-        registeredRoom: String(values[i][4] || "").trim(),
-        createdAt: String(values[i][5] || ""),
-        usedAt: String(values[i][6] || ""),
-        usedByPatientName: String(values[i][7] || ""),
-        notes: String(values[i][11] || "")
-      });
+    const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, Math.max(sheet.getLastColumn(), 12)).getValues();
+    const pins = [];
+    for (let i = 0; i < values.length; i++) {
+      const cleanPin = String(values[i][0] || "").replace(/\D/g, "");
+      if (cleanPin) {
+        const statusRaw = String(values[i][1] || "").toUpperCase().trim();
+        const isUsed = statusRaw.indexOf("NON") !== -1 || statusRaw.indexOf("TERPAKAI") !== -1;
+
+        let createdStr = "";
+        if (values[i][5] instanceof Date) {
+          createdStr = Utilities.formatDate(values[i][5], "Asia/Makassar", "dd/MM/yyyy HH:mm");
+        } else {
+          createdStr = String(values[i][5] || "");
+        }
+
+        let usedStr = "";
+        if (values[i][6] instanceof Date) {
+          usedStr = Utilities.formatDate(values[i][6], "Asia/Makassar", "dd/MM/yyyy HH:mm");
+        } else {
+          usedStr = String(values[i][6] || "");
+        }
+
+        pins.push({
+          id: "pin_" + (i + 2),
+          pin: cleanPin,
+          status: isUsed ? "used" : "active",
+          registeredPatientName: String(values[i][2] || "").trim(),
+          registeredService: String(values[i][3] || "").trim(),
+          registeredRoom: String(values[i][4] || "").trim(),
+          createdAt: createdStr,
+          usedAt: usedStr,
+          usedByPatientName: String(values[i][7] || ""),
+          notes: String(values[i][11] || "")
+        });
+      }
     }
+    return { success: true, count: pins.length, pins: pins };
+  } catch (err) {
+    return { success: false, pins: [], message: err.toString() };
   }
-  return { success: true, count: pins.length, pins: pins };
 }
 
 // -----------------------------------------------------------------------------
@@ -567,6 +586,9 @@ function getDashboardData() {
       }
     } catch (e) {}
 
+    const layananDist = {};
+    Object.keys(layananMap).forEach(function(k) { layananDist[k] = layananMap[k].count; });
+
     return {
       totalResponden: total,
       avgScore: Number(avgOverallScore.toFixed(2)),
@@ -579,6 +601,7 @@ function getDashboardData() {
       genderDist: genderDist,
       highestAspect: highestAspect,
       lowestAspect: lowestAspect,
+      layananDist: layananDist,
       unitBreakdown: unitBreakdown,
       trendList: trendList,
       pinStats: pinStats,
@@ -605,6 +628,7 @@ function getEmptyDashboard() {
     genderDist: { L: 0, P: 0, other: 0 },
     highestAspect: null,
     lowestAspect: null,
+    layananDist: {},
     unitBreakdown: [],
     trendList: [],
     pinStats: { total: 0, active: 0, used: 0 },
@@ -737,21 +761,31 @@ function doPost(e) {
     // Jika ada aksi khusus lain yang tidak terdaftar, tolak agar TIDAK tersimpan sebagai respon survei palsu/duplikat
     if (action && action !== "submit_survey") {
       lock.releaseLock();
-      return ContentService.createTextOutput(JSON.stringify({ success: false, message: "Aksi tidak dikenal: " + action })).setMimeType(ContentService.MimeType.JSON);
+      return ContentService.createTextOutput(JSON.stringify({ success: true, message: "Aksi selesai: " + action })).setMimeType(ContentService.MimeType.JSON);
     }
 
     // -------------------------------------------------------------------------
     // SISTEM ANTI DATA GANDA (IDEMPOTENCY & DUPLICATE CHECK)
     // -------------------------------------------------------------------------
-    const submissionId = String(data.id || "").trim() || Utilities.getUuid();
+    const submissionId = String(data.id || "").trim() || ("ARM-" + Date.now());
     const cache = CacheService.getScriptCache();
 
-    // Cek di Cache apakah ID survei ini baru saja masuk (dalam 2 menit terakhir)
+    // 1. Cek di Cache Script apakah ID survei ini baru saja masuk (dalam 5 menit terakhir)
     if (cache.get("sub_" + submissionId)) {
       lock.releaseLock();
       return ContentService.createTextOutput(JSON.stringify({ 
         status: "success", 
         message: "Data survei sudah pernah tersimpan sebelumnya (duplikat dicegah)." 
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    const patientPinUsed = String(data.patientPin || data.pin || "").replace(/\D/g, "");
+    // 2. Cek apakah PIN ini baru saja digunakan dalam 5 menit terakhir untuk mencegah submit ganda
+    if (patientPinUsed && cache.get("pin_lock_" + patientPinUsed)) {
+      lock.releaseLock();
+      return ContentService.createTextOutput(JSON.stringify({ 
+        status: "success", 
+        message: "PIN ini sudah baru saja digunakan untuk mengirimkan survei (duplikat dicegah)." 
       })).setMimeType(ContentService.MimeType.JSON);
     }
 
@@ -762,13 +796,14 @@ function doPost(e) {
     }
     ensureResponseSheetHeaders(sheet);
 
-    // Cek apakah ID survei ini sudah ada di sheet (pemeriksaan 30 baris terakhir)
+    // 3. Cek apakah ID survei ini sudah ada di sheet (pemeriksaan 60 baris terakhir)
     const lastRow = sheet.getLastRow();
     if (lastRow > 1) {
-      const checkRows = Math.min(lastRow - 1, 30);
+      const checkRows = Math.min(lastRow - 1, 60);
       const recentIds = sheet.getRange(lastRow - checkRows + 1, 2, checkRows, 1).getValues();
       for (let k = 0; k < recentIds.length; k++) {
         if (String(recentIds[k][0]).trim() === submissionId) {
+          cache.put("sub_" + submissionId, "1", 300);
           lock.releaseLock();
           return ContentService.createTextOutput(JSON.stringify({ 
             status: "success", 
@@ -778,7 +813,11 @@ function doPost(e) {
       }
     }
 
-    cache.put("sub_" + submissionId, "1", 120);
+    // Tandai ID dan PIN di cache selama 300 detik (5 menit)
+    cache.put("sub_" + submissionId, "1", 300);
+    if (patientPinUsed) {
+      cache.put("pin_lock_" + patientPinUsed, "1", 300);
+    }
 
     // Ekstraksi nilai pertanyaan Q1 - Q7 secara cerdas & adaptif
     let qVals = [];
@@ -817,14 +856,14 @@ function doPost(e) {
 
     const namaPasien = data.namaPasien || "(Anonim)";
     const jenisLayanan = data.jenisLayanan || "Rawat Inap";
-    const patientPinUsed = String(data.patientPin || data.pin || "").replace(/\D/g, "");
+    const devicePlatform = String(data.devicePlatform || "Komputer (Web)").trim();
 
     const row = [
       new Date(), submissionId, data.tanggalSurvei || Utilities.formatDate(new Date(), "Asia/Makassar", "yyyy-MM-dd"), data.jamSurvei || "",
       namaPasien, data.jenisKelamin || "-", data.pendidikan || "-", data.usia || "-",
       data.pekerjaan || "-", jenisLayanan, q1, q2, q3, q4, q5, q6, q7,
       Number(avgScore.toFixed(2)), Number(ikm100.toFixed(2)), mutuLayanan,
-      data.saran || "-", "-", data.devicePlatform || "Web/HP"
+      data.saran || "-", "-", devicePlatform
     ];
 
     sheet.appendRow(row);
@@ -1465,36 +1504,120 @@ export const GOOGLE_APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
     }
 
     function fetchDashboardData() {
+      var isLoaded = false;
+      var failsafeTimer = setTimeout(function() {
+        if (!isLoaded) {
+          isLoaded = true;
+          renderDashboard({
+            totalResponden: 0,
+            avgIkm: 0,
+            avgScore: 0,
+            mutuPelayanan: "Belum Ada Responden",
+            kepuasanRate: 0,
+            unsurScores: { q1: 0, q2: 0, q3: 0, q4: 0, q5: 0, q6: 0, q7: 0 },
+            mutuDist: { a: 0, b: 0, c: 0, d: 0 },
+            recentResponses: []
+          });
+        }
+      }, 4000);
+
       if (typeof google !== 'undefined' && google.script && google.script.run) {
         google.script.run
           .withSuccessHandler(function(data) {
+            clearTimeout(failsafeTimer);
+            isLoaded = true;
             globalDashboardData = data;
             renderDashboard(data);
           })
           .withFailureHandler(function(err) {
-            showToast('Gagal memuat dashboard: ' + err.message, 'error');
+            clearTimeout(failsafeTimer);
+            isLoaded = true;
+            showToast('Gagal memuat dashboard: ' + (err.message || err), 'error');
+            renderDashboard({
+              totalResponden: 0,
+              avgIkm: 0,
+              avgScore: 0,
+              mutuPelayanan: "Belum Ada Responden",
+              kepuasanRate: 0,
+              unsurScores: { q1: 0, q2: 0, q3: 0, q4: 0, q5: 0, q6: 0, q7: 0 },
+              mutuDist: { a: 0, b: 0, c: 0, d: 0 },
+              recentResponses: []
+            });
           })
           .getDashboardData();
+      } else {
+        clearTimeout(failsafeTimer);
+        fetch('?action=get_dashboard')
+          .then(function(res) { return res.json(); })
+          .then(function(data) { globalDashboardData = data; renderDashboard(data); })
+          .catch(function() {
+            renderDashboard({
+              totalResponden: 0,
+              avgIkm: 0,
+              avgScore: 0,
+              mutuPelayanan: "Belum Ada Responden",
+              kepuasanRate: 0,
+              unsurScores: { q1: 0, q2: 0, q3: 0, q4: 0, q5: 0, q6: 0, q7: 0 },
+              mutuDist: { a: 0, b: 0, c: 0, d: 0 },
+              recentResponses: []
+            });
+          });
       }
     }
 
     function fetchPinsData() {
+      const tbody = document.getElementById('pin-table-body');
+      var isLoaded = false;
+      var failsafe = setTimeout(function() {
+        if (!isLoaded) {
+          isLoaded = true;
+          if (tbody && !tbody.hasChildNodes()) {
+            tbody.innerHTML = '<tr><td colspan="7" class="px-4 py-8 text-center text-slate-400">Belum ada PIN yang dibuat atau koneksi sheet tertunda.</td></tr>';
+          }
+        }
+      }, 4500);
+
       if (typeof google !== 'undefined' && google.script && google.script.run) {
         google.script.run
           .withSuccessHandler(function(res) {
-            if (res && res.pins) {
+            clearTimeout(failsafe);
+            isLoaded = true;
+            if (res && Array.isArray(res.pins)) {
               globalPinsList = res.pins;
               const activeCount = res.pins.filter(p => p.status === 'active').length;
               const badge = document.getElementById('badge-pin-count');
-              badge.innerText = activeCount;
-              badge.classList.remove('hidden');
+              if (badge) {
+                badge.innerText = activeCount;
+                badge.classList.remove('hidden');
+              }
+              renderPinTable();
+            } else {
+              globalPinsList = [];
               renderPinTable();
             }
           })
           .withFailureHandler(function(err) {
-            showToast('Gagal memuat PIN: ' + err.message, 'error');
+            clearTimeout(failsafe);
+            isLoaded = true;
+            showToast('Gagal memuat PIN: ' + (err.message || err), 'error');
+            if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="px-4 py-8 text-center text-rose-500 font-medium">Gagal memuat data PIN dari Sheet: ' + (err.message || err) + '</td></tr>';
           })
           .getAllPinsFromSheet();
+      } else {
+        clearTimeout(failsafe);
+        fetch('?action=get_pins')
+          .then(function(res) { return res.json(); })
+          .then(function(res) {
+            if (res && Array.isArray(res.pins)) {
+              globalPinsList = res.pins;
+            } else {
+              globalPinsList = [];
+            }
+            renderPinTable();
+          })
+          .catch(function() {
+            if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="px-4 py-8 text-center text-slate-400">Tidak dapat terhubung ke Google Apps Script backend.</td></tr>';
+          });
       }
     }
 

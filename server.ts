@@ -339,6 +339,9 @@ const rateLimitMap = new Map<string, RateLimitRecord>();
 // Ephemeral Admin Sessions (Token -> ExpireTimestamp)
 const adminSessions = new Map<string, number>();
 
+// Server-side Submission Deduplication Cache (SubmissionId -> Timestamp)
+const recentServerSubmissions = new Map<string, number>();
+
 function getClientIp(req: Request): string {
   const forwarded = req.headers['x-forwarded-for'];
   if (typeof forwarded === 'string') {
@@ -523,6 +526,28 @@ app.post('/api/survey/submit', async (req: Request, res: Response) => {
 
     // Sanitasi semua teks yang diinput pasien
     const sanitizedSubmission = sanitizeData(rawData);
+    const subId = String(sanitizedSubmission.id || '').trim();
+
+    // Deduplikasi tingkat server: Cegah pengiriman ID survei yang sama dalam rentang 60 detik
+    const now = Date.now();
+    if (subId && recentServerSubmissions.has(subId)) {
+      const prevTime = recentServerSubmissions.get(subId) || 0;
+      if (now - prevTime < 60000) {
+        console.warn(`[Security Proxy] ID Survei ${subId} sudah diproses. Pengiriman ganda ke Google Sheet dicegah.`);
+        return res.json({
+          success: true,
+          mode: 'online',
+          message: 'Survei Anda sudah tercatat di sistem Google Sheet RSUD Aeramo (duplikat dicegah).',
+        });
+      }
+    }
+    if (subId) {
+      recentServerSubmissions.set(subId, now);
+      // Bersihkan cache lama di atas 2 menit
+      for (const [k, t] of recentServerSubmissions.entries()) {
+        if (now - t > 120000) recentServerSubmissions.delete(k);
+      }
+    }
 
     // Otomatis tandai PIN sebagai digunakan (non-aktif) di server lokal seketika
     const usedPin = String(sanitizedSubmission.patientPin || sanitizedSubmission.pin || '').replace(/\D/g, '');
@@ -570,26 +595,16 @@ app.post('/api/survey/submit', async (req: Request, res: Response) => {
       });
     }
 
-    // Teruskan secara rahasia dari Server -> Google Apps Script
-    // Browser pasien TIDAK BISA melihat URL Google Apps Script ini!
-    const response = await fetch(targetUrl, {
+    // Teruskan secara rahasia dari Server -> Google Apps Script TEPAT 1 KALI
+    // Browser pasien TIDAK BISA melihat URL Google Apps Script ini
+    await fetch(targetUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'text/plain;charset=utf-8',
       },
       body: JSON.stringify(sanitizedSubmission),
+      redirect: 'follow',
     });
-
-    // Panggil juga endpoint toggle_pin ke Apps Script untuk menjamin status di Google Sheet menjadi NON AKTIF
-    if (usedPin) {
-      try {
-        fetch(targetUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'toggle_pin', pin: usedPin, status: 'NON AKTIF' }),
-        }).catch(() => {});
-      } catch {}
-    }
 
     return res.json({
       success: true,

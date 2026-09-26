@@ -27,6 +27,7 @@ export interface QuestionItem {
   aspek: string;
   uraian: string;
   options?: SkalaOptionItem[];
+  targetPoint?: 'q1' | 'q2' | 'q3' | 'q4' | 'q5' | 'q6' | 'q7'; // Penugasan point penilaian Q1 - Q7
 }
 
 export interface QuestionSection {
@@ -65,6 +66,17 @@ export interface SurveySubmission {
   answers: Record<string, SkalaKepuasan>; // map question id -> skala (1..4)
   answeredDetails?: AnswerDetail[];
   
+  // Nilai Langsung Q1 s/d Q9 (0 jika pertanyaan tidak ada di unit/ruangan tersebut)
+  q1?: number;
+  q2?: number;
+  q3?: number;
+  q4?: number;
+  q5?: number;
+  q6?: number;
+  q7?: number;
+  q8?: number;
+  q9?: number;
+
   // Statistik
   averageScore: number; // Skala 1 - 4
   ikmScore: number;     // Skala 0 - 100

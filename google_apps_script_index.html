@@ -1322,7 +1322,7 @@
       document.getElementById('statMutuC').innerText = m.c || 0;
       document.getElementById('statMutuD').innerText = m.d || 0;
 
-      // Update Radar Chart (7 Unsur)
+      // Update Radar Chart (9 Unsur)
       var u = data.unsurScores || {};
       if (chartRadar) {
         chartRadar.data.datasets[0].data = [
@@ -1332,7 +1332,9 @@
           u.q4 || 0,
           u.q5 || 0,
           u.q6 || 0,
-          u.q7 || 0
+          u.q7 || 0,
+          u.q8 || 0,
+          u.q9 || 0
         ];
         chartRadar.update();
       }
@@ -1483,20 +1485,22 @@
       document.getElementById('modalSaran').innerText = r.saran && r.saran.trim().length > 0 ? ('"' + r.saran + '"') : 'Tidak ada saran tambahan.';
 
       var questions = [
-        { label: 'Q1. Kenyamanan Kamar & Tempat Tidur', val: r.q1 },
-        { label: 'Q2. Kebersihan Kamar & Toilet', val: r.q2 },
-        { label: 'Q3. Ketersediaan Fasilitas Kamar', val: r.q3 },
-        { label: 'Q4. Ketenangan & Keamanan Lingkungan', val: r.q4 },
-        { label: 'Q5. Kunjungan & Kehadiran Dokter', val: r.q5 },
-        { label: 'Q6. Kejelasan Informasi Medis Dokter', val: r.q6 },
-        { label: 'Q7. Kesiapan & Empati Perawat', val: r.q7 }
+        { label: 'Q1. Persyaratan Pelayanan', val: r.q1 },
+        { label: 'Q2. Prosedur & Alur Pelayanan', val: r.q2 },
+        { label: 'Q3. Kecepatan Waktu Pelayanan', val: r.q3 },
+        { label: 'Q4. Biaya / Tarif Pelayanan', val: r.q4 },
+        { label: 'Q5. Kompetensi & Pengetahuan NAKES', val: r.q5 },
+        { label: 'Q6. Kejelasan Informasi Medis', val: r.q6 },
+        { label: 'Q7. Perilaku & Keramahan Petugas', val: r.q7 },
+        { label: 'Q8. Kualitas Sarana & Prasarana', val: r.q8 },
+        { label: 'Q9. Penanganan Pengaduan & Keluhan', val: r.q9 }
       ];
 
       var html = '';
       questions.forEach(function(q) {
         var sc = Number(q.val) || 0;
-        var star = sc >= 4 ? '⭐⭐⭐⭐ Sangat Puas (4)' : (sc >= 3 ? '⭐⭐⭐ Puas (3)' : (sc >= 2 ? '⭐⭐ Kurang Puas (2)' : '⭐ Tidak Puas (1)'));
-        var color = sc >= 3 ? 'text-emerald-700 font-bold' : 'text-amber-700 font-bold';
+        var star = sc >= 4 ? '⭐⭐⭐⭐ Sangat Puas (4)' : (sc >= 3 ? '⭐⭐⭐ Puas (3)' : (sc >= 2 ? '⭐⭐ Kurang Puas (2)' : (sc === 1 ? '⭐ Tidak Puas (1)' : '⚪ Tidak Ada di Ruangan Ini (0)')));
+        var color = sc >= 3 ? 'text-emerald-700 font-bold' : (sc > 0 ? 'text-amber-700 font-bold' : 'text-slate-400 font-medium');
         html += '<div class="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">';
         html += '<span class="font-medium text-slate-700">' + q.label + '</span>';
         html += '<span class="' + color + '">' + star + '</span>';
@@ -1518,7 +1522,7 @@
         return;
       }
 
-      var headers = ["Timestamp", "ID Survei", "Nama Pasien", "Jenis Kelamin", "Usia", "Layanan", "Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7", "Skor Rata-rata", "IKM (100)", "Mutu", "Saran"];
+      var headers = ["Timestamp", "ID Survei", "Nama Pasien", "Jenis Kelamin", "Usia", "Layanan", "Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7", "Q8", "Q9", "Skor Rata-rata", "IKM (100)", "Mutu", "Saran"];
       var csvRows = [headers.join(",")];
 
       allResponses.forEach(function(r) {
@@ -1536,6 +1540,8 @@
           r.q5 || 0,
           r.q6 || 0,
           r.q7 || 0,
+          r.q8 || 0,
+          r.q9 || 0,
           r.avgScore || 0,
           r.ikm100 || 0,
           '"' + (r.mutuLayanan || '') + '"',

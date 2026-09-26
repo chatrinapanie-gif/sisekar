@@ -238,18 +238,14 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
     const resolvedName = newKey === 'lainnya' ? (customLayananText.trim() || 'Layanan Lainnya') : serviceInfo.label;
     setJenisLayanan(resolvedName);
 
-    // Otomatis siapkan jawaban default untuk pertanyaan layanan baru agar user langsung siap mengisi
+    // Siapkan jawaban default HANYA untuk pertanyaan milik unit/ruangan yang dipilih
     const newSecs = getQuestionsForService(newKey);
     const newQs = newSecs.flatMap(s => s.questions);
-    setAnswers(prev => {
-      const updated = { ...prev };
-      newQs.forEach((q, idx) => {
-        if (updated[q.id] === undefined) {
-          updated[q.id] = (idx % 2 === 0 ? 4 : 3) as SkalaKepuasan;
-        }
-      });
-      return updated;
+    const freshAnswers: Record<string, SkalaKepuasan> = {};
+    newQs.forEach((q, idx) => {
+      freshAnswers[q.id] = (idx % 2 === 0 ? 4 : 3) as SkalaKepuasan;
     });
+    setAnswers(freshAnswers);
   };
 
   const handleResetForm = () => {
@@ -265,7 +261,7 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
     setCustomLayananText('');
     setJenisLayanan('Rawat Inap');
 
-    // Inisialisasi ulang jawaban default
+    // Inisialisasi ulang jawaban default untuk 9 pertanyaan Rawat Inap
     const defaultQs = getQuestionsForService('rawat_inap').flatMap(s => s.questions);
     const initAns: Record<string, SkalaKepuasan> = {};
     defaultQs.forEach((q, idx) => {
@@ -284,10 +280,15 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
   };
 
   const calculateStatistics = () => {
-    const vals: number[] = Object.values(answers);
-    if (vals.length === 0) return { avg: 0, ikm: 0, mutu: 'Baik (B)' };
-    const total = vals.reduce((a, b) => a + b, 0);
-    const avg = Number((total / vals.length).toFixed(2));
+    // Hitung rata-rata dan IKM HANYA berdasarkan pertanyaan yang ada dan aktif pada unit/ruangan ini
+    const activeQuestions = currentSections.flatMap(sec => sec.questions);
+    const validScores = activeQuestions
+      .map(q => answers[q.id])
+      .filter((val): val is SkalaKepuasan => typeof val === 'number' && val > 0);
+
+    if (validScores.length === 0) return { avg: 0, ikm: 0, mutu: 'Baik (B)' };
+    const total = validScores.reduce((a, b) => a + b, 0);
+    const avg = Number((total / validScores.length).toFixed(2));
     const ikm = Number(((avg / 4) * 100).toFixed(2));
     let mutu = 'Sangat Baik (A)';
     if (ikm < 65) mutu = 'Kurang Baik (D)';
@@ -316,7 +317,8 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
     const isMobileDevice = typeof navigator !== 'undefined' && /android|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile/i.test(navigator.userAgent);
     const platform = isMobileDevice ? 'Smartphone (HP)' : 'Komputer (Web)';
 
-    const answeredDetails = currentSections.flatMap(sec => sec.questions).map((q, idx) => {
+    const activeQuestionList = currentSections.flatMap(sec => sec.questions);
+    const answeredDetails = activeQuestionList.map((q, idx) => {
       const val = answers[q.id];
       const qOptions = q.options && q.options.length === 4 ? q.options : SKALA_OPTIONS;
       const opt = qOptions.find(o => o.value === val);
@@ -329,6 +331,61 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
         label: opt ? opt.label : (val ? `Nilai ${val}` : '-'),
       };
     });
+
+    // PENGELOMPOKAN DINAMIS KE 7 POINT UTAMA (Q1 s/d Q7):
+    // Memungkinkan banyak pertanyaan masuk ke 1 point yang sama (misal ri_q1 dan ri1_q1 sama-sama masuk ke Prosedur Q2)
+    // Mau ada 9 pertanyaan, 4 pertanyaan, 3 pertanyaan, dsb. seluruhnya terukur akurat ke Q1 - Q7.
+    // Jika suatu point tidak ada pertanyaan pada ruangan tersebut, nilainya adalah 0 (nol, bukan 4).
+    const pointGroups: Record<'q1' | 'q2' | 'q3' | 'q4' | 'q5' | 'q6' | 'q7', number[]> = {
+      q1: [],
+      q2: [],
+      q3: [],
+      q4: [],
+      q5: [],
+      q6: [],
+      q7: [],
+    };
+
+    activeQuestionList.forEach((q, idx) => {
+      const val = answers[q.id];
+      if (typeof val === 'number' && val > 0) {
+        let target: 'q1' | 'q2' | 'q3' | 'q4' | 'q5' | 'q6' | 'q7' = 'q1';
+        if (q.targetPoint) {
+          target = q.targetPoint;
+        } else if (/_q1\b|_q1_/i.test(q.id) || /q1/i.test(q.id)) {
+          target = 'q1';
+        } else if (/_q2\b|_q2_/i.test(q.id) || /q2/i.test(q.id)) {
+          target = 'q2';
+        } else if (/_q3\b|_q3_/i.test(q.id) || /q3/i.test(q.id)) {
+          target = 'q3';
+        } else if (/_q4\b|_q4_/i.test(q.id) || /q4/i.test(q.id)) {
+          target = 'q4';
+        } else if (/_q5\b|_q5_/i.test(q.id) || /q5/i.test(q.id)) {
+          target = 'q5';
+        } else if (/_q6\b|_q6_/i.test(q.id) || /q6/i.test(q.id)) {
+          target = 'q6';
+        } else if (/_q7\b|_q7_/i.test(q.id) || /q7/i.test(q.id) || /_q8\b|_q8_/i.test(q.id) || /q8/i.test(q.id) || /_q9\b|_q9_/i.test(q.id) || /q9/i.test(q.id)) {
+          target = 'q7';
+        } else {
+          const keys: ('q1' | 'q2' | 'q3' | 'q4' | 'q5' | 'q6' | 'q7')[] = ['q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7'];
+          target = keys[Math.min(idx, 6)];
+        }
+        pointGroups[target].push(val);
+      }
+    });
+
+    const getGroupAvg = (arr: number[]) => {
+      if (arr.length === 0) return 0;
+      return Number((arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(2));
+    };
+
+    const q1 = getGroupAvg(pointGroups.q1);
+    const q2 = getGroupAvg(pointGroups.q2);
+    const q3 = getGroupAvg(pointGroups.q3);
+    const q4 = getGroupAvg(pointGroups.q4);
+    const q5 = getGroupAvg(pointGroups.q5);
+    const q6 = getGroupAvg(pointGroups.q6);
+    const q7 = getGroupAvg(pointGroups.q7);
 
     const submission: SurveySubmission = {
       id: submissionId,
@@ -348,6 +405,13 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
       jenisLayanan,
       answers,
       answeredDetails,
+      q1,
+      q2,
+      q3,
+      q4,
+      q5,
+      q6,
+      q7,
       averageScore: avg,
       ikmScore: ikm,
       mutuLayanan: mutu,

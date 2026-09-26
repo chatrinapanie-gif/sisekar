@@ -527,9 +527,18 @@ app.post('/api/survey/submit', async (req: Request, res: Response) => {
     // Sanitasi semua teks yang diinput pasien
     const sanitizedSubmission = sanitizeData(rawData);
     const subId = String(sanitizedSubmission.id || '').trim();
-
-    // Deduplikasi tingkat server: Cegah pengiriman ID survei yang sama dalam rentang 60 detik
     const now = Date.now();
+    const clientIp = getClientIp(req);
+    const usedPin = String(sanitizedSubmission.patientPin || sanitizedSubmission.pin || '').replace(/\D/g, '');
+    const patientName = String(sanitizedSubmission.namaPasien || '').trim().toLowerCase();
+    const serviceName = String(sanitizedSubmission.jenisLayanan || '').trim().toLowerCase();
+
+    // Fingerprint identifikasi unik untuk menangkap submit ganda di HP (Double-Tap / Mobile Network Retry)
+    const submissionFingerprint = usedPin 
+      ? `pin_${usedPin}` 
+      : `fp_${clientIp}_${patientName}_${serviceName}`;
+
+    // 1. Cegah pengiriman ID survei yang sama dalam rentang 60 detik
     if (subId && recentServerSubmissions.has(subId)) {
       const prevTime = recentServerSubmissions.get(subId) || 0;
       if (now - prevTime < 60000) {
@@ -541,16 +550,29 @@ app.post('/api/survey/submit', async (req: Request, res: Response) => {
         });
       }
     }
-    if (subId) {
-      recentServerSubmissions.set(subId, now);
-      // Bersihkan cache lama di atas 2 menit
-      for (const [k, t] of recentServerSubmissions.entries()) {
-        if (now - t > 120000) recentServerSubmissions.delete(k);
+
+    // 2. Cegah pengiriman PIN atau Pasien yang sama dalam rentang 45 detik (SANGAT KRUSIAL UNTUK HP)
+    if (recentServerSubmissions.has(submissionFingerprint)) {
+      const prevTime = recentServerSubmissions.get(submissionFingerprint) || 0;
+      if (now - prevTime < 45000) {
+        console.warn(`[Security Proxy] Submisi ganda dari ${submissionFingerprint} terdeteksi. Pengiriman ganda ke Google Sheet dicegah.`);
+        return res.json({
+          success: true,
+          mode: 'online',
+          message: 'Survei Anda sudah tercatat di sistem Google Sheet RSUD Aeramo (duplikat dicegah).',
+        });
       }
     }
 
+    if (subId) recentServerSubmissions.set(subId, now);
+    recentServerSubmissions.set(submissionFingerprint, now);
+
+    // Bersihkan cache lama di atas 2 menit
+    for (const [k, t] of recentServerSubmissions.entries()) {
+      if (now - t > 120000) recentServerSubmissions.delete(k);
+    }
+
     // Otomatis tandai PIN sebagai digunakan (non-aktif) di server lokal seketika
-    const usedPin = String(sanitizedSubmission.patientPin || sanitizedSubmission.pin || '').replace(/\D/g, '');
     if (usedPin) {
       const existing = loadPatientPins();
       const idx = existing.findIndex(p => p.pin === usedPin);

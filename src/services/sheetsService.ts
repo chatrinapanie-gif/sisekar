@@ -1025,13 +1025,13 @@ export function exportToCSV(submissions: SurveySubmission[]): void {
     'Usia',
     'Pekerjaan',
     'Jenis Layanan',
-    'Q1 (Kenyamanan Kamar)',
-    'Q2 (Kebersihan Kamar & Mandi)',
-    'Q3 (Kualitas Fasilitas)',
-    'Q4 (Ketenangan & Keamanan)',
-    'Q5 (Kunjungan Dokter)',
-    'Q6 (Kejelasan Informasi)',
-    'Q7 (Responsivitas Perawat)',
+    'Q1 (Persyaratan)',
+    'Q2 (Prosedur)',
+    'Q3 (Waktu Pelayanan)',
+    'Q4 (Biaya/Tarif)',
+    'Q5 (Kompetensi NAKES)',
+    'Q6 (Informasi Medis)',
+    'Q7 (Perilaku/Sarana/Pengaduan)',
     'Rata-rata Skor (1-4)',
     'Indeks IKM (Skala 100)',
     'Mutu Layanan',
@@ -1041,19 +1041,18 @@ export function exportToCSV(submissions: SurveySubmission[]): void {
   ];
 
   const rows = submissions.map(s => {
-    // Ambil nilai Q1 s/d Q7 secara fleksibel (mendukung format id baru ri_q1, q1, dll.)
-    const a = s.answers || {};
-    const q1 = a['ri_q1_kenyamanan_kamar'] || a['q1_kenyamanan_kamar'] || a['q1'] || '-';
-    const q2 = a['ri_q2_kebersihan_kamar'] || a['q2_kebersihan_kamar'] || a['q2'] || '-';
-    const q3 = a['ri_q3_kualitas_fasilitas'] || a['q3_kualitas_fasilitas'] || a['q3'] || '-';
-    const q4 = a['ri_q4_ketenangan_keamanan'] || a['q4_ketenangan_keamanan'] || a['q4'] || '-';
-    const q5 = a['ri_q5_kunjungan_nakes'] || a['q5_kunjungan_nakes'] || a['q5'] || '-';
-    const q6 = a['ri_q6_kejelasan_informasi'] || a['q6_kejelasan_informasi'] || a['q6'] || '-';
-    const q7 = a['ri_q7_ketersediaan_responsive'] || a['q7_ketersediaan_responsive'] || a['q7'] || '-';
+    // Ambil nilai Q1 s/d Q7 (0 jika tidak ada pertanyaan pada point tersebut di ruangan terkait)
+    const q1 = s.q1 !== undefined ? s.q1 : 0;
+    const q2 = s.q2 !== undefined ? s.q2 : 0;
+    const q3 = s.q3 !== undefined ? s.q3 : 0;
+    const q4 = s.q4 !== undefined ? s.q4 : 0;
+    const q5 = s.q5 !== undefined ? s.q5 : 0;
+    const q6 = s.q6 !== undefined ? s.q6 : 0;
+    const q7 = s.q7 !== undefined ? s.q7 : 0;
 
     const rincianText = s.answeredDetails && s.answeredDetails.length > 0
-      ? s.answeredDetails.map(d => `${d.aspek}: ${d.score} (${d.label})`).join(' | ')
-      : Object.entries(a).map(([k, v]) => `${k}: ${v}`).join(' | ');
+      ? s.answeredDetails.map(item => `${item.aspek}: ${item.score} (${item.label})`).join(' | ')
+      : Object.entries(s.answers || {}).map(([k, v]) => `${k}: ${v}`).join(' | ');
 
     return [
       `"${s.id}"`,

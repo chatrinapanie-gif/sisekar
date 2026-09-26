@@ -690,6 +690,16 @@ function doPost(e) {
 
     const action = data.action || "";
 
+    // 0. Uji koneksi / Ping sistem (Jangan pernah dimasukkan ke tabel survei)
+    if (action === "ping" || data.test === true || data.test_ping === true) {
+      lock.releaseLock();
+      return ContentService.createTextOutput(JSON.stringify({
+        status: "success",
+        success: true,
+        message: "Koneksi Web App Google Apps Script RSUD Aeramo Aktif."
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
     if (action === "validate_pin") {
       lock.releaseLock();
       const cleanPin = String(data.pin || "").replace(/\\D/g, "");
@@ -764,10 +774,19 @@ function doPost(e) {
       return ContentService.createTextOutput(JSON.stringify({ success: true, message: "Aksi selesai: " + action })).setMimeType(ContentService.MimeType.JSON);
     }
 
+    // Pastikan ini benar-benar data survei yang valid (mencegah payload kosong masuk ke sheet)
+    const hasSurveyAnswers = (data.answers && Object.keys(data.answers).length > 0) ||
+                             (Array.isArray(data.answeredDetails) && data.answeredDetails.length > 0) ||
+                             data.q1 || data.q2 || data.q3 || data.q4 || data.q5 || data.q6 || data.q7;
+    if (!hasSurveyAnswers && !data.id && !data.submissionId) {
+      lock.releaseLock();
+      return ContentService.createTextOutput(JSON.stringify({ status: "ignored", message: "Bukan data survei valid (tidak ada jawaban kuesioner)." })).setMimeType(ContentService.MimeType.JSON);
+    }
+
     // -------------------------------------------------------------------------
     // SISTEM ANTI DATA GANDA (IDEMPOTENCY & DUPLICATE CHECK)
     // -------------------------------------------------------------------------
-    const submissionId = String(data.id || "").trim() || ("ARM-" + Date.now());
+    const submissionId = String(data.id || data.submissionId || "").trim() || ("ARM-" + Date.now());
     const cache = CacheService.getScriptCache();
 
     // 1. Cek di Cache Script apakah ID survei ini baru saja masuk (dalam 5 menit terakhir)
@@ -868,26 +887,42 @@ function doPost(e) {
 
     sheet.appendRow(row);
 
-    // Otomatis NON-AKTIFKAN PIN
+    // Otomatis NON-AKTIFKAN PIN jika menggunakan PIN
     if (patientPinUsed) {
       const pinSheet = findPinSheet(ss);
-      if (pinSheet && pinSheet.getLastRow() > 1) {
-        const values = pinSheet.getRange(2, 1, pinSheet.getLastRow() - 1, 1).getValues();
+      if (pinSheet) {
         const nowStr = Utilities.formatDate(new Date(), "Asia/Makassar", "yyyy-MM-dd HH:mm:ss 'WITA'");
-        for (let i = 0; i < values.length; i++) {
-          if (String(values[i][0] || "").replace(/\\D/g, "") === patientPinUsed) {
-            const rowIdx = i + 2;
-            pinSheet.getRange(rowIdx, 2).setValue("NON AKTIF");
-            pinSheet.getRange(rowIdx, 7).setValue(nowStr);
-            pinSheet.getRange(rowIdx, 8).setValue(namaPasien);
-            pinSheet.getRange(rowIdx, 9).setValue(jenisLayanan);
-            pinSheet.getRange(rowIdx, 10).setValue(Number(ikm100.toFixed(2)));
-            pinSheet.getRange(rowIdx, 11).setValue(submissionId);
-            break;
+        let pinFound = false;
+        const lastRowPin = pinSheet.getLastRow();
+        if (lastRowPin > 1) {
+          const values = pinSheet.getRange(2, 1, lastRowPin - 1, 1).getValues();
+          for (let i = 0; i < values.length; i++) {
+            if (String(values[i][0] || "").replace(/\D/g, "") === patientPinUsed) {
+              const rowIdx = i + 2;
+              pinSheet.getRange(rowIdx, 2).setValue("NON AKTIF");
+              pinSheet.getRange(rowIdx, 7).setValue(nowStr);
+              pinSheet.getRange(rowIdx, 8).setValue(namaPasien);
+              pinSheet.getRange(rowIdx, 9).setValue(jenisLayanan);
+              pinSheet.getRange(rowIdx, 10).setValue(Number(ikm100.toFixed(2)));
+              pinSheet.getRange(rowIdx, 11).setValue(submissionId);
+              pinFound = true;
+              break;
+            }
           }
+        }
+        // Jika nomor PIN belum terdaftar di tab PIN_PASIEN, otomatis tambahkan langsung sebagai NON AKTIF
+        if (!pinFound) {
+          pinSheet.appendRow([
+            "'" + patientPinUsed, "NON AKTIF", namaPasien, jenisLayanan, "",
+            nowStr, nowStr, namaPasien, jenisLayanan, Number(ikm100.toFixed(2)),
+            submissionId, "Digunakan via Aplikasi Survei"
+          ]);
         }
       }
     }
+
+    // Pastikan seluruh baris dan status seketika tersimpan di Google Sheet
+    SpreadsheetApp.flush();
 
     lock.releaseLock();
     return ContentService.createTextOutput(JSON.stringify({

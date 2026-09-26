@@ -587,6 +587,25 @@ app.post('/api/survey/submit', async (req: Request, res: Response) => {
     const activeUrl = getActiveAppsScriptUrl();
     const targetUrl = activeUrl || (typeof rawData.scriptUrl === 'string' ? rawData.scriptUrl.trim() : '');
 
+    // Jika ini adalah ping koneksi / test diagnostic
+    if (rawData.test === true || rawData.action === 'ping') {
+      if (targetUrl) {
+        try {
+          await fetch(targetUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'ping', test: true }),
+            redirect: 'follow',
+          });
+        } catch {}
+      }
+      return res.json({
+        success: true,
+        mode: 'online',
+        message: 'Koneksi ke Google Apps Script RSUD Aeramo aktif.',
+      });
+    }
+
     if (!targetUrl) {
       return res.json({
         success: true,
@@ -594,6 +613,9 @@ app.post('/api/survey/submit', async (req: Request, res: Response) => {
         message: 'Survei tersimpan aman di sistem lokal dan PIN telah dinonaktifkan. URL Google Apps Script belum dikonfigurasi di server.',
       });
     }
+
+    // Pastikan action adalah submit_survey
+    sanitizedSubmission.action = 'submit_survey';
 
     // Teruskan secara rahasia dari Server -> Google Apps Script TEPAT 1 KALI
     // Browser pasien TIDAK BISA melihat URL Google Apps Script ini

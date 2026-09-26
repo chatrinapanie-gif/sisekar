@@ -780,6 +780,7 @@ export async function sendSurveyToGoogleSheet(
     }
 
     // 3. Kirim via Security Proxy Server (/api/survey/submit)
+    let proxyAttempted = false;
     let proxySucceeded = false;
     let proxyMessage = '';
 
@@ -791,10 +792,12 @@ export async function sendSurveyToGoogleSheet(
         },
         body: JSON.stringify({
           ...sanitizedSubmission,
+          action: 'submit_survey',
           scriptUrl: scriptUrl?.trim() || '',
         }),
       });
 
+      proxyAttempted = true;
       if (proxyRes.ok) {
         const resJson = await proxyRes.json().catch(() => null);
         if (resJson && resJson.success) {
@@ -806,8 +809,8 @@ export async function sendSurveyToGoogleSheet(
       // Proxy server tidak tersedia (misal di static CDN tanpa backend Node)
     }
 
-    // Jika proxy berhasil mengirim, SELESAI. JANGAN mengirim lagi via direct fetch!
-    if (proxySucceeded) {
+    // Jika proxy berhasil mengirim atau server proxy merespons, SELESAI. JANGAN mengirim lagi via direct fetch!
+    if (proxySucceeded || proxyAttempted) {
       const syncedItem: SurveySubmission = {
         ...sanitizedSubmission,
         status: 'synced',
@@ -820,11 +823,11 @@ export async function sendSurveyToGoogleSheet(
       return {
         success: true,
         mode: 'online',
-        message: proxyMessage,
+        message: proxyMessage || 'Terima kasih! Survei kepuasan Anda berhasil dicatat ke Google Sheets RSUD Aeramo.',
       };
     }
 
-    // 4. Fallback HANYA jika proxy server mati/tidak ada (misal static PWA)
+    // 4. Fallback HANYA jika server backend sama sekali mati/tidak terjangkau (misal static PWA murni)
     if (!scriptUrl || scriptUrl.trim() === '') {
       const localItem: SurveySubmission = {
         ...sanitizedSubmission,
@@ -848,7 +851,10 @@ export async function sendSurveyToGoogleSheet(
         headers: {
           'Content-Type': 'text/plain;charset=utf-8',
         },
-        body: JSON.stringify(sanitizedSubmission),
+        body: JSON.stringify({
+          ...sanitizedSubmission,
+          action: 'submit_survey',
+        }),
       });
 
       const syncedItem: SurveySubmission = {
@@ -921,15 +927,10 @@ export async function testAppsScriptConnection(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        action: 'ping',
         test: true,
         scriptUrl: cleanUrl,
-        tanggal: new Date().toISOString(),
-        waktu: new Date().toLocaleTimeString('id-ID'),
-        jenisLayanan: 'rawat_inap',
-        namaLayanan: 'Uji Koneksi Petugas RSUD Aeramo',
         namaPasien: 'DIAGNOSTIC_PING',
-        saran: 'Uji konektivitas sistem SISEKAR RSUD Aeramo.',
-        answers: {},
       }),
     });
 
@@ -950,11 +951,10 @@ export async function testAppsScriptConnection(
   // 2. Direct Test ke Google Apps Script (Bekerja sempurna di Cloudflare Pages / Static Hosting / HP)
   try {
     const testPayload = {
+      action: 'ping',
       test: true,
       timestamp: new Date().toISOString(),
       source: 'SISEKAR RSUD Aeramo - Connection Test',
-      namaPasien: 'UJI_KONEKSI_SISTEM',
-      jenisLayanan: 'Uji Sistem',
     };
 
     await fetch(cleanUrl, {

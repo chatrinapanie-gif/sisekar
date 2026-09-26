@@ -183,12 +183,18 @@
   {
     "id": "pin_829104",
     "pin": "829104",
-    "status": "active",
+    "status": "used",
     "createdAt": "2026-09-23T01:00:00.000Z",
     "registeredPatientName": "Ibu & Anak",
     "registeredService": "Kebidanan & Kandungan (VK)",
     "registeredRoom": "Kamar Bersalin",
-    "label": "Pasien VK / Bersalin"
+    "label": "Pasien VK / Bersalin",
+    "usedAt": "2026-09-26T02:56:01.935Z",
+    "usedBy": {
+      "submissionId": "ARM-E2E-1790391361819",
+      "namaPasien": "Pasien Verifikasi Final",
+      "jenisLayanan": "Kebidanan & Kandungan (Ruang Bersalin / VK)"
+    }
   },
   {
     "id": "pin_615284",

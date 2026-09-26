@@ -379,7 +379,7 @@ function getAllPinsFromSheet() {
 // -----------------------------------------------------------------------------
 // ADVANCED STATISTICAL ENGINE & DASHBOARD CALCULATOR
 // -----------------------------------------------------------------------------
-function getDashboardData() {
+function getDashboardData(unitFilter) {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     if (!ss) return getEmptyDashboard();
@@ -390,7 +390,7 @@ function getDashboardData() {
     }
 
     const lastRow = sheet.getLastRow();
-    const values = sheet.getRange(2, 1, lastRow - 1, Math.max(sheet.getLastColumn(), 25)).getValues();
+    const values = sheet.getRange(2, 1, lastRow - 1, Math.max(sheet.getLastColumn(), 23)).getValues();
 
     let sumQ1 = 0, countQ1 = 0;
     let sumQ2 = 0, countQ2 = 0;
@@ -399,8 +399,6 @@ function getDashboardData() {
     let sumQ5 = 0, countQ5 = 0;
     let sumQ6 = 0, countQ6 = 0;
     let sumQ7 = 0, countQ7 = 0;
-    let sumQ8 = 0, countQ8 = 0;
-    let sumQ9 = 0, countQ9 = 0;
     let sumScore = 0, countScore = 0;
     let sumIkm = 0;
     let puasCount = 0;
@@ -410,6 +408,7 @@ function getDashboardData() {
     const genderDist = { L: 0, P: 0, other: 0 };
     const dateTrendMap = {};
     const recentResponses = [];
+    const filterKey = (unitFilter && unitFilter !== 'ALL') ? String(unitFilter).trim().toLowerCase() : null;
 
     for (let i = 0; i < values.length; i++) {
       const r = values[i];
@@ -429,15 +428,51 @@ function getDashboardData() {
       let vQ5 = Number(r[14]) || 0;
       let vQ6 = Number(r[15]) || 0;
       let vQ7 = Number(r[16]) || 0;
-      let vQ8 = Number(r[17]) || 0;
-      let vQ9 = Number(r[18]) || 0;
 
-      const qRowVals = [vQ1, vQ2, vQ3, vQ4, vQ5, vQ6, vQ7, vQ8, vQ9].filter(function(v) { return v > 0; });
-      let vScore = Number(r[19]) || (qRowVals.length > 0 ? (qRowVals.reduce(function(a, b) { return a + b; }, 0) / qRowVals.length) : 0);
-      let vIkm = Number(r[20]) || (vScore > 0 ? (vScore / 4 * 100) : 0);
-      let mutu = String(r[21] || "");
-      const saran = String(r[22] || "");
-      const device = String(r[24] || "Web");
+      const qRowVals = [vQ1, vQ2, vQ3, vQ4, vQ5, vQ6, vQ7].filter(function(v) { return v > 0; });
+      let vScore = Number(r[17]) || (qRowVals.length > 0 ? (qRowVals.reduce(function(a, b) { return a + b; }, 0) / qRowVals.length) : 0);
+      let vIkm = Number(r[18]) || (vScore > 0 ? (vScore / 4 * 100) : 0);
+      let mutu = String(r[19] || "");
+      const saran = String(r[20] || "");
+      const device = String(r[22] || "Web");
+
+      // Catat breakdown unit secara menyeluruh
+      if (!layananMap[layanan]) {
+        layananMap[layanan] = { count: 0, sumScore: 0, sumIkm: 0 };
+      }
+      layananMap[layanan].count++;
+      if (vScore > 0) {
+        layananMap[layanan].sumScore += vScore;
+        layananMap[layanan].sumIkm += vIkm;
+      }
+
+      // Selalu simpan ke recentResponses (untuk keperluan filtering interaktif di UI)
+      recentResponses.push({
+        timestamp: r[0] instanceof Date ? Utilities.formatDate(r[0], "Asia/Makassar", "dd/MM/yyyy HH:mm") : String(r[0] || ''),
+        id: String(r[1] || ""),
+        tanggalSurvei: tgl,
+        jamSurvei: String(r[3] || ""),
+        namaPasien: nama,
+        jenisKelamin: jk || "-",
+        pendidikan: pendidikan,
+        usia: usia,
+        pekerjaan: pekerjaan,
+        jenisLayanan: layanan,
+        q1: vQ1, q2: vQ2, q3: vQ3, q4: vQ4, q5: vQ5, q6: vQ6, q7: vQ7,
+        avgScore: vScore > 0 ? Number(vScore.toFixed(2)) : 0,
+        ikm100: vIkm > 0 ? Number(vIkm.toFixed(2)) : 0,
+        mutuLayanan: mutu || (vScore >= 3.5 ? "Sangat Baik (A)" : (vScore >= 3.0 ? "Baik (B)" : "Cukup (C)")),
+        saran: saran,
+        device: device
+      });
+
+      // Jika ada filter spesifik unit pelayanan dan baris ini tidak cocok, jangan masukkan ke perhitungan metrik
+      if (filterKey) {
+        const layLower = layanan.toLowerCase();
+        if (layLower !== filterKey && layLower.indexOf(filterKey) === -1 && filterKey.indexOf(layLower) === -1) {
+          continue;
+        }
+      }
 
       if (vQ1 > 0) { sumQ1 += vQ1; countQ1++; }
       if (vQ2 > 0) { sumQ2 += vQ2; countQ2++; }
@@ -446,8 +481,6 @@ function getDashboardData() {
       if (vQ5 > 0) { sumQ5 += vQ5; countQ5++; }
       if (vQ6 > 0) { sumQ6 += vQ6; countQ6++; }
       if (vQ7 > 0) { sumQ7 += vQ7; countQ7++; }
-      if (vQ8 > 0) { sumQ8 += vQ8; countQ8++; }
-      if (vQ9 > 0) { sumQ9 += vQ9; countQ9++; }
 
       if (vScore > 0) {
         sumScore += vScore;
@@ -468,16 +501,6 @@ function getDashboardData() {
       else if (mutu.indexOf("C") !== -1 || vScore >= 2.5) mutuDist.c++;
       else mutuDist.d++;
 
-      // Breakdown Unit Pelayanan
-      if (!layananMap[layanan]) {
-        layananMap[layanan] = { count: 0, sumScore: 0, sumIkm: 0 };
-      }
-      layananMap[layanan].count++;
-      if (vScore > 0) {
-        layananMap[layanan].sumScore += vScore;
-        layananMap[layanan].sumIkm += vIkm;
-      }
-
       // Demografi Gender
       if (jk.indexOf("L") !== -1 || jk.indexOf("PRIA") !== -1) genderDist.L++;
       else if (jk.indexOf("P") !== -1 || jk.indexOf("WANITA") !== -1) genderDist.P++;
@@ -491,33 +514,14 @@ function getDashboardData() {
         dateTrendMap[tgl].count++;
         if (vIkm > 0) dateTrendMap[tgl].sumIkm += vIkm;
       }
-
-      recentResponses.push({
-        timestamp: r[0] instanceof Date ? Utilities.formatDate(r[0], "Asia/Makassar", "dd/MM/yyyy HH:mm") : String(r[0] || ''),
-        id: String(r[1] || ""),
-        tanggalSurvei: tgl,
-        jamSurvei: String(r[3] || ""),
-        namaPasien: nama,
-        jenisKelamin: jk || "-",
-        pendidikan: pendidikan,
-        usia: usia,
-        pekerjaan: pekerjaan,
-        jenisLayanan: layanan,
-        q1: vQ1, q2: vQ2, q3: vQ3, q4: vQ4, q5: vQ5, q6: vQ6, q7: vQ7, q8: vQ8, q9: vQ9,
-        avgScore: vScore > 0 ? Number(vScore.toFixed(2)) : 0,
-        ikm100: vIkm > 0 ? Number(vIkm.toFixed(2)) : 0,
-        mutuLayanan: mutu || (vScore >= 3.5 ? "Sangat Baik (A)" : (vScore >= 3.0 ? "Baik (B)" : "Cukup (C)")),
-        saran: saran,
-        device: device
-      });
     }
 
     recentResponses.reverse();
 
-    const total = values.length;
+    const total = countScore;
     const avgOverallScore = countScore > 0 ? sumScore / countScore : 0;
     const avgOverallIkm = countScore > 0 ? sumIkm / countScore : 0;
-    const kepuasanRate = countScore > 0 ? (puasCount / countScore) * 100 : 0;
+    const kepuasanRate = countScore > 0 ? Number(((puasCount / countScore) * 100).toFixed(1)) : 0;
 
     let mutuLabel = "Sangat Baik (A)";
     let mutuGrade = "A";
@@ -532,9 +536,7 @@ function getDashboardData() {
       q4: countQ4 > 0 ? Number((sumQ4 / countQ4).toFixed(2)) : 0,
       q5: countQ5 > 0 ? Number((sumQ5 / countQ5).toFixed(2)) : 0,
       q6: countQ6 > 0 ? Number((sumQ6 / countQ6).toFixed(2)) : 0,
-      q7: countQ7 > 0 ? Number((sumQ7 / countQ7).toFixed(2)) : 0,
-      q8: countQ8 > 0 ? Number((sumQ8 / countQ8).toFixed(2)) : 0,
-      q9: countQ9 > 0 ? Number((sumQ9 / countQ9).toFixed(2)) : 0
+      q7: countQ7 > 0 ? Number((sumQ7 / countQ7).toFixed(2)) : 0
     };
 
     const aspekList = [
@@ -544,9 +546,7 @@ function getDashboardData() {
       { key: 'q4', name: 'Biaya / Tarif Pelayanan', score: unsurScores.q4 },
       { key: 'q5', name: 'Kompetensi / NAKES', score: unsurScores.q5 },
       { key: 'q6', name: 'Pelayanan Informasi Medis', score: unsurScores.q6 },
-      { key: 'q7', name: 'Perilaku & Keramahan Petugas', score: unsurScores.q7 },
-      { key: 'q8', name: 'Sarana & Prasarana Fasilitas', score: unsurScores.q8 },
-      { key: 'q9', name: 'Penanganan Pengaduan / Keluhan', score: unsurScores.q9 }
+      { key: 'q7', name: 'Perilaku & Keramahan Petugas', score: unsurScores.q7 }
     ].filter(function(a) { return a.score > 0; }).sort(function(a, b) { return b.score - a.score; });
 
     const highestAspect = aspekList[0] || null;
@@ -657,7 +657,8 @@ function doGet(e) {
   }
 
   if (action === "get_dashboard") {
-    return ContentService.createTextOutput(JSON.stringify(getDashboardData()))
+    const unitParam = p.unit || p.layanan || "";
+    return ContentService.createTextOutput(JSON.stringify(getDashboardData(unitParam)))
       .setMimeType(ContentService.MimeType.JSON);
   }
 
@@ -1748,12 +1749,14 @@ export const GOOGLE_APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       document.getElementById('kpi-grade-badge').innerText = 'Grade ' + (data.mutuGrade || '-');
       document.getElementById('kpi-mutu').innerText = 'Mutu: ' + (data.mutuPelayanan || '-');
       document.getElementById('kpi-score').innerText = (data.avgScore || 0).toFixed(2);
-      document.getElementById('kpi-puas').innerText = (data.kepuasanRate || 0) + '%';
+      
+      const puasVal = typeof data.kepuasanRate === 'number' ? data.kepuasanRate.toFixed(1) : (data.kepuasanRate || '0.0');
+      document.getElementById('kpi-puas').innerText = puasVal + '%';
 
       // Update Progress Bars
       document.getElementById('progress-ikm').style.width = Math.min(data.avgIkm || 0, 100) + '%';
       document.getElementById('progress-score').style.width = Math.min(((data.avgScore || 0) / 4) * 100, 100) + '%';
-      document.getElementById('progress-puas').style.width = Math.min(data.kepuasanRate || 0, 100) + '%';
+      document.getElementById('progress-puas').style.width = Math.min(Number(puasVal) || 0, 100) + '%';
 
       if (data.lastUpdated) {
         document.getElementById('label-last-updated').innerText = 'Terakhir diperbarui: ' + data.lastUpdated;
@@ -1761,30 +1764,30 @@ export const GOOGLE_APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
 
       // Insights Highlights
       if (data.highestAspect && data.highestAspect.score > 0) {
-        document.getElementById('insight-strength-name').innerText = data.highestAspect.name + ' (Skor: ' + data.highestAspect.score.toFixed(2) + ' / 4.00)';
+        document.getElementById('insight-strength-name').innerText = data.highestAspect.name + ' (Skor: ' + Number(data.highestAspect.score).toFixed(2) + ' / 4.00)';
       } else {
         document.getElementById('insight-strength-name').innerText = 'Belum cukup data respon';
       }
 
       if (data.lowestAspect && data.lowestAspect.score > 0) {
-        document.getElementById('insight-improvement-name').innerText = data.lowestAspect.name + ' (Skor: ' + data.lowestAspect.score.toFixed(2) + ' / 4.00)';
+        document.getElementById('insight-improvement-name').innerText = data.lowestAspect.name + ' (Skor: ' + Number(data.lowestAspect.score).toFixed(2) + ' / 4.00)';
       } else {
-        document.getElementById('insight-improvement-name').innerText = 'Belum cukup data respon';
+        document.getElementById('insight-improvement-name').innerText = 'Pelayanan berjalan optimal';
       }
 
       const u = data.unsurScores || {};
 
-      // 1. RADAR CHART (9 PermenPAN Dimensions vs SPM)
+      // 1. RADAR CHART (7 PermenPAN Dimensions vs SPM)
       const ctxRadar = document.getElementById('aspectRadarChart').getContext('2d');
       if (radarChartInstance) radarChartInstance.destroy();
       radarChartInstance = new Chart(ctxRadar, {
         type: 'radar',
         data: {
-          labels: ['Persyaratan', 'Prosedur', 'Waktu', 'Biaya', 'Kompetensi', 'Informasi', 'Perilaku', 'Sarana', 'Pengaduan'],
+          labels: ['Persyaratan', 'Prosedur', 'Waktu', 'Biaya', 'Kompetensi', 'Informasi', 'Perilaku'],
           datasets: [
             {
               label: 'Skor Capaian RSUD',
-              data: [u.q1 || 0, u.q2 || 0, u.q3 || 0, u.q4 || 0, u.q5 || 0, u.q6 || 0, u.q7 || 0, u.q8 || 0, u.q9 || 0],
+              data: [u.q1 || 0, u.q2 || 0, u.q3 || 0, u.q4 || 0, u.q5 || 0, u.q6 || 0, u.q7 || 0],
               backgroundColor: 'rgba(37, 99, 235, 0.25)',
               borderColor: '#2563eb',
               borderWidth: 2.5,
@@ -1793,7 +1796,7 @@ export const GOOGLE_APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
             },
             {
               label: 'Standar SPM (3.50)',
-              data: [3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5],
+              data: [3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5],
               backgroundColor: 'rgba(203, 213, 225, 0.1)',
               borderColor: '#94a3b8',
               borderWidth: 1.5,
@@ -1820,13 +1823,13 @@ export const GOOGLE_APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       // 2. HORIZONTAL BAR CHART
       const ctxBar = document.getElementById('aspectBarChart').getContext('2d');
       if (barChartInstance) barChartInstance.destroy();
-      const rawScores = [u.q1 || 0, u.q2 || 0, u.q3 || 0, u.q4 || 0, u.q5 || 0, u.q6 || 0, u.q7 || 0, u.q8 || 0, u.q9 || 0];
+      const rawScores = [u.q1 || 0, u.q2 || 0, u.q3 || 0, u.q4 || 0, u.q5 || 0, u.q6 || 0, u.q7 || 0];
       const barColors = rawScores.map(s => s >= 3.5 ? '#10b981' : (s >= 3.0 ? '#2563eb' : (s >= 2.5 ? '#f59e0b' : '#ef4444')));
 
       barChartInstance = new Chart(ctxBar, {
         type: 'bar',
         data: {
-          labels: ['1. Persyaratan', '2. Prosedur', '3. Waktu', '4. Biaya', '5. Kompetensi', '6. Informasi', '7. Perilaku', '8. Sarana', '9. Pengaduan'],
+          labels: ['1. Persyaratan', '2. Prosedur', '3. Waktu', '4. Biaya', '5. Kompetensi', '6. Informasi', '7. Perilaku'],
           datasets: [{
             data: rawScores,
             backgroundColor: barColors,
@@ -1904,6 +1907,120 @@ export const GOOGLE_APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       renderResponseTable();
     }
 
+    // Fungsi Filter Unit Pelayanan untuk Seluruh Komponen Dashboard (Grafik Radar, Bar, Doughnut, KPI, & Tabel)
+    function applyUnitFilter() {
+      const selectedUnit = document.getElementById('filter-unit-dashboard').value;
+      if (!globalDashboardData || !globalDashboardData.recentResponses) return;
+
+      if (selectedUnit === 'ALL') {
+        renderDashboard(globalDashboardData);
+        return;
+      }
+
+      const allList = globalDashboardData.recentResponses || [];
+      const targetLower = selectedUnit.toLowerCase().trim();
+      const filteredList = allList.filter(function(r) {
+        const lay = String(r.jenisLayanan || '').toLowerCase().trim();
+        return lay === targetLower || lay.indexOf(targetLower) !== -1 || targetLower.indexOf(lay) !== -1;
+      });
+
+      let sumQ1 = 0, countQ1 = 0;
+      let sumQ2 = 0, countQ2 = 0;
+      let sumQ3 = 0, countQ3 = 0;
+      let sumQ4 = 0, countQ4 = 0;
+      let sumQ5 = 0, countQ5 = 0;
+      let sumQ6 = 0, countQ6 = 0;
+      let sumQ7 = 0, countQ7 = 0;
+      let sumScore = 0, countScore = 0;
+      let sumIkm = 0;
+      let puasCount = 0;
+      const mutuDist = { a: 0, b: 0, c: 0, d: 0 };
+
+      filteredList.forEach(function(r) {
+        const q1 = Number(r.q1) || 0;
+        const q2 = Number(r.q2) || 0;
+        const q3 = Number(r.q3) || 0;
+        const q4 = Number(r.q4) || 0;
+        const q5 = Number(r.q5) || 0;
+        const q6 = Number(r.q6) || 0;
+        const q7 = Number(r.q7) || 0;
+
+        if (q1 > 0) { sumQ1 += q1; countQ1++; }
+        if (q2 > 0) { sumQ2 += q2; countQ2++; }
+        if (q3 > 0) { sumQ3 += q3; countQ3++; }
+        if (q4 > 0) { sumQ4 += q4; countQ4++; }
+        if (q5 > 0) { sumQ5 += q5; countQ5++; }
+        if (q6 > 0) { sumQ6 += q6; countQ6++; }
+        if (q7 > 0) { sumQ7 += q7; countQ7++; }
+
+        const sc = Number(r.avgScore) || 0;
+        const ikm = Number(r.ikm100) || 0;
+        if (sc > 0) {
+          sumScore += sc;
+          sumIkm += ikm;
+          countScore++;
+          if (sc >= 3.0) puasCount++;
+        }
+
+        const mutu = String(r.mutuLayanan || '').toUpperCase();
+        if (mutu.indexOf('A') !== -1 || sc >= 3.5) mutuDist.a++;
+        else if (mutu.indexOf('B') !== -1 || sc >= 3.0) mutuDist.b++;
+        else if (mutu.indexOf('C') !== -1 || sc >= 2.5) mutuDist.c++;
+        else mutuDist.d++;
+      });
+
+      const avgOverallScore = countScore > 0 ? sumScore / countScore : 0;
+      const avgOverallIkm = countScore > 0 ? sumIkm / countScore : 0;
+      const kepuasanRate = countScore > 0 ? Number(((puasCount / countScore) * 100).toFixed(1)) : 0;
+
+      let mutuLabel = "Sangat Baik (A)";
+      let mutuGrade = "A";
+      if (avgOverallIkm < 65) { mutuLabel = "Kurang Baik (D)"; mutuGrade = "D"; }
+      else if (avgOverallIkm < 76.6) { mutuLabel = "Cukup (C)"; mutuGrade = "C"; }
+      else if (avgOverallIkm < 88.3) { mutuLabel = "Baik (B)"; mutuGrade = "B"; }
+
+      const unsurScores = {
+        q1: countQ1 > 0 ? Number((sumQ1 / countQ1).toFixed(2)) : 0,
+        q2: countQ2 > 0 ? Number((sumQ2 / countQ2).toFixed(2)) : 0,
+        q3: countQ3 > 0 ? Number((sumQ3 / countQ3).toFixed(2)) : 0,
+        q4: countQ4 > 0 ? Number((sumQ4 / countQ4).toFixed(2)) : 0,
+        q5: countQ5 > 0 ? Number((sumQ5 / countQ5).toFixed(2)) : 0,
+        q6: countQ6 > 0 ? Number((sumQ6 / countQ6).toFixed(2)) : 0,
+        q7: countQ7 > 0 ? Number((sumQ7 / countQ7).toFixed(2)) : 0
+      };
+
+      const aspekList = [
+        { key: 'q1', name: 'Persyaratan Pelayanan', score: unsurScores.q1 },
+        { key: 'q2', name: 'Prosedur Pelayanan', score: unsurScores.q2 },
+        { key: 'q3', name: 'Waktu Pelayanan', score: unsurScores.q3 },
+        { key: 'q4', name: 'Biaya / Tarif Pelayanan', score: unsurScores.q4 },
+        { key: 'q5', name: 'Kompetensi / NAKES', score: unsurScores.q5 },
+        { key: 'q6', name: 'Pelayanan Informasi Medis', score: unsurScores.q6 },
+        { key: 'q7', name: 'Perilaku & Keramahan Petugas', score: unsurScores.q7 }
+      ].filter(function(a) { return a.score > 0; }).sort(function(a, b) { return b.score - a.score; });
+
+      const highestAspect = aspekList[0] || null;
+      const lowestAspect = aspekList[aspekList.length - 1] || null;
+
+      const filteredData = {
+        totalResponden: filteredList.length,
+        avgScore: Number(avgOverallScore.toFixed(2)),
+        avgIkm: Number(avgOverallIkm.toFixed(2)),
+        mutuPelayanan: mutuLabel,
+        mutuGrade: mutuGrade,
+        kepuasanRate: kepuasanRate,
+        unsurScores: unsurScores,
+        mutuDist: mutuDist,
+        highestAspect: highestAspect,
+        lowestAspect: lowestAspect,
+        unitBreakdown: globalDashboardData.unitBreakdown,
+        recentResponses: filteredList,
+        lastUpdated: globalDashboardData.lastUpdated
+      };
+
+      renderDashboard(filteredData);
+    }
+
     function renderPinTable() {
       const tbody = document.getElementById('pin-table-body');
       tbody.innerHTML = '';
@@ -1977,7 +2094,16 @@ export const GOOGLE_APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       }
 
       const q = (document.getElementById('search-responses')?.value || '').toLowerCase();
+      const unitSel = document.getElementById('filter-unit-dashboard')?.value || 'ALL';
+      const unitLower = unitSel.toLowerCase().trim();
+
       const filtered = globalDashboardData.recentResponses.filter(r => {
+        if (unitSel !== 'ALL') {
+          const lay = String(r.jenisLayanan || '').toLowerCase().trim();
+          if (lay !== unitLower && lay.indexOf(unitLower) === -1 && unitLower.indexOf(lay) === -1) {
+            return false;
+          }
+        }
         if (q) {
           const mNama = (r.namaPasien || '').toLowerCase().includes(q);
           const mLayanan = (r.jenisLayanan || '').toLowerCase().includes(q);

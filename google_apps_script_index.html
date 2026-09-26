@@ -206,17 +206,6 @@
           <span id="badgeActivePins" class="px-2 py-0.5 rounded-full text-[10px] bg-amber-400 text-slate-950 font-black">...</span>
         </button>
 
-        <button 
-          id="tabBtnLink"
-          onclick="switchTab('link')"
-          class="px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold transition flex items-center gap-2 text-slate-300 hover:text-white hover:bg-white/10 whitespace-nowrap"
-        >
-          <svg class="w-4 h-4 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-          </svg>
-          <span>🌐 Tautan Survei Pasien &amp; QR Code</span>
-        </button>
-
       </div>
     </div>
   </header>
@@ -879,76 +868,6 @@
 
     </section>
 
-    <!-- =================================================================== -->
-    <!-- TAB 4: TAUTAN SURVEI PASIEN & QR CODE -->
-    <!-- =================================================================== -->
-    <section id="paneLink" class="hidden space-y-6">
-      <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm card-watermark space-y-6">
-        
-        <div class="border-b border-slate-100 pb-3">
-          <h3 class="text-base font-extrabold text-slate-900">
-            Tautan Aplikasi Survei Pasien RSUD Aeramo
-          </h3>
-          <p class="text-xs text-slate-500">
-            Alamat web publik yang diberikan kepada pasien rawat inap / jalan untuk mengisi kuesioner
-          </p>
-        </div>
-
-        <!-- Box URL Utama -->
-        <div class="p-5 rounded-2xl bg-blue-50/70 border border-blue-200 space-y-3">
-          <label class="block text-xs font-bold text-blue-950 uppercase tracking-wider">
-            Tautan Utama Aplikasi Pasien:
-          </label>
-          <div class="flex flex-col sm:flex-row items-center gap-2">
-            <input 
-              type="text" 
-              id="appPatientUrl" 
-              readonly
-              value="https://ais-dev-yccl2mwm2caj7dw5hp4m7l-848831564581.asia-east1.run.app"
-              class="w-full p-3 rounded-xl border border-blue-300 text-xs font-mono bg-white text-blue-950 font-bold shadow-2xs"
-            />
-            <button 
-              onclick="copyAppUrl()"
-              class="w-full sm:w-auto px-5 py-3 rounded-xl bg-blue-800 hover:bg-blue-900 text-white text-xs font-bold transition whitespace-nowrap shadow-sm"
-            >
-              📋 Salin URL
-            </button>
-            <a 
-              href="https://ais-dev-yccl2mwm2caj7dw5hp4m7l-848831564581.asia-east1.run.app"
-              target="_blank"
-              class="w-full sm:w-auto px-5 py-3 rounded-xl bg-white hover:bg-slate-50 text-blue-900 border border-blue-300 text-xs font-bold transition whitespace-nowrap text-center"
-            >
-              🚀 Buka Tampilan Pasien
-            </a>
-          </div>
-          <p class="text-[11px] text-blue-900/80">
-            💡 Pasien membuka alamat di atas dari smartphone mereka, memasukkan 6-digit PIN yang diterbitkan petugas, dan langsung dapat mengisi kuesioner tanpa perlu login akun Google.
-          </p>
-        </div>
-
-        <!-- Panduan & QR Code Info -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-          <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-            <h4 class="font-extrabold text-slate-900 flex items-center gap-2">
-              <span>📱 QR Code di Meja Kasir / Kamar Pasien</span>
-            </h4>
-            <p class="text-[11px] text-slate-600 leading-relaxed">
-              Anda dapat mencetak QR Code yang mengarah ke link di atas dan menempelkannya di kamar rawat inap (Kamar Mawar, Melati, dll.) atau loket farmasi. Pasien cukup scan QR Code lalu memasukkan PIN yang diberikan petugas.
-            </p>
-          </div>
-
-          <div class="p-5 rounded-2xl bg-rose-50/60 border border-rose-200 space-y-2">
-            <h4 class="font-extrabold text-rose-950 flex items-center gap-2">
-              <span>🌹 Standar Evaluasi Ruang Mawar RSUD Aeramo</span>
-            </h4>
-            <p class="text-[11px] text-rose-900 leading-relaxed">
-              Data evaluasi yang masuk akan langsung dikalkulasikan ke dalam grafik radar spider web dan skor IKM (0-100) guna pemenuhan standar akreditasi rumah sakit Kementerian Kesehatan RI.
-            </p>
-          </div>
-        </div>
-
-      </div>
-    </section>
 
   </main>
 
@@ -1059,7 +978,7 @@
 
     // Navigasi Tab
     function switchTab(tabName) {
-      var tabs = ['analytics', 'data', 'pins', 'link'];
+      var tabs = ['analytics', 'data', 'pins'];
       tabs.forEach(function(t) {
         var pane = document.getElementById('pane' + t.charAt(0).toUpperCase() + t.slice(1));
         var btn = document.getElementById('tabBtn' + t.charAt(0).toUpperCase() + t.slice(1));

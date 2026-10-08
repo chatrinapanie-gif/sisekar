@@ -12,3 +12,13 @@
   }
 }
 
+// Di komponen UI React tempat menampilkan pertanyaan (misal: QuestionCard.jsx)
+{section.questions.map((q) => (
+  <div key={q.id} className="mb-4">
+    {/* Membuat aspek tebal */}
+    <h4 className="font-bold text-gray-900">{q.aspek}</h4>
+
+    {/* Membuat seluruh uraian tebal */}
+    <p className="font-semibold text-gray-800 mt-1">{q.uraian}</p>
+  </div>
+))}

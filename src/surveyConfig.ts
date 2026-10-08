@@ -417,7 +417,7 @@ export const SERVICE_QUESTIONS: Record<ServiceKey, QuestionSection[]> = {
         {
           id: 'ri_q1_keterpenuhan_pelayanan',
           aspek: 'Aspek Keterpenuhan Pelayanan Pasien Rawat Inap',
-          uraian: 'Menurut Bapak/Ibu, apakah persyaratan untuk mendapatkan pelayanan di Rumah Sakit ini mudah dipenuhi dan sesuai dengan pelayanan yang dibutuhkan?',
+          uraian: '<b>Menurut Bapak/Ibu, apakah persyaratan untuk mendapatkan pelayanan di Rumah Sakit ini mudah dipenuhi dan sesuai dengan pelayanan yang dibutuhkan?</b>',
           targetPoint: 'q1', // -> Masuk ke Q1 (Persyaratan Pelayanan)
           options: OPSI_KESESUAIAN,
         },

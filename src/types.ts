@@ -53,12 +53,12 @@ export interface SurveySubmission {
   
   // Sesuai Gambar 2:
   tanggalSurvei: string;
-  jamSurvei: JamSurvei;
+  jamSurvei: JamSurvei | string;
   namaPasien: string; // Opsional
-  jenisKelamin: JenisKelamin;
-  pendidikan: Pendidikan;
+  jenisKelamin: JenisKelamin | string;
+  pendidikan: Pendidikan | string;
   usia: string | number;
-  pekerjaan: Pekerjaan;
+  pekerjaan: Pekerjaan | string;
   pekerjaanLainnya?: string;
   jenisLayanan: string; // misal: Rawat Inap, Rawat Jalan, Farmasi, dll.
   ruangan?: string; // misal: Kamar Mawar 102, Poli Dalam, Bed 03

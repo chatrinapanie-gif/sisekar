@@ -122,13 +122,13 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
   // Profil Responden (Gambar 2)
   const todayStr = new Date().toISOString().slice(0, 10);
   const [tanggalSurvei, setTanggalSurvei] = useState<string>(todayStr);
-  const [jamSurvei, setJamSurvei] = useState<JamSurvei>('08.00 – 14.00 WITA');
+  const [jamSurvei, setJamSurvei] = useState<JamSurvei | ''>('');
   const [namaPasien, setNamaPasien] = useState<string>(patientPinToken?.registeredPatientName || '');
   const [ruangan, setRuangan] = useState<string>(patientPinToken?.registeredRoom || '');
-  const [jenisKelamin, setJenisKelamin] = useState<JenisKelamin>('L');
-  const [pendidikan, setPendidikan] = useState<Pendidikan>('SMA');
-  const [usia, setUsia] = useState<string>('32');
-  const [pekerjaan, setPekerjaan] = useState<Pekerjaan>('SWASTA');
+  const [jenisKelamin, setJenisKelamin] = useState<JenisKelamin | ''>('');
+  const [pendidikan, setPendidikan] = useState<Pendidikan | ''>('');
+  const [usia, setUsia] = useState<string>('');
+  const [pekerjaan, setPekerjaan] = useState<Pekerjaan | ''>('');
   const [pekerjaanLainnya, setPekerjaanLainnya] = useState<string>('');
   const [selectedServiceKey, setSelectedServiceKey] = useState<ServiceKey>(() => {
     return patientPinToken?.registeredService 
@@ -234,13 +234,13 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
 
   const handleResetForm = () => {
     setTanggalSurvei(new Date().toISOString().slice(0, 10));
-    setJamSurvei('08.00 – 14.00 WITA');
+    setJamSurvei('');
     setNamaPasien('');
     setRuangan('');
-    setJenisKelamin('L');
-    setPendidikan('SMA');
-    setUsia('32');
-    setPekerjaan('SWASTA');
+    setJenisKelamin('');
+    setPendidikan('');
+    setUsia('');
+    setPekerjaan('');
     setPekerjaanLainnya('');
     setSelectedServiceKey('rawat_inap');
     setCustomLayananText('');
@@ -391,12 +391,12 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
         timeStyle: 'short',
       }),
       tanggalSurvei,
-      jamSurvei,
+      jamSurvei: jamSurvei || (new Date().getHours() < 14 ? '08.00 – 14.00 WITA' : '14.00 – 20.00 WITA'),
       namaPasien: namaPasien.trim() || '(Anonim)',
-      jenisKelamin,
-      pendidikan,
+      jenisKelamin: jenisKelamin || '-',
+      pendidikan: pendidikan || '-',
       usia: usia ? Number(usia) : '-',
-      pekerjaan,
+      pekerjaan: pekerjaan || '-',
       pekerjaanLainnya: pekerjaan === 'LAINNYA' ? pekerjaanLainnya : undefined,
       jenisLayanan,
       ruangan: ruangan.trim() || undefined,
@@ -828,9 +828,10 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
                 type="number"
                 min={1}
                 max={120}
+                placeholder="—"
                 value={usia}
                 onChange={e => setUsia(e.target.value)}
-                className="w-24 px-3 py-2 rounded-xl border border-slate-300 bg-white font-bold text-center text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                className="w-24 px-3 py-2 rounded-xl border border-slate-300 bg-white font-bold text-center text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 placeholder:text-slate-400 placeholder:font-normal"
               />
               <span className="text-slate-700 font-medium">tahun</span>
             </div>

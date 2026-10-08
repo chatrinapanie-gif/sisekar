@@ -75,37 +75,37 @@ const getOptionColors = (val: 1 | 2 | 3 | 4, isSelected: boolean) => {
     case 1:
       return {
         card: isSelected 
-          ? 'bg-rose-50/95 border-rose-500 ring-2 ring-rose-400 shadow-md text-slate-900' 
-          : 'bg-rose-50/30 border-rose-200/90 hover:border-rose-300 hover:bg-rose-50/60 text-slate-800',
+          ? 'bg-rose-600 border-rose-700 ring-2 ring-rose-400 shadow-md text-white' 
+          : 'bg-white border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-900',
         badge: isSelected
-          ? 'bg-rose-600 text-white font-bold'
+          ? 'bg-white text-rose-800 font-black'
           : 'bg-rose-100 text-rose-800 font-bold border border-rose-200',
       };
     case 2:
       return {
         card: isSelected 
-          ? 'bg-amber-50/95 border-amber-500 ring-2 ring-amber-400 shadow-md text-slate-900' 
-          : 'bg-amber-50/30 border-amber-200/90 hover:border-amber-300 hover:bg-amber-50/60 text-slate-800',
+          ? 'bg-amber-500 border-amber-600 ring-2 ring-amber-400 shadow-md text-white' 
+          : 'bg-white border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-900',
         badge: isSelected
-          ? 'bg-amber-600 text-white font-bold'
+          ? 'bg-white text-amber-800 font-black'
           : 'bg-amber-100 text-amber-800 font-bold border border-amber-200',
       };
     case 3:
       return {
         card: isSelected 
-          ? 'bg-blue-50/95 border-blue-600 ring-2 ring-blue-400 shadow-md text-slate-900' 
-          : 'bg-blue-50/30 border-blue-200/90 hover:border-blue-300 hover:bg-blue-50/60 text-slate-800',
+          ? 'bg-blue-600 border-blue-700 ring-2 ring-blue-400 shadow-md text-white' 
+          : 'bg-white border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-900',
         badge: isSelected
-          ? 'bg-blue-600 text-white font-bold'
+          ? 'bg-white text-blue-800 font-black'
           : 'bg-blue-100 text-blue-800 font-bold border border-blue-200',
       };
     case 4:
       return {
         card: isSelected 
-          ? 'bg-emerald-50/95 border-emerald-600 ring-2 ring-emerald-400 shadow-md text-slate-900' 
-          : 'bg-emerald-50/30 border-emerald-200/90 hover:border-emerald-300 hover:bg-emerald-50/60 text-slate-800',
+          ? 'bg-emerald-600 border-emerald-700 ring-2 ring-emerald-400 shadow-md text-white' 
+          : 'bg-white border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-900',
         badge: isSelected
-          ? 'bg-emerald-600 text-white font-bold'
+          ? 'bg-white text-emerald-800 font-black'
           : 'bg-emerald-100 text-emerald-800 font-bold border border-emerald-200',
       };
   }
@@ -154,17 +154,7 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
         const matchedKey = mapServiceTextToKey(patientPinToken.registeredService);
         setSelectedServiceKey(matchedKey);
         setJenisLayanan(patientPinToken.registeredService);
-        const newSecs = getQuestionsForService(matchedKey);
-        const newQs = newSecs.flatMap(s => s.questions);
-        setAnswers(prev => {
-          const updated = { ...prev };
-          newQs.forEach((q, idx) => {
-            if (updated[q.id] === undefined) {
-              updated[q.id] = (idx % 2 === 0 ? 4 : 3) as SkalaKepuasan;
-            }
-          });
-          return updated;
-        });
+        // CATATAN: Skala penilaian TETAP KOSONG (bebas) agar pasien membaca dan memilih sendiri secara objektif
       }
     }
   }, [patientPinToken]);
@@ -183,15 +173,9 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
     return currentSections.flatMap(s => s.questions);
   }, [currentSections]);
 
-  // Inisialisasi default jawaban nilai 4 (Sangat Puas) / 3 (Puas) untuk pertanyaan awal
-  const [answers, setAnswers] = useState<Record<string, SkalaKepuasan>>(() => {
-    const initAns: Record<string, SkalaKepuasan> = {};
-    const defaultQs = getQuestionsForService('rawat_inap').flatMap(s => s.questions);
-    defaultQs.forEach((q, idx) => {
-      initAns[q.id] = (idx % 2 === 0 ? 4 : 3) as SkalaKepuasan;
-    });
-    return initAns;
-  });
+  // Skala penilaian diawali KOSONG (bebas) - TIDAK ada yang terisi duluan agar responden membaca pertanyaan
+  const [answers, setAnswers] = useState<Record<string, SkalaKepuasan>>({});
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   const totalQuestionsCount = allQuestions.length;
   const answeredCount = allQuestions.filter(q => answers[q.id] !== undefined).length;
@@ -233,6 +217,7 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
 
   const handleSelectAnswer = (qId: string, val: SkalaKepuasan) => {
     setAnswers(prev => ({ ...prev, [qId]: val }));
+    setValidationError(null);
   };
 
   // Handler saat jenis layanan diubah dari dropdown
@@ -242,20 +227,16 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
     const resolvedName = newKey === 'lainnya' ? (customLayananText.trim() || 'Layanan Lainnya') : serviceInfo.label;
     setJenisLayanan(resolvedName);
 
-    // Siapkan jawaban default HANYA untuk pertanyaan milik unit/ruangan yang dipilih
-    const newSecs = getQuestionsForService(newKey);
-    const newQs = newSecs.flatMap(s => s.questions);
-    const freshAnswers: Record<string, SkalaKepuasan> = {};
-    newQs.forEach((q, idx) => {
-      freshAnswers[q.id] = (idx % 2 === 0 ? 4 : 3) as SkalaKepuasan;
-    });
-    setAnswers(freshAnswers);
+    // KOSONGKAN jawaban agar responden membaca dan menilai mandiri untuk layanan yang baru dipilih
+    setAnswers({});
+    setValidationError(null);
   };
 
   const handleResetForm = () => {
     setTanggalSurvei(new Date().toISOString().slice(0, 10));
     setJamSurvei('08.00 – 14.00 WITA');
     setNamaPasien('');
+    setRuangan('');
     setJenisKelamin('L');
     setPendidikan('SMA');
     setUsia('32');
@@ -265,13 +246,9 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
     setCustomLayananText('');
     setJenisLayanan('Rawat Inap');
 
-    // Inisialisasi ulang jawaban default untuk 9 pertanyaan Rawat Inap
-    const defaultQs = getQuestionsForService('rawat_inap').flatMap(s => s.questions);
-    const initAns: Record<string, SkalaKepuasan> = {};
-    defaultQs.forEach((q, idx) => {
-      initAns[q.id] = (idx % 2 === 0 ? 4 : 3) as SkalaKepuasan;
-    });
-    setAnswers(initAns);
+    // Kosongkan seluruh skala penilaian (bebas tanpa terisi awal)
+    setAnswers({});
+    setValidationError(null);
     setSaran('');
     setSubmitResult({
       show: false,
@@ -290,7 +267,7 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
       .map(q => answers[q.id])
       .filter((val): val is SkalaKepuasan => typeof val === 'number' && val > 0);
 
-    if (validScores.length === 0) return { avg: 0, ikm: 0, mutu: 'Baik (B)' };
+    if (validScores.length === 0) return { avg: 0, ikm: 0, mutu: 'Belum Dinilai' };
     const total = validScores.reduce((a, b) => a + b, 0);
     const avg = Number((total / validScores.length).toFixed(2));
     const ikm = Number(((avg / 4) * 100).toFixed(2));
@@ -305,6 +282,22 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validasi kelengkapan: pastikan SELURUH pertanyaan telah dipilih nilainya
+    const activeQuestionList = currentSections.flatMap(sec => sec.questions);
+    const unansweredQuestions = activeQuestionList.filter(q => answers[q.id] === undefined);
+    if (unansweredQuestions.length > 0) {
+      setValidationError(`Mohon berikan penilaian pada seluruh ${activeQuestionList.length} pertanyaan terlebih dahulu. Masih ada ${unansweredQuestions.length} pertanyaan yang belum Anda pilih nilainya.`);
+      // Scroll halus ke pertanyaan pertama yang belum diisi
+      const firstUnanswered = unansweredQuestions[0];
+      const targetElement = document.getElementById(`q-box-${firstUnanswered.id}`);
+      if (targetElement) {
+        targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return;
+    }
+    setValidationError(null);
+
     // Proteksi ganda anti-double click / double tap di HP maupun Web
     if (isSubmittingRef.current || isSubmitting) {
       console.warn('[SISEKAR] Pengiriman survei sedang berjalan, klik ganda diabaikan.');
@@ -321,7 +314,6 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
     const isMobileDevice = typeof navigator !== 'undefined' && /android|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile/i.test(navigator.userAgent);
     const platform = isMobileDevice ? 'Smartphone (HP)' : 'Komputer (Web)';
 
-    const activeQuestionList = currentSections.flatMap(sec => sec.questions);
     const answeredDetails = activeQuestionList.map((q, idx) => {
       const val = answers[q.id];
       const qOptions = q.options && q.options.length === 4 ? q.options : SKALA_OPTIONS;
@@ -1081,32 +1073,33 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
 
                         return (
                           <tr 
+                            id={`q-box-${q.id}`}
                             key={q.id}
                             className={`transition-colors ${
-                              isAnswered ? 'bg-white hover:bg-slate-50/60' : 'bg-rose-50/15 hover:bg-rose-50/30'
+                              isAnswered ? 'bg-white hover:bg-slate-50/60' : 'bg-slate-50/40 hover:bg-slate-50/70'
                             }`}
                           >
                             {/* Kolom 1: Nomor */}
                             <td className="p-3 text-center align-middle font-bold text-slate-700 border-r border-slate-100">
-                              <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-700 text-xs font-bold inline-flex items-center justify-center border border-slate-200">
+                              <span className="w-7 h-7 rounded-full bg-slate-100 text-slate-800 text-xs font-black inline-flex items-center justify-center border border-slate-300">
                                 {idx + 1}
                               </span>
                             </td>
 
                             {/* Kolom 2: Aspek & Uraian */}
-                            <td className="p-3.5 align-middle border-r border-slate-100 space-y-1.5">
+                            <td className="p-3.5 align-middle border-r border-slate-100 space-y-2">
                               <div className="flex flex-wrap items-center gap-1.5">
-                                <span className="text-[11px] font-bold text-blue-800 bg-blue-50/90 px-2 py-0.5 rounded-md border border-blue-200/70 inline-block">
+                                <span className="text-xs font-extrabold text-slate-900 leading-snug">
                                   {q.aspek}
                                 </span>
                                 {isAnswered ? (
-                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                    <Check className="w-3 h-3 text-emerald-600" />
+                                  <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs">
+                                    <Check className="w-3.5 h-3.5 text-emerald-700" strokeWidth={3} />
                                     <span>Nilai {currentVal}</span>
                                   </span>
                                 ) : (
-                                  <span className="text-[10px] font-semibold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
-                                    Wajib
+                                  <span className="text-[11px] font-bold text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-300">
+                                    Belum Dipilih
                                   </span>
                                 )}
                               </div>
@@ -1127,27 +1120,29 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
                                     type="button"
                                     onClick={() => handleSelectAnswer(q.id, opt.value)}
                                     title={`${opt.label}: ${opt.description || ''}`}
-                                    className={`w-full py-2.5 px-1 rounded-xl border transition-all active:scale-95 flex flex-col items-center justify-center gap-0.5 select-none cursor-pointer ${
+                                    className={`w-full py-3.5 px-2 rounded-2xl border-2 transition-all active:scale-95 flex flex-col items-center justify-center gap-1 select-none cursor-pointer ${
                                       isSelected
                                         ? opt.value === 1
-                                          ? 'bg-rose-600 text-white border-rose-700 shadow-sm ring-2 ring-rose-300'
+                                          ? 'bg-rose-600 text-white border-rose-700 shadow-md ring-2 ring-rose-400'
                                           : opt.value === 2
-                                            ? 'bg-amber-500 text-white border-amber-600 shadow-sm ring-2 ring-amber-300'
+                                            ? 'bg-amber-500 text-white border-amber-600 shadow-md ring-2 ring-amber-400'
                                             : opt.value === 3
-                                              ? 'bg-blue-600 text-white border-blue-700 shadow-sm ring-2 ring-blue-300'
-                                              : 'bg-emerald-600 text-white border-emerald-700 shadow-sm ring-2 ring-emerald-300'
-                                        : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300'
+                                              ? 'bg-blue-600 text-white border-blue-700 shadow-md ring-2 ring-blue-400'
+                                              : 'bg-emerald-600 text-white border-emerald-700 shadow-md ring-2 ring-emerald-400'
+                                        : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-900 hover:border-slate-300 shadow-2xs'
                                     }`}
                                   >
-                                    <span className="text-lg select-none" role="img" aria-label={opt.label}>
+                                    <span className="text-2xl select-none" role="img" aria-label={opt.label}>
                                       {opt.emoji || (opt.value === 1 ? '😡' : opt.value === 2 ? '😮' : opt.value === 3 ? '😊' : '🤩')}
                                     </span>
-                                    <span className="text-xs font-bold flex items-center gap-0.5">
+                                    <span className={`text-sm sm:text-base font-black flex items-center justify-center gap-1 ${
+                                      isSelected ? 'text-white' : 'text-slate-900'
+                                    }`}>
                                       <span>{opt.value}</span>
-                                      {isSelected && <Check className="w-3 h-3 text-white" />}
+                                      {isSelected && <Check className="w-4 h-4 text-white" strokeWidth={3} />}
                                     </span>
-                                    <span className={`text-[10px] font-bold leading-tight line-clamp-2 px-0.5 ${
-                                      isSelected ? 'text-white' : 'text-slate-700'
+                                    <span className={`text-xs font-bold leading-tight line-clamp-2 px-1 text-center ${
+                                      isSelected ? 'text-white' : 'text-slate-900'
                                     }`}>
                                       {opt.label}
                                     </span>
@@ -1171,34 +1166,35 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
 
                     return (
                       <div 
+                        id={`q-box-${q.id}`}
                         key={q.id}
-                        className={`p-3 rounded-2xl border transition-colors shadow-2xs space-y-2.5 ${
-                          isAnswered ? 'bg-white border-slate-200' : 'bg-rose-50/20 border-rose-200'
+                        className={`p-3.5 rounded-2xl border-2 transition-colors shadow-2xs space-y-3 ${
+                          isAnswered ? 'bg-white border-slate-200' : 'bg-slate-50/70 border-slate-200'
                         }`}
                       >
                         {/* Header Soal: Nomor + Aspek + Status */}
                         <div className="flex items-start justify-between gap-2">
-                          <div className="flex items-start gap-2">
-                            <span className="w-6 h-6 rounded-full bg-blue-700 text-white text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
+                          <div className="flex items-start gap-2.5">
+                            <span className="w-6 h-6 rounded-full bg-blue-700 text-white text-xs font-black flex items-center justify-center shrink-0 mt-0.5">
                               {idx + 1}
                             </span>
                             <div className="space-y-1">
-                              <span className="inline-block text-[11px] font-bold text-blue-800 bg-blue-50/90 px-2 py-0.5 rounded-md border border-blue-200/70">
+                              <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm leading-snug">
                                 {q.aspek}
-                              </span>
+                              </h4>
                               <p className="text-xs sm:text-sm font-bold text-slate-900 leading-snug">
                                 {q.uraian}
                               </p>
                             </div>
                           </div>
                           {isAnswered ? (
-                            <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-                              <Check className="w-3 h-3 text-emerald-700" />
+                            <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                              <Check className="w-3 h-3 text-emerald-700" strokeWidth={3} />
                               <span>{currentVal}</span>
                             </span>
                           ) : (
-                            <span className="shrink-0 text-[10px] font-semibold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
-                              Wajib
+                            <span className="shrink-0 text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-300">
+                              Belum Dipilih
                             </span>
                           )}
                         </div>
@@ -1212,27 +1208,29 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
                                 key={opt.value}
                                 type="button"
                                 onClick={() => handleSelectAnswer(q.id, opt.value)}
-                                className={`w-full min-h-[64px] py-2 px-1 rounded-xl border flex flex-col items-center justify-between text-center transition-all active:scale-95 select-none cursor-pointer ${
+                                className={`w-full min-h-[72px] py-2 px-1 rounded-2xl border-2 flex flex-col items-center justify-between text-center transition-all active:scale-95 select-none cursor-pointer shadow-2xs ${
                                   isSelected
                                     ? opt.value === 1
-                                      ? 'bg-rose-600 text-white border-rose-700 shadow-sm ring-2 ring-rose-300'
+                                      ? 'bg-rose-600 text-white border-rose-700 shadow-md ring-2 ring-rose-300'
                                       : opt.value === 2
-                                        ? 'bg-amber-500 text-white border-amber-600 shadow-sm ring-2 ring-amber-300'
+                                        ? 'bg-amber-500 text-white border-amber-600 shadow-md ring-2 ring-amber-300'
                                         : opt.value === 3
-                                          ? 'bg-blue-600 text-white border-blue-700 shadow-sm ring-2 ring-blue-300'
-                                          : 'bg-emerald-600 text-white border-emerald-700 shadow-sm ring-2 ring-emerald-300'
-                                    : 'bg-slate-50 hover:bg-white border-slate-200 text-slate-800 hover:border-slate-300'
+                                          ? 'bg-blue-600 text-white border-blue-700 shadow-md ring-2 ring-blue-300'
+                                          : 'bg-emerald-600 text-white border-emerald-700 shadow-md ring-2 ring-emerald-300'
+                                    : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-900 hover:border-slate-300'
                                 }`}
                               >
-                                <span className="text-lg select-none" role="img" aria-label={opt.label}>
+                                <span className="text-xl select-none" role="img" aria-label={opt.label}>
                                   {opt.emoji || (opt.value === 1 ? '😡' : opt.value === 2 ? '😮' : opt.value === 3 ? '😊' : '🤩')}
                                 </span>
-                                <span className="text-xs font-bold flex items-center justify-center gap-0.5">
+                                <span className={`text-xs sm:text-sm font-black flex items-center justify-center gap-0.5 ${
+                                  isSelected ? 'text-white' : 'text-slate-900'
+                                }`}>
                                   <span>{opt.value}</span>
-                                  {isSelected && <Check className="w-2.5 h-2.5 text-white" />}
+                                  {isSelected && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
                                 </span>
-                                <span className={`text-[9px] font-bold leading-tight line-clamp-2 px-0.5 ${
-                                  isSelected ? 'text-white' : 'text-slate-700'
+                                <span className={`text-[10px] sm:text-xs font-bold leading-tight line-clamp-2 px-0.5 ${
+                                  isSelected ? 'text-white' : 'text-slate-900'
                                 }`}>
                                   {opt.label}
                                 </span>
@@ -1251,31 +1249,34 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
             {viewMode === 'cards' && (
               <div className="space-y-4 print:hidden">
                 {section.questions.map((q, idx) => {
+                  const currentVal = answers[q.id];
+                  const isAnswered = currentVal !== undefined;
                   const qOptions = q.options && q.options.length === 4 ? q.options : SKALA_OPTIONS;
 
                   return (
                     <div 
+                      id={`q-box-${q.id}`}
                       key={q.id}
                       className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3 transition-all"
                     >
                       {/* Header Soal & Aspek */}
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2">
                         <div className="flex items-center gap-2.5">
-                          <span className="w-6 h-6 rounded-full bg-blue-800 text-white text-xs font-bold flex items-center justify-center shrink-0">
+                          <span className="w-6 h-6 rounded-full bg-blue-800 text-white text-xs font-black flex items-center justify-center shrink-0">
                             {idx + 1}
                           </span>
-                          <span className="text-xs font-bold text-blue-900 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200/70">
+                          <span className="text-xs font-extrabold text-blue-900 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200/70">
                             {q.aspek}
                           </span>
                         </div>
-                        {answers[q.id] ? (
+                        {isAnswered ? (
                           <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 w-fit self-start sm:self-auto border border-emerald-200">
-                            <Check className="w-3 h-3 text-emerald-700" />
-                            <span>Nilai {answers[q.id]} Terpilih</span>
+                            <Check className="w-3.5 h-3.5 text-emerald-700" strokeWidth={3} />
+                            <span>Nilai {currentVal} Terpilih</span>
                           </span>
                         ) : (
-                          <span className="text-[11px] font-semibold text-rose-600 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-200 w-fit self-start sm:self-auto">
-                            Wajib dipilih
+                          <span className="text-[11px] font-bold text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-300 w-fit self-start sm:self-auto">
+                            Belum Dipilih
                           </span>
                         )}
                       </div>
@@ -1286,9 +1287,9 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
                       </p>
 
                       {/* 4 Pilihan Jawaban dalam Grid Responsif (Pas Layar HP, Disertai Text Lengkap) */}
-                      <div className="grid grid-cols-4 gap-1 sm:gap-2 pt-1">
+                      <div className="grid grid-cols-4 gap-1.5 sm:gap-2.5 pt-1">
                         {qOptions.map(opt => {
-                          const isSelected = answers[q.id] === opt.value;
+                          const isSelected = currentVal === opt.value;
                           const colors = getOptionColors(opt.value, isSelected);
 
                           return (
@@ -1296,21 +1297,27 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
                               key={opt.value}
                               type="button"
                               onClick={() => handleSelectAnswer(q.id, opt.value)}
-                              className={`text-center rounded-xl p-2 sm:p-3 border transition-all active:scale-95 flex flex-col items-center justify-between gap-1 cursor-pointer select-none min-h-[70px] sm:min-h-[85px] ${colors.card}`}
+                              className={`text-center rounded-2xl p-2.5 sm:p-3 border-2 transition-all active:scale-95 flex flex-col items-center justify-between gap-1 cursor-pointer select-none min-h-[75px] sm:min-h-[90px] shadow-xs ${
+                                isSelected 
+                                  ? colors.card 
+                                  : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-900 hover:border-slate-300'
+                              }`}
                             >
                               <span className="text-xl sm:text-2xl select-none" role="img" aria-label={opt.label}>
                                 {opt.emoji || (opt.value === 1 ? '😡' : opt.value === 2 ? '😮' : opt.value === 3 ? '😊' : '🤩')}
                               </span>
                               <div className="w-full">
-                                <span className="font-bold text-xs block text-slate-900 flex items-center justify-center gap-0.5">
+                                <span className={`font-black text-sm sm:text-base block flex items-center justify-center gap-1 ${
+                                  isSelected ? 'text-slate-900' : 'text-slate-900'
+                                }`}>
                                   <span>{opt.value}.</span>
                                   {isSelected && (
-                                    <span className="w-3.5 h-3.5 rounded-full bg-slate-900 text-white inline-flex items-center justify-center">
-                                      <Check className="w-2 h-2 text-white" />
+                                    <span className="w-4 h-4 rounded-full bg-slate-900 text-white inline-flex items-center justify-center">
+                                      <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
                                     </span>
                                   )}
                                 </span>
-                                <span className="font-bold text-[9px] sm:text-xs block text-slate-800 leading-tight line-clamp-2">
+                                <span className="font-bold text-xs sm:text-sm block text-slate-900 leading-tight line-clamp-2 mt-0.5">
                                   {opt.label}
                                 </span>
                               </div>
@@ -1392,6 +1399,19 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
             className="w-full p-3 rounded-xl border border-slate-300 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
           />
         </div>
+
+        {/* Banner Peringatan Jika Ada Pertanyaan yang Belum Dinilai */}
+        {validationError && (
+          <div className="p-4 rounded-2xl bg-amber-50 border-2 border-amber-300 text-amber-950 flex items-start gap-3 text-xs sm:text-sm font-bold shadow-xs animate-in fade-in">
+            <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="space-y-0.5">
+              <p className="font-extrabold text-amber-900">{validationError}</p>
+              <p className="text-[11px] text-amber-800 font-medium">
+                Pilih skala penilaian (1, 2, 3, atau 4) untuk setiap pertanyaan di atas sebelum mengirim survei.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Action Buttons Bar */}
         <div className="pt-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 print:hidden">

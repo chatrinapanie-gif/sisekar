@@ -1094,9 +1094,9 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
                             </td>
 
                             {/* Kolom 2: Aspek & Uraian */}
-                            <td className="p-3.5 align-middle border-r border-slate-100 space-y-1">
+                            <td className="p-3.5 align-middle border-r border-slate-100 space-y-1.5">
                               <div className="flex flex-wrap items-center gap-1.5">
-                                <span className="font-bold text-slate-900 text-xs sm:text-sm">
+                                <span className="text-[11px] font-bold text-blue-800 bg-blue-50/90 px-2 py-0.5 rounded-md border border-blue-200/70 inline-block">
                                   {q.aspek}
                                 </span>
                                 {isAnswered ? (
@@ -1110,7 +1110,7 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
                                   </span>
                                 )}
                               </div>
-                              <p className="text-xs text-slate-600 leading-relaxed">
+                              <p className="text-xs sm:text-sm font-bold text-slate-900 leading-relaxed">
                                 {q.uraian}
                               </p>
                             </td>
@@ -1182,11 +1182,11 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
                             <span className="w-6 h-6 rounded-full bg-blue-700 text-white text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
                               {idx + 1}
                             </span>
-                            <div>
-                              <h4 className="font-bold text-slate-900 text-xs leading-snug">
+                            <div className="space-y-1">
+                              <span className="inline-block text-[11px] font-bold text-blue-800 bg-blue-50/90 px-2 py-0.5 rounded-md border border-blue-200/70">
                                 {q.aspek}
-                              </h4>
-                              <p className="text-[11px] text-slate-600 leading-relaxed mt-0.5">
+                              </span>
+                              <p className="text-xs sm:text-sm font-bold text-slate-900 leading-snug">
                                 {q.uraian}
                               </p>
                             </div>
@@ -1264,9 +1264,9 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
                           <span className="w-6 h-6 rounded-full bg-blue-800 text-white text-xs font-bold flex items-center justify-center shrink-0">
                             {idx + 1}
                           </span>
-                          <h4 className="font-bold text-slate-900 text-xs sm:text-sm">
+                          <span className="text-xs font-bold text-blue-900 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200/70">
                             {q.aspek}
-                          </h4>
+                          </span>
                         </div>
                         {answers[q.id] ? (
                           <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 w-fit self-start sm:self-auto border border-emerald-200">
@@ -1281,7 +1281,7 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
                       </div>
 
                       {/* Uraian Pertanyaan */}
-                      <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
+                      <p className="text-xs sm:text-base font-bold text-slate-900 leading-relaxed">
                         {q.uraian}
                       </p>
 
@@ -1352,7 +1352,7 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
                         </td>
 
                         {/* Kolom 2: Uraian */}
-                        <td className="p-3 border-r border-slate-900 text-slate-800 leading-relaxed align-top">
+                        <td className="p-3 border-r border-slate-900 font-bold text-slate-900 leading-relaxed align-top">
                           {q.uraian}
                         </td>
 

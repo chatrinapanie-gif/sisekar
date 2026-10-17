@@ -467,14 +467,14 @@ export const SERVICE_QUESTIONS: Record<ServiceKey, QuestionSection[]> = {
           id: 'ri_q8_fasilitas_sarana',
           aspek: 'Aspek Fasilitas Sarana/Prasarana',
           uraian: 'Menurut Bapak/Ibu, apakah fasilitas dan perlengkapan yang tersedia di Rumah Sakit ini cukup baik dan dapat digunakan dengan baik?',
-          targetPoint: 'q1', // -> Dirata-ratakan bersama Q1 (Kualitas Fasilitas & Persyaratan Layanan)
+          targetPoint: 'q8', // -> Masuk ke Q8 (Fasilitas & Kualitas Sarana/Prasarana)
           options: OPSI_SARANA_PRASARANA,
         },
         {
           id: 'ri_q9_pelayanan_pengaduan',
           aspek: 'Aspek Keluhan dan Pengaduan Pelayanan',
           uraian: 'Menurut Bapak/Ibu, apakah Rumah Sakit menyediakan tempat atau cara untuk menyampaikan keluhan, dan apakah keluhan tersebut ditanggapi dengan baik?',
-          targetPoint: 'q6', // -> Dirata-ratakan bersama Q6 (Layanan Informasi & Respons Pengaduan)
+          targetPoint: 'q9', // -> Masuk ke Q9 (Penanganan Keluhan & Pengaduan)
           options: OPSI_PENANGANAN_PENGADUAN,
         },
       ],
@@ -492,11 +492,13 @@ export const SERVICE_QUESTIONS: Record<ServiceKey, QuestionSection[]> = {
           id: 'rj_q1_kecepatan_loket',
           aspek: 'Kecepatan dan Ketepatan Loket Pendaftaran',
           uraian: 'Bagaimana penilaian Anda terhadap kecepatan dan kejelasan alur pelayanan di loket pendaftaran rawat jalan?',
+          targetPoint: 'q1',
         },
         {
           id: 'rj_q2_kenyamanan_ruang_tunggu',
           aspek: 'Kenyamanan dan Kebersihan Ruang Tunggu Poli',
           uraian: 'Bagaimana Anda menilai kebersihan, ketersediaan tempat duduk, dan kenyamanan ruang tunggu poliklinik?',
+          targetPoint: 'q2',
         },
       ],
     },
@@ -509,11 +511,34 @@ export const SERVICE_QUESTIONS: Record<ServiceKey, QuestionSection[]> = {
           id: 'rj_q3_pelayanan_dokter',
           aspek: 'Pemeriksaan dan Ketelitian Dokter',
           uraian: 'Seberapa puas Anda dengan perhatian dan ketelitian dokter spesialis saat memeriksa keluhan Anda?',
+          targetPoint: 'q5',
         },
         {
           id: 'rj_q4_kejelasan_petunjuk',
           aspek: 'Kejelasan Arahan Pengobatan Lanjutan',
           uraian: 'Apakah dokter memberikan arahan yang jelas mengenai resep, pantangan, dan jadwal kontrol berikutnya?',
+          targetPoint: 'q6',
+        },
+      ],
+    },
+    {
+      id: 'rj_bagian_3',
+      title: 'Bagian 3 : Fasilitas Poliklinik dan Penanganan Keluhan',
+      description: 'Penilaian fasilitas sarana prasarana serta penanganan keluhan dan pengaduan di rawat jalan',
+      questions: [
+        {
+          id: 'rj_q8_fasilitas_sarana',
+          aspek: 'Aspek Fasilitas Sarana/Prasarana',
+          uraian: 'Menurut Bapak/Ibu, apakah fasilitas, ruang tunggu, dan perlengkapan sarana prasarana yang tersedia di Poliklinik Rawat Jalan ini cukup baik, bersih, dan dapat digunakan dengan baik?',
+          targetPoint: 'q8', // -> Masuk ke Q8 (Fasilitas)
+          options: OPSI_SARANA_PRASARANA,
+        },
+        {
+          id: 'rj_q9_penanganan_keluhan',
+          aspek: 'Aspek Keluhan dan Pengaduan Pelayanan',
+          uraian: 'Menurut Bapak/Ibu, apakah Rumah Sakit menyediakan tempat atau cara untuk menyampaikan keluhan di rawat jalan, dan apakah keluhan tersebut ditanggapi dengan baik?',
+          targetPoint: 'q9', // -> Masuk ke Q9 (Penanganan Keluhan)
+          options: OPSI_PENANGANAN_PENGADUAN,
         },
       ],
     },

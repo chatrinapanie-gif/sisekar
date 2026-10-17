@@ -27,7 +27,7 @@ export interface QuestionItem {
   aspek: string;
   uraian: string;
   options?: SkalaOptionItem[];
-  targetPoint?: 'q1' | 'q2' | 'q3' | 'q4' | 'q5' | 'q6' | 'q7'; // Penugasan point penilaian Q1 - Q7
+  targetPoint?: 'q1' | 'q2' | 'q3' | 'q4' | 'q5' | 'q6' | 'q7' | 'q8' | 'q9'; // Penugasan point penilaian Q1 - Q9
 }
 
 export interface QuestionSection {

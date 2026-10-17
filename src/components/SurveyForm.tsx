@@ -328,11 +328,12 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
       };
     });
 
-    // PENGELOMPOKAN DINAMIS KE 7 POINT UTAMA (Q1 s/d Q7):
-    // Memungkinkan banyak pertanyaan masuk ke 1 point yang sama (misal ri_q1 dan ri1_q1 sama-sama masuk ke Prosedur Q2)
-    // Mau ada 9 pertanyaan, 4 pertanyaan, 3 pertanyaan, dsb. seluruhnya terukur akurat ke Q1 - Q7.
-    // Jika suatu point tidak ada pertanyaan pada ruangan tersebut, nilainya adalah 0 (nol, bukan 4).
-    const pointGroups: Record<'q1' | 'q2' | 'q3' | 'q4' | 'q5' | 'q6' | 'q7', number[]> = {
+    // PENGELOMPOKAN DINAMIS KE 9 POINT UTAMA (Q1 s/d Q9):
+    // Memungkinkan banyak pertanyaan masuk ke point masing-masing (Q1 s/d Q9).
+    // Q8: Fasilitas Sarana / Prasarana
+    // Q9: Penanganan Keluhan dan Pengaduan
+    // Jika suatu point tidak ada pertanyaan pada unit tersebut, nilainya adalah 0 (nol).
+    const pointGroups: Record<'q1' | 'q2' | 'q3' | 'q4' | 'q5' | 'q6' | 'q7' | 'q8' | 'q9', number[]> = {
       q1: [],
       q2: [],
       q3: [],
@@ -340,12 +341,14 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
       q5: [],
       q6: [],
       q7: [],
+      q8: [],
+      q9: [],
     };
 
     activeQuestionList.forEach((q, idx) => {
       const val = answers[q.id];
       if (typeof val === 'number' && val > 0) {
-        let target: 'q1' | 'q2' | 'q3' | 'q4' | 'q5' | 'q6' | 'q7' = 'q1';
+        let target: 'q1' | 'q2' | 'q3' | 'q4' | 'q5' | 'q6' | 'q7' | 'q8' | 'q9' = 'q1';
         if (q.targetPoint) {
           target = q.targetPoint;
         } else if (/_q1\b|_q1_/i.test(q.id) || /q1/i.test(q.id)) {
@@ -360,11 +363,17 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
           target = 'q5';
         } else if (/_q6\b|_q6_/i.test(q.id) || /q6/i.test(q.id)) {
           target = 'q6';
-        } else if (/_q7\b|_q7_/i.test(q.id) || /q7/i.test(q.id) || /_q8\b|_q8_/i.test(q.id) || /q8/i.test(q.id) || /_q9\b|_q9_/i.test(q.id) || /q9/i.test(q.id)) {
+        } else if (/_q7\b|_q7_/i.test(q.id) || /q7/i.test(q.id)) {
           target = 'q7';
+        } else if (/_q8\b|_q8_/i.test(q.id) || /q8/i.test(q.id)) {
+          target = 'q8';
+        } else if (/_q9\b|_q9_/i.test(q.id) || /q9/i.test(q.id)) {
+          target = 'q9';
         } else {
-          const keys: ('q1' | 'q2' | 'q3' | 'q4' | 'q5' | 'q6' | 'q7')[] = ['q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7'];
-          target = keys[Math.min(idx, 6)];
+          const keys: ('q1' | 'q2' | 'q3' | 'q4' | 'q5' | 'q6' | 'q7' | 'q8' | 'q9')[] = [
+            'q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7', 'q8', 'q9'
+          ];
+          target = keys[Math.min(idx, 8)];
         }
         pointGroups[target].push(val);
       }
@@ -382,6 +391,8 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
     const q5 = getGroupAvg(pointGroups.q5);
     const q6 = getGroupAvg(pointGroups.q6);
     const q7 = getGroupAvg(pointGroups.q7);
+    const q8 = getGroupAvg(pointGroups.q8);
+    const q9 = getGroupAvg(pointGroups.q9);
 
     const submission: SurveySubmission = {
       id: submissionId,
@@ -409,6 +420,8 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
       q5,
       q6,
       q7,
+      q8,
+      q9,
       averageScore: avg,
       ikmScore: ikm,
       mutuLayanan: mutu,

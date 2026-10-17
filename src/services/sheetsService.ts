@@ -1039,7 +1039,9 @@ export function exportToCSV(submissions: SurveySubmission[]): void {
     'Q4 (Biaya/Tarif)',
     'Q5 (Kompetensi NAKES)',
     'Q6 (Informasi Medis)',
-    'Q7 (Perilaku/Sarana/Pengaduan)',
+    'Q7 (Perilaku & Keramahan)',
+    'Q8 (Fasilitas & Sarana)',
+    'Q9 (Penanganan Keluhan & Pengaduan)',
     'Rata-rata Skor (1-4)',
     'Indeks IKM (Skala 100)',
     'Mutu Layanan',
@@ -1049,7 +1051,7 @@ export function exportToCSV(submissions: SurveySubmission[]): void {
   ];
 
   const rows = submissions.map(s => {
-    // Ambil nilai Q1 s/d Q7 (0 jika tidak ada pertanyaan pada point tersebut di ruangan terkait)
+    // Ambil nilai Q1 s/d Q9 (0 jika tidak ada pertanyaan pada point tersebut di unit terkait)
     const q1 = s.q1 !== undefined ? s.q1 : 0;
     const q2 = s.q2 !== undefined ? s.q2 : 0;
     const q3 = s.q3 !== undefined ? s.q3 : 0;
@@ -1057,6 +1059,8 @@ export function exportToCSV(submissions: SurveySubmission[]): void {
     const q5 = s.q5 !== undefined ? s.q5 : 0;
     const q6 = s.q6 !== undefined ? s.q6 : 0;
     const q7 = s.q7 !== undefined ? s.q7 : 0;
+    const q8 = s.q8 !== undefined ? s.q8 : 0;
+    const q9 = s.q9 !== undefined ? s.q9 : 0;
 
     const rincianText = s.answeredDetails && s.answeredDetails.length > 0
       ? s.answeredDetails.map(item => `${item.aspek}: ${item.score} (${item.label})`).join(' | ')
@@ -1079,6 +1083,8 @@ export function exportToCSV(submissions: SurveySubmission[]): void {
       q5,
       q6,
       q7,
+      q8,
+      q9,
       s.averageScore,
       s.ikmScore,
       `"${s.mutuLayanan}"`,
